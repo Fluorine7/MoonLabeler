@@ -351,13 +351,14 @@ def test_manual_registration_of_partial_lunar_image_without_nasa(tmp_path, monke
     def no_download(*args, **kwargs):
         raise AssertionError('Manual partial registration must remain offline')
     monkeypatch.setattr('moonlabeler.sources.download',no_download)
+    window.show_manual_points()
     for feature,pixel in zip(features,pixels):
         window.picking_id=feature['id']
         window.add_anchor(*pixel)
     window.solve_manual()
     assert not errors
     assert np.allclose(window.project.matrix,matrix,atol=1e-6)
-    assert window.registration_tabs.currentIndex()==0
+    assert window.registration_tabs.currentWidget() is window.manual_tab
     assert window.workspace_tabs.currentIndex()==1
     assert '镜像' in window.registration_status.text()
     # Failed NASA operation must not invalidate already valid registration.
@@ -477,6 +478,7 @@ def test_crater_review_worker_selection_anchor_and_clean_exports(tmp_path, monke
     window.open_image(str(photo))
     window.show()
     window.registration_tabs.setCurrentWidget(window.crater_tab)
+    window.ui_set_manual_section_expanded(True)
     application.processEvents()
     # Date remains reachable for the automatic naming action on this page.
     assert window.geometry_group.isVisible()
@@ -506,6 +508,8 @@ def test_crater_review_worker_selection_anchor_and_clean_exports(tmp_path, monke
     assert window.crater_candidates[1].support is None
     assert np.hypot(window.crater_candidates[1].x-345, window.crater_candidates[1].y-185) < 2
     window.crater_search.setText('Aristarchus')
+    assert not window.crater_anchor_button.isEnabled()
+    QTest.keyClick(window.crater_search, Qt.Key.Key_Return)
     assert window.crater_anchor_button.isEnabled()
     candidate = window.crater_candidates[1]
     window.crater_anchor_button.click()
@@ -674,6 +678,7 @@ def test_candidate_outline_toggle_is_independent_of_exported_crater_style():
         window.open_example()
         window.workspace_tabs.setCurrentIndex(0)
         window.registration_tabs.setCurrentWidget(window.crater_tab)
+        window.ui_set_manual_section_expanded(True)
         window.accept_crater_candidates(DetectionResult([
             CraterCandidate(100., 120., 25., 20., 0., .8, 'edge-drawing'),
             CraterCandidate(180., 200., 20., 15., 0., .8, 'edge-drawing'),

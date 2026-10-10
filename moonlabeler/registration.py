@@ -104,8 +104,8 @@ class MatchResult:
     mirrored: bool
 
 
-def auto_register(reference, photograph, *, ratio_threshold=.75,
-                  contrast_threshold=.02, min_inlier_fraction=.35):
+def registration_candidates(reference, photograph, *, ratio_threshold=.75,
+                            contrast_threshold=.02, min_inlier_fraction=.35):
     """Map reference pixels to photograph pixels. No assumed crop/rotation.
 
     Reflections are tested explicitly. RANSAC uses a similarity rather than an
@@ -160,4 +160,14 @@ def auto_register(reference, photograph, *, ratio_threshold=.75,
         candidates.append(MatchResult(matrix, count, len(good), rms, coverage, mirrored))
     if not candidates:
         raise ValueError("没有足够可靠的匹配。请核对拍摄时间，或用至少三处已知地形手动配准。")
+    return candidates
+
+
+def auto_register(reference, photograph, *, ratio_threshold=.75,
+                  contrast_threshold=.02, min_inlier_fraction=.35):
+    """Return the strongest image pose, testing both camera handednesses."""
+    candidates = registration_candidates(reference, photograph,
+                                         ratio_threshold=ratio_threshold,
+                                         contrast_threshold=contrast_threshold,
+                                         min_inlier_fraction=min_inlier_fraction)
     return max(candidates, key=lambda candidate: (candidate.inliers, candidate.coverage))

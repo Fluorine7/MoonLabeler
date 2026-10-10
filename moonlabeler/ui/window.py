@@ -307,7 +307,7 @@ class WindowUiMixin:
         # is the hook app.py uses to open it when a manual pick starts or after
         # identification fails. The toggle below stays visible as the entry point.
         self.manual_section_toggle, self.manual_section_block, group_box = \
-            self.ui_collapsible("手动校准 · 已知地名取点 / 辅助找坑")
+            self.ui_collapsible("辅助校准 · 辅助找坑 / 已知地名取点")
         layout.addWidget(self.manual_section_toggle)
         layout.addWidget(self.manual_section_block)
         self.registration_tabs = QTabWidget()
@@ -319,9 +319,10 @@ class WindowUiMixin:
         automatic = QWidget()
         terrain = QWidget()
         craters = QWidget()
-        self.registration_tabs.addTab(manual, "已知地名取点")
         self.registration_tabs.addTab(craters, "辅助找坑")
+        self.registration_tabs.addTab(manual, "已知地名取点")
         self.crater_tab = craters
+        self.manual_tab = manual
         self.reference_tabs = QTabWidget()
         self.reference_tabs.setObjectName("subTabs")
         self.reference_tabs.setDocumentMode(True)
@@ -408,6 +409,10 @@ class WindowUiMixin:
         self.solve_button.setProperty("primary", True)
         self.solve_button.clicked.connect(self.solve_manual)
         box.addWidget(self.solve_button)
+        self.guided_identify_button = QPushButton("用参考点自动配准")
+        self.guided_identify_button.clicked.connect(self.identify_photo)
+        self.guided_identify_button.setToolTip("确认一两个已知点后，自动搜索附近地形；周围图像仍需通过验证。")
+        box.addWidget(self.guided_identify_button)
         self.registration_status = QLabel("")
         self.registration_status.setWordWrap(True)
         self.registration_status.setObjectName("statusStrong")
@@ -433,7 +438,7 @@ class WindowUiMixin:
 
         # 疑似坑（检测与确认）
         self.build_crater_controls(craters)
-        self.registration_tabs.currentChanged.connect(self.review_page_changed)
+        self.registration_tabs.currentChanged.connect(self.registration_page_changed)
         self.workspace_tabs.currentChanged.connect(self.review_page_changed)
 
         # -------------------------------------------------- 校准 · DEM 模拟页签
@@ -619,6 +624,7 @@ class WindowUiMixin:
         for review_widget in (self.cancel_pick_button, self.crater_action_panel):
             review_widget.installEventFilter(self)
         self.manual_section_toggle.toggled.connect(self.ui_reconcile_confirm_bar)
+        self.manual_section_toggle.toggled.connect(self.review_page_changed)
         action_box = QVBoxLayout(self.crater_action_panel)
         action_box.setSpacing(7)
         self.crater_controls_layout.removeItem(self.crater_review_actions)

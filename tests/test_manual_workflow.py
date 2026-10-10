@@ -158,3 +158,30 @@ def test_registration_failures_reveal_manual_calibration_without_losing_fit(monk
     finally:
         window.dirty = False
         window.close()
+
+
+def test_failure_without_confirmed_points_opens_candidate_detection_before_manual_picking(monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    errors = []
+    window.error = errors.append
+    try:
+        window.set_image(np.full((500, 600, 3), 50, np.uint8))
+        window.show()
+        app.processEvents()
+        assert not window.ui_manual_section_expanded()
+        monkeypatch.setattr(window, 'run_background',
+                            lambda title, work, success, failure=None: failure('No validated region'))
+        window.identify_button.click()
+        app.processEvents()
+        assert errors == ['No validated region']
+        assert window.registration_tabs.currentWidget() is window.crater_tab
+        assert window.ui_manual_section_expanded() and window.crater_action_panel.isVisible()
+        assert window.crater_button.isVisible()
+        window.crater_finish_button.click()
+        app.processEvents()
+        assert window.registration_tabs.currentWidget() is window.manual_tab
+        assert window.feature_search.isVisible() and not window.crater_action_panel.isVisible()
+    finally:
+        window.dirty = False
+        window.close()

@@ -33,6 +33,7 @@ from .identification import identify_from_candidates
 from .atlas import identify_from_atlas
 from .limb import identify_from_limb
 from .terrain_identification import identify_from_terrain
+from .guided_identification import identify_from_reference_points, reference_point_errors, reference_point_tolerance
 from .terrain_refinement import refine_crater_identification
 from .geometry import compute_geometry, MOON_RADIUS_KM
 from .layout import LabelBox, arrange_labels, leader_segment
@@ -235,7 +236,7 @@ class CraterOverlay(QGraphicsItem):
 class MainWindow(WindowUiMixin, QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"MoonLabeler {__version__} · 月面照片标注")
+        self.setWindowTitle(f"MoonLabeler {__version__} · 月面照片标注 · ©️Fluorine Zhu（正七价的氟离子）")
         self.resize(1440, 930)
         self.setMinimumSize(1100, 720)
         self.setStyleSheet(STYLE)
@@ -317,36 +318,42 @@ class MainWindow(WindowUiMixin, QMainWindow):
         lat = self.latitude.value() if self.topocentric.isChecked() else None
         lon = self.longitude.value() if self.topocentric.isChecked() else None
         image, catalog = self.image, list(self.catalog)
+        known = self.manual_reference_points()
+        review_candidates = list(self.crater_candidates)
         cached_geometry = self.project.geometry
         # Never feed a previous image-derived correction back into ephemeris
         # matching: repeated recognition must not accumulate view offsets.
-        if self.project.identification.get("refinement"):
+        if known or self.project.identification.get("refinement"):
             cached_geometry = None
         def work():
             geometry = cached_geometry or compute_geometry(utc, CACHE / "ephemeris", lat, lon)
             detection = detect_crater_rims(image)
-            try:
-                recognition = identify_from_atlas(image, geometry)
-            except ValueError:
+            if known:
+                recognition = identify_from_reference_points(image, geometry, CACHE, known, catalog,
+                                                             review_candidates + detection.candidates)
+            else:
                 try:
-                    recognition = identify_from_limb(image, geometry)
-                except ValueError as limb_error:
+                    recognition = identify_from_atlas(image, geometry)
+                except ValueError:
                     try:
-                        recognition = identify_from_candidates(detection.candidates, catalog, geometry, image.shape, image=image)
-                        recognition = refine_crater_identification(recognition, image, geometry, CACHE, catalog)
-                    except ValueError as exc:
+                        recognition = identify_from_limb(image, geometry)
+                    except ValueError as limb_error:
                         try:
-                            recognition = identify_from_terrain(image, geometry, CACHE)
-                        except (ValueError, OSError) as terrain_error:
-                            raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；纹理、月盘轮廓和坑群验证均未通过。\n{limb_error}\n{exc}\n高程参考：{terrain_error}") from terrain_error
+                            recognition = identify_from_candidates(detection.candidates, catalog, geometry, image.shape, image=image)
+                            recognition = refine_crater_identification(recognition, image, geometry, CACHE, catalog)
+                        except ValueError as exc:
+                            try:
+                                recognition = identify_from_terrain(image, geometry, CACHE)
+                            except (ValueError, OSError) as terrain_error:
+                                raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；纹理、月盘轮廓和坑群验证均未通过。\n{limb_error}\n{exc}\n高程参考：{terrain_error}") from terrain_error
             return detection, recognition, geometry, lat, lon
         def failure(message):
-            self.identification_status.setText("识别失败，可改用手动校准")
+            self.identification_status.setText("参考点配准失败，请核对取点" if known else "识别失败，可改用手动校准")
             self.identification_status.setToolTip(message)
-            self.show_manual_points()
+            self.show_manual_points() if known else self.show_crater_review()
             self.error(message)
-        self.identification_status.setText("正在识别…")
-        self.run_background("正在识别，首次运行需下载参考数据…",
+        self.identification_status.setText("正在按参考点配准…" if known else "正在识别…")
+        self.run_background("正在按参考点配准…" if known else "正在识别，首次运行需下载参考数据…",
                             work, self.accept_identification, failure)
 
     def accept_identification(self, result):
@@ -354,13 +361,14 @@ class MainWindow(WindowUiMixin, QMainWindow):
         geometry = recognition.projection_geometry or geometry
         # Previous detections are not independent user evidence and must not
         # prevent a newly validated refinement from replacing a coarse pose.
-        known = [a for a in self.project.anchors if a.get("enabled", True)
-                 and a.get('source') != 'automatic' and a["id"] in self.catalog_by_id]
-        if len(known) >= 3:
-            features = [self.catalog_by_id[a["id"]] for a in known]
-            points, visible, _ = geometry.project([f["lat"] for f in features], [f["lon"] for f in features])
-            errors = np.linalg.norm(transform_points(recognition.matrix, points)-np.array([a["pixel"] for a in known]), axis=1)
-            if not visible.all() or np.median(errors) > max(15., recognition.rms_px*3):
+        known = self.manual_reference_points()
+        if known:
+            try:
+                errors = reference_point_errors(recognition.matrix, geometry, known, self.catalog)
+                consistent = (errors <= reference_point_tolerance(self.image.shape, recognition.rms_px)).all()
+            except ValueError:
+                consistent = False
+            if not consistent:
                 self.identification_status.setText("自动结果与现有参考点不一致，未采用。")
                 self.error("自动识别与现有参考点不一致，已保留原配准。请核对日期和参考点。")
                 return
@@ -396,13 +404,17 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                        "rms_px": recognition.rms_px}
         if recognition.refinement:
             self.project.identification["refinement"] = recognition.refinement
+        if recognition.reference_points:
+            self.project.identification["reference_points"] = recognition.reference_points
         self.accept_crater_candidates(detection)
         self.sync_controls()
         self.show_geometry()
         self.refresh_anchor_table()
         self.refresh_annotations()
         names = [m.feature["name"] for m in recognition.matches if m.feature["kind"] == "Crater, craters"]
-        if recognition.limb_inliers:
+        if recognition.reference_points:
+            message = f"参考点辅助配准 · {len(recognition.reference_points['reference_ids'])} 个已确认点 · {recognition.image_inliers} 个图像对应点 · 覆盖 {recognition.coverage:.1%}。圈为目录参考轮廓"
+        elif recognition.limb_inliers:
             message = f"月盘外缘与月海纹理配准成功 · 纹理相关 {recognition.texture_correlation:.2f} · 外缘拟合偏差 {recognition.rms_px:.2f} px"
         elif recognition.refinement and recognition.matches:
             message = f"坑群识别后精修 · {recognition.image_inliers} 个图像对应点 · 覆盖 {recognition.coverage:.1%} · 拟合偏差 {recognition.rms_px:.2f} px。大坑优先使用高程坑缘，轮廓精度受数据分辨率限制"
@@ -414,7 +426,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             message = f"纹理配准成功 · {recognition.image_inliers} 个图像对应点 · 拟合偏差 {recognition.rms_px:.2f} px"
         else:
             message = f"识别到 {'、'.join(names[:4])} 等 {len(recognition.matches)} 处地形 · 拟合偏差 {recognition.rms_px:.2f} px"
-        self.identification_status.setText(f"配准完成 · 拟合偏差 {recognition.rms_px:.2f} px")
+        self.identification_status.setText(f"{'参考点辅助配准完成' if recognition.reference_points else '配准完成'} · 拟合偏差 {recognition.rms_px:.2f} px")
         details = message + "。拟合偏差只反映一致性，不代表绝对定位精度。"
         self.identification_status.setToolTip(details)
         self.registration_status.setText("")
@@ -474,8 +486,14 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.cancel_pick()
         self.show_crater_overlays()
 
+    def registration_page_changed(self, *args):
+        self.ui_set_manual_section_expanded(True)
+        self.review_page_changed()
+
     def show_crater_overlays(self, *args):
-        visible = self.workspace_tabs.currentIndex() == 0 and self.registration_tabs.currentWidget() == self.crater_tab
+        visible = (self.workspace_tabs.currentIndex() == 0
+                   and self.registration_tabs.currentWidget() == self.crater_tab
+                   and self.ui_manual_section_expanded())
         if hasattr(self, "crater_action_panel"):
             self.crater_action_panel.setVisible(visible)
         for index, item in enumerate(self.crater_items):
@@ -845,11 +863,17 @@ class MainWindow(WindowUiMixin, QMainWindow):
         # A changed search result must never leave an old name armed on canvas.
         self.cancel_pick()
 
+    def manual_reference_points(self):
+        return [dict(a, pixel=list(a['pixel'])) for a in self.project.anchors
+                if a.get('enabled', True) and a.get('source') != 'automatic' and a['id'] in self.catalog_by_id]
+
     def update_manual_guide(self, *args):
         count = sum(a.get("enabled", True) for a in self.project.anchors)
+        known_count = len(self.manual_reference_points())
         required = 3 if self.mirror.currentIndex() == 0 else 2
-        self.anchor_count.setText(f"{count} 个有效参考点 · 最少 {required} 个")
+        self.anchor_count.setText(f"{count} 个有效参考点 · 手动校准最少 {required} 个")
         self.solve_button.setEnabled(self.image is not None and count >= required and not self.canvas.picking)
+        self.guided_identify_button.setEnabled(self.image is not None and known_count > 0 and not self.canvas.picking)
         item = self.feature_list.currentItem()
         picking = self.canvas.picking and self.picking_id is not None
         self.cancel_pick_button.setVisible(picking)
@@ -861,6 +885,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             message = f"{feature.get('name_zh') or feature['name']}：点击照片中的坑中心"
         elif count >= required:
             message = "可校准，也可继续取点"
+        elif known_count:
+            message = f"可尝试自动配准；手动校准还需 {required-count} 个点"
         else:
             message = f"还需 {required-count} 个参考点"
         self.manual_guide.setText(message)
@@ -875,9 +901,17 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def show_manual_points(self):
         self.workspace_tabs.setCurrentIndex(0)
-        self.registration_tabs.setCurrentIndex(0)
+        self.registration_tabs.setCurrentWidget(self.manual_tab)
         self.ui_set_manual_section_expanded(True)
-        self.scroll.ensureWidgetVisible(self.solve_button)
+        target = (self.solve_button if self.solve_button.isEnabled() else
+                  self.guided_identify_button if self.guided_identify_button.isEnabled() else self.feature_search)
+        QTimer.singleShot(0, lambda: self.scroll.ensureWidgetVisible(target))
+
+    def show_crater_review(self):
+        self.workspace_tabs.setCurrentIndex(0)
+        self.registration_tabs.setCurrentWidget(self.crater_tab)
+        self.ui_set_manual_section_expanded(True)
+        QTimer.singleShot(0, lambda: self.scroll.ensureWidgetVisible(self.crater_button))
 
     def start_pick(self):
         if self.image is None:
@@ -887,6 +921,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if item is None:
             self.error("请先搜索并选择一个已知地形。")
             return
+        self.show_manual_points()
         self.cancel_pick()
         self.picking_id = item.data(Qt.ItemDataRole.UserRole)
         self.canvas.picking = True
@@ -923,23 +958,26 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.registration_status.setText("")
         self.statusBar().showMessage(self.manual_guide.text())
         self.dirty = True
-        if self.workspace_tabs.currentIndex() == 0 and self.registration_tabs.currentIndex() == 0:
-            target = self.solve_button if self.solve_button.isEnabled() else self.feature_search
+        if self.workspace_tabs.currentIndex() == 0 and self.registration_tabs.currentWidget() == self.manual_tab:
+            target = (self.solve_button if self.solve_button.isEnabled() else
+                      self.guided_identify_button if self.guided_identify_button.isEnabled() else self.feature_search)
             QTimer.singleShot(0, lambda: self.scroll.ensureWidgetVisible(target))
 
     def refresh_anchor_table(self):
         enabled = [a for a in self.project.anchors if a.get("enabled", True)]
         self.calibration = None
         diagnostics = {}
-        if self.project.geometry and self.project.matrix is not None and len(enabled) >= 2:
+        if self.project.geometry and self.project.matrix is not None and enabled:
             try:
                 features = [self.catalog_by_id[a["id"]] for a in enabled]
                 source, _, _ = self.project.geometry.project([f["lat"] for f in features], [f["lon"] for f in features])
                 target = np.array([a["pixel"] for a in enabled])
-                self.calibration = calibration_report(source, target, ["auto", "no", "yes"][self.mirror.currentIndex()])
                 actual_errors = np.linalg.norm(transform_points(self.project.matrix, source)-target, axis=1)
-                diagnostics = {a["id"]: (error, self.calibration.check_errors_px[i], i == self.calibration.suspect_index)
-                               for i, (a, error) in enumerate(zip(enabled, actual_errors))}
+                diagnostics = {a["id"]: (error, float("nan"), False) for a, error in zip(enabled, actual_errors)}
+                if len(enabled) >= 2:
+                    self.calibration = calibration_report(source, target, ["auto", "no", "yes"][self.mirror.currentIndex()])
+                    diagnostics = {a["id"]: (error, self.calibration.check_errors_px[i], i == self.calibration.suspect_index)
+                                   for i, (a, error) in enumerate(zip(enabled, actual_errors))}
             except (ValueError, KeyError):
                 pass
         self.anchor_table.blockSignals(True)
@@ -1112,10 +1150,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.run_background("下载 NASA 同时刻影像并匹配…", work, self.accept_auto, self.nasa_failed)
 
     def nasa_failed(self, text):
-        self.workspace_tabs.setCurrentIndex(0)
-        self.registration_tabs.setCurrentIndex(0)
-        self.ui_set_manual_section_expanded(True)
-        self.scroll.ensureWidgetVisible(self.feature_search)
+        self.show_manual_points() if self.manual_reference_points() else self.show_crater_review()
         self.registration_status.setText("NASA 配准失败，可用手动校准")
         self.error(text)
 
@@ -1570,9 +1605,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def help_dialog(self):
         QMessageBox.information(self, "使用 MoonLabeler",
             "自动：打开照片，设置拍摄日期，点击“自动识别并标注”。时间默认 UTC 15:00，展开可修改；北京时间请换算为 UTC。首次需下载参考数据。\n\n"
+            "辅助找坑：自动识别失败后，先检测中心，选候选，在底部搜索并点击环形山名称，再确认加入参考点。按 Enter 可选首条地名。\n\n"
+            "参考点辅助自动：确认一两个已知点后，点击“用参考点自动配准”或顶部“自动识别并标注”。程序搜索附近地形，验证通过后生成标注。\n\n"
             "手动：搜索已知地名，点击取点按钮，再点照片中同一个坑的完整坑缘中心。不要点亮斑或阴影中心。取 3–6 个分散、不共线的点，再完成校准。\n"
             "Esc 取消取点；双击参考点行重选，取消勾选停用。橙色行需核对。\n\n"
-            "辅助找坑：检测中心，选候选，在底部搜索并点击环形山名称，再确认加入参考点。按 Enter 可选首条地名。月溪、山脉等在“已知地名取点”中选择。\n\n"
+            "月溪、山脉等在“已知地名取点”中选择。\n\n"
             "标注：改设置后点击“重新生成标注”。拖动标签调整位置，双击编辑文字。字号按照片短边计算。可保存工程或导出 PNG / SVG。\n\n"
             "DEM：导入或下载高程数据，选择区域生成光照参考。基础采样约 1.9 km；不适用于近月缘区域。\n\n"
             "坑缘圈是目录投影参考，可能偏离实际坑缘。拟合残差只表示一致性；模型和数据来源详见 README。")

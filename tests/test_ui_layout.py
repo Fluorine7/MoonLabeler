@@ -23,9 +23,11 @@ def test_workspace_tabs_keep_calibration_annotation_reference_contract():
     try:
         assert [window.workspace_tabs.tabText(i) for i in range(window.workspace_tabs.count())] \
             == ["校准", "标注", "参考"]
-        assert window.registration_tabs.indexOf(window.crater_tab) >= 0
+        assert [window.registration_tabs.tabText(i) for i in range(window.registration_tabs.count())] \
+            == ["辅助找坑", "已知地名取点"]
+        assert window.registration_tabs.currentWidget() is window.crater_tab
         assert window.reference_tabs.count() == 2
-        # nasa_failed scrolls the manual terrain tab into view on this scroll area.
+        # Both assistance paths remain inside the calibration scroll area.
         assert window.scroll.widget().isAncestorOf(window.feature_search)
     finally:
         window.dirty = False
@@ -43,9 +45,10 @@ def test_crater_confirmation_bar_is_pinned_outside_the_scrolling_content():
         assert panel.isHidden()
         # app.py's own visibility rule: calibration page + 疑似坑 tab.
         window.registration_tabs.setCurrentWidget(window.crater_tab)
+        window.ui_set_manual_section_expanded(True)
         application.processEvents()
         assert panel.isVisible()
-        window.registration_tabs.setCurrentIndex(0)
+        window.registration_tabs.setCurrentWidget(window.manual_tab)
         application.processEvents()
         assert not panel.isVisible()
         window.registration_tabs.setCurrentWidget(window.crater_tab)
@@ -95,6 +98,7 @@ def test_low_frequency_settings_collapse_but_stay_wired():
     window, application = make_window()
     try:
         window.registration_tabs.setCurrentWidget(window.crater_tab)
+        window.ui_set_manual_section_expanded(True)
         assert not window.crater_settings_block.isVisible()
         window.crater_settings_toggle.click()
         assert window.crater_settings_block.isVisible()
@@ -204,7 +208,7 @@ def test_manual_calibration_section_collapsed_by_default_with_expand_hook():
         # Re-entering the review tab is the real app.py path: it re-evaluates
         # the bar via review_page_changed, and the section follows.
         assert not window.crater_action_panel.isVisible()
-        window.registration_tabs.setCurrentIndex(0)
+        window.registration_tabs.setCurrentWidget(window.manual_tab)
         window.registration_tabs.setCurrentWidget(window.crater_tab)
         application.processEvents()
         assert window.crater_action_panel.isVisible()

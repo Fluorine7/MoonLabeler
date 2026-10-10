@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.4.8** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.1** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -16,8 +16,9 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 ### 功能
 
 - 自动识别：匹配内置 LROC 纹理；也可拟合较完整的月盘外缘，并联合验证月相和月海纹理；局部图再通过坑群搜索目录；仍失败时使用小型 LOLA 高程数据生成阴影参考。
+- 参考点辅助自动配准：确认一两个已知地形点即可搜索附近区域，由周围纹理验证比例、旋转和镜像，再生成标注。
 - 手动校准：以至少 3 个已知地形中心求解比例、旋转、偏移和镜像；显示逐点偏差。
-- 手动校准区域默认折叠，识别失败或返回参考点时自动展开。
+- 辅助校准区域默认折叠；辅助找坑排在已知地名取点前面，没有确认点时识别失败先进入辅助找坑。
 - 疑似坑检测：本地 OpenCV 检测圆形 / 椭圆坑缘，支持修正中心与导出 CSV。
 - 照片画布在左、紧凑检查器在右；低频参数折叠，候选坑确认操作固定在页脚。
 - 标注布局：自动避让标签、地形中心和引线；拖动标签或双击改名。
@@ -58,6 +59,8 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 自动识别属于实验性功能。强阴影、月缘与极区的严重压缩、模糊、水印、日期错误或候选坑太少时仍可能失败。不能通过验证的结果不会作为地名标注，也不会替换已有配准。可改用已知地形点手动校准。
 
+只认得一两个地形时，在“已知地名取点”或“辅助找坑”中确认名称和位置，然后点击参考点表下的 **“用参考点自动配准”**。顶部“自动识别并标注”也会优先使用已确认的点。程序复用同一份小型 LOLA 数据，尝试少量局部参考尺度，通过后立即停止搜索；仍需至少 24 个图像对应点、分布覆盖、明暗与细节相关，以及全部参考点位置的一致性。失败保留参考点和原配准。一个点本身不能确定方向和比例；纯手动校准仍默认需要至少三点。
+
 局部坑群识别通过后，会使用同一份约 33 MB 的 LOLA DEM 精修相机与观测方向；局部参考渲染和拟合都考虑地形高度。修正必须通过空间分区留出点与重新渲染的整幅纹理检查，否则保留原配准。该修正不代表反推出的拍摄地点或天平动测量值。
 
 坑缘圈仅用于直径至少 35 km 且在照片中足够大的坑，小坑保留短引线。“标注 → 排版选项 → 轮廓形状”默认选择平滑 **椭圆**，也可选 **坑缘轮廓（手绘风）**；点击“重新生成标注”应用。局部坑群路径优先沿 DEM 中连续的坑缘高地取点，考虑地形高度投影，再拟合椭圆；坑缘轮廓选项保留这些点的不规则形状。数据不足或其他识别路径使用目录参考圈。形状设置与高程坑缘保存在工程中，并用于 PNG / SVG。这些轮廓受 DEM 约 1.9 km 网格、遮挡与配准残差限制，并非逐像素测得的真实坑壁。小拟合残差不等于绝对定位精度。
@@ -80,7 +83,8 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 
 - Automatic registration using a bundled LROC texture, a wide-limb fallback validated with phase and albedo texture, crater-pattern catalogue matching for close-up views, and a small LOLA slope/shadow-reference fallback.
 - Manual calibration from at least three known terrain centers, with rotation, scale, translation, reflection, and per-point error review.
-- Manual calibration is collapsed by default and opens after identification failure or when returning to reference points.
+- Automatic local registration guided by one or two confirmed terrain points, with image evidence validating scale, rotation and reflection.
+- Calibration assistance is collapsed by default. Candidate detection comes before known-name picking; identification failure opens candidate detection when no points have been confirmed.
 - Local OpenCV crater-rim candidate detection, center correction, and CSV export.
 - Photo-first layout with a compact right-hand inspector, collapsible advanced settings, and a pinned crater-confirmation panel.
 - Automatic label placement with collision avoidance, draggable labels, and editable names.
@@ -103,6 +107,8 @@ For manual calibration, open **校准 → 已知地名取点** (Calibration → 
 1. Search for a crater you recognize and select its name from the results.
 2. Click **在照片中标记** (Mark in photo), then click the geometric center of that same crater's rim. Avoid using the bright patch or shadow center. Zoom if needed; Esc cancels picking.
 3. Repeat for 3–6 well-separated, non-collinear craters, then click **完成校准并生成标注** (Calibrate and generate annotations). Geometry is computed automatically and the annotation page opens. Collected points survive an ephemeris-download failure.
+
+If you can confirm only one or two points, click **用参考点自动配准** (Register automatically using reference points) below the reference-point table. The main Identify and annotate button also uses confirmed points first. The search reuses the small LOLA DEM, tries a bounded set of local field sizes and stops at a validated result. Acceptance still requires at least 24 image correspondences, spatial coverage, dense lighting and detail agreement, and consistency with every confirmed point. Rejected results preserve points and any existing registration. A single point does not determine a camera pose; full manual calibration still defaults to three points.
 
 The **辅助找坑** (Find candidate centers) tab only assists point placement; you still confirm each name. In its fixed footer, search for a crater name, click a search-result row (or press Enter in the search field to choose the first hit), then click **确认地名，加入参考点** (Confirm name and add reference point). Results appear directly in a list, including single matches such as Hadley C; entering a query does not assign a name automatically. This search lists craters only; rilles, mountains and other formations remain available in **已知地名取点**. The footer links back to the confirmed reference points. Double-click a reference-point table row to replace its position, or uncheck it to exclude it before recalibrating.
 

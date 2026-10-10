@@ -19,6 +19,7 @@ def candidate_window():
     window = MainWindow()
     window.set_image(np.full((600, 600, 3), 40, dtype=np.uint8))
     window.registration_tabs.setCurrentWidget(window.crater_tab)
+    window.ui_set_manual_section_expanded(True)
     window.accept_crater_candidates(DetectionResult(
         [CraterCandidate(350, 300, 29, 29, 0, None, "manual")],
         (0, 0, 600, 600), 1.))
