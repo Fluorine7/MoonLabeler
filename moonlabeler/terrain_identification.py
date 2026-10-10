@@ -70,6 +70,20 @@ def terrain_agreement(reference, photograph, reference_to_photo, *, require_matc
     return light, detail
 
 
+def terrain_consensus(light, detail, inliers, coverage):
+    """Dense validation with a narrow, more strongly supported boundary band.
+
+    Small shading changes can move a valid polar reference just below 0.60.
+    The 0.59--0.60 band needs more correspondences, more spatial coverage and
+    stronger detail than the normal path; a weak dense match still fails.
+    """
+    if not np.isfinite([light, detail, coverage]).all():
+        return False
+    if light >= .6 and detail >= .25:
+        return inliers >= 24 and coverage >= .06
+    return light >= .59 and detail >= .30 and inliers >= 32 and coverage >= .15
+
+
 def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=1536, refine=True):
     """Search every atlas tile, both handednesses, at a coarse image scale."""
     dem = ElevationMap.load(download_basic_dem(cache))
@@ -109,8 +123,10 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
             offset = np.array([[1., 0., -x], [0., 1., -y], [0., 0., 1.]])
             reference_to_photo = (np.vstack((match.matrix, [0., 0., 1.])) @ offset)[:2]
             try:
-                light, detail = terrain_agreement(reference, photograph, reference_to_photo)
+                light, detail = terrain_agreement(reference, photograph, reference_to_photo, require_match=False)
             except IdentificationError:
+                continue
+            if not terrain_consensus(light, detail, match.inliers, match.coverage):
                 continue
             matrix = (np.vstack((reference_to_photo, [0., 0., 1.])) @ np.vstack((projection, [0., 0., 1.])))[:2]
             matrix = np.diag([1/sx, 1/sy]) @ matrix

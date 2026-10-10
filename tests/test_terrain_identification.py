@@ -8,7 +8,7 @@ import pytest
 
 from moonlabeler.registration import transform_points
 from moonlabeler.identification import IdentificationError
-from moonlabeler.terrain_identification import identify_from_terrain, terrain_agreement
+from moonlabeler.terrain_identification import identify_from_terrain, terrain_agreement, terrain_consensus
 
 
 @pytest.mark.parametrize('mirrored', [False, True])
@@ -49,6 +49,16 @@ def test_terrain_agreement_rejects_smooth_phase_without_detail():
     reference = np.uint8(30+180*x/255)
     with pytest.raises(IdentificationError, match='地形细节'):
         terrain_agreement(reference, reference.copy(), np.array([[1., 0., 0.], [0., 1., 0.]]))
+
+
+def test_borderline_light_needs_stronger_detail_count_and_distribution():
+    assert terrain_consensus(.5987, .303, 33, .179)
+    assert terrain_consensus(.65, .27, 24, .07)
+    assert not terrain_consensus(.5987, .303, 31, .179)
+    assert not terrain_consensus(.5987, .29, 33, .179)
+    assert not terrain_consensus(.5987, .303, 33, .10)
+    assert not terrain_consensus(.58, .5, 60, .5)
+    assert not terrain_consensus(np.nan, .5, 60, .5)
 
 
 def test_repeated_terrain_in_different_regions_is_ambiguous(monkeypatch, tmp_path):

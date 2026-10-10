@@ -161,9 +161,14 @@ def test_one_click_recognizes_real_south_polar_limb_photo(monkeypatch):
         assert window.project.matrix is not None and window.annotation_items
         assert window.project.identification['method'].startswith('LOLA')
         assert window.project.identification['image_inliers'] >= 24
-        # Lower point residuals alone did not pass the fresh dense-render
-        # check for this image; retain the accepted coarse registration.
-        assert not window.project.identification.get('refinement')
+        # Exact-time input is now retained. The 15:22 reference and its refined
+        # view both need to pass validation, rather than assuming the old
+        # date-only UI's 15:00 reference and its rejection result.
+        refinement = window.project.identification['refinement']
+        assert refinement['validation_after_px'] < refinement['validation_before_px']*.85
+        assert len(refinement['validation_folds']) >= 4
+        assert refinement['light_before_after'][1] >= .6
+        assert refinement['detail_before_after'][1] >= refinement['detail_before_after'][0]+.02
         # Independently inspected large formations, never supplied to search.
         for name, bounds in {'Moretus': (950, 1170, 1900, 2170),
                              'Short': (820, 1110, 1330, 1640),
@@ -583,8 +588,8 @@ def test_one_click_recognizes_partial_photo_with_satellite_crater_chain(tmp_path
     import time
     source = Path(__file__).parents[1]
     photo = source/'微信图片_2026-10-10_180754_011.png'
-    if not photo.exists() or not (source/'.cache/ephemeris/de421.bsp').exists():
-        pytest.skip('Local user photograph and JPL cache required')
+    if not photo.exists() or not (source/'.cache/ephemeris/de421.bsp').exists() or not (source/'.cache/terrain/LDEM_16.IMG').exists():
+        pytest.skip('Local user photograph, JPL and DEM caches required')
     application = QApplication.instance() or QApplication([])
     window = MainWindow()
     errors = []
@@ -610,8 +615,51 @@ def test_one_click_recognizes_partial_photo_with_satellite_crater_chain(tmp_path
         # Independently inspected prominent crater and curved chain, not input.
         main = next(item for item in window.annotation_items if item.feature['name'] == 'Rutherfurd')
         assert 1580 < main.anchor.x() < 1690 and 840 < main.anchor.y() < 950
+        refinement = window.project.identification['refinement']
+        assert refinement['camera_alignment']['points'] >= 40
+        assert refinement['validation_after_px'] < refinement['validation_before_px']*.85
+        assert len(refinement['validation_folds']) >= 4
+        assert refinement['light_before_after'][1] >= .6
+        assert refinement['detail_before_after'][1] >= .25
+        clavius = next(f for f in window.catalog if f['name'] == 'Clavius')
+        assert clavius['id'] in window.project.terrain_rims
+        assert len(window.project.crater_outline(clavius, window.image.shape)[0]) == 129
+        small = next(f for f in window.catalog if f['name'] == 'Blancanus D')
+        assert not window.project.crater_outline(small, window.image.shape)
+        saved = tmp_path/'partial.moonlabel'
+        window.project.save(saved)
+        assert Project.load(saved).terrain_rims == window.project.terrain_rims
         window.render_png(tmp_path/'partial-moon.png')
         assert Image.open(tmp_path/'partial-moon.png').size == (2628,2256)
+    finally:
+        window.dirty = False
+        window.close()
+
+
+@pytest.mark.parametrize('manual', [False, True])
+def test_new_recognition_replaces_old_detections_but_respects_manual_anchors(manual):
+    from moonlabeler.identification import IdentificationResult
+    from moonlabeler.craters import DetectionResult
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    errors = []
+    window.error = errors.append
+    try:
+        window.open_example()
+        geometry, old_matrix = window.project.geometry, window.project.matrix.copy()
+        features = window.project.visible_features(window.catalog, window.image.shape)[:3]
+        window.project.anchors = [dict(id=f['id'], pixel=xy.tolist(), enabled=True,
+                                      **({} if manual else {'source': 'automatic'})) for f, xy in features]
+        new_matrix = old_matrix.copy()
+        new_matrix[:, 2] += [40., 0.]
+        result = IdentificationResult(new_matrix, [], 1., 10., 0, image_inliers=24, coverage=.4)
+        window.accept_identification((DetectionResult([], (0, 0, 1200, 1200), 1.), result, geometry, None, None))
+        if manual:
+            assert errors and np.array_equal(window.project.matrix, old_matrix)
+            assert len(window.project.anchors) == 3
+        else:
+            assert not errors and np.array_equal(window.project.matrix, new_matrix)
+            assert not window.project.anchors
     finally:
         window.dirty = False
         window.close()

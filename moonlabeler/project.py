@@ -8,6 +8,7 @@ import json
 import os
 from xml.sax.saxutils import escape
 
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -16,6 +17,35 @@ from .sources import read_image, write_json, COMMON_FEATURES
 from .registration import transform_points
 
 DEFAULT_FONT_PERCENT = 1.5
+MIN_OUTLINE_DIAMETER_KM = 35.
+
+
+def _ellipse_outline(pixels):
+    """Smooth a projected rim while retaining its vertex order for occultation."""
+    if len(pixels) < 6 or not np.isfinite(pixels).all():
+        return pixels
+    closed = np.allclose(pixels[0], pixels[-1])
+    samples = pixels[:-1] if closed else pixels
+    origin = samples.mean(axis=0)
+    try:
+        center, axes, degrees = cv2.fitEllipse((samples-origin).astype(np.float32))
+    except cv2.error:
+        return pixels
+    radii = np.asarray(axes, float)/2
+    if not np.isfinite(radii).all() or min(radii) <= 1e-6:
+        return pixels
+    center = origin+np.asarray(center)
+    angle = np.radians(degrees)
+    rotation = np.array([[np.cos(angle), -np.sin(angle)],
+                         [np.sin(angle), np.cos(angle)]])
+    local = (pixels-center) @ rotation
+    phase = np.arctan2(local[:, 1]/radii[1], local[:, 0]/radii[0])
+    # Keep each source vertex's angular position so its visibility flag still
+    # clips the same limb arc; uniformly resampling would lose that association.
+    ellipse = center+(np.column_stack((np.cos(phase), np.sin(phase)))*radii) @ rotation.T
+    if closed:
+        ellipse[-1] = ellipse[0]
+    return ellipse
 
 
 @dataclass
@@ -42,6 +72,8 @@ class Project:
     crater_settings: dict = field(default_factory=dict)
     identification: dict = field(default_factory=dict)
     crater_outlines: bool = True
+    crater_outline_shape: str = "ellipse"
+    terrain_rims: dict = field(default_factory=dict)
 
     def update_font_size(self, shape):
         short_side = min(shape[:2])
@@ -60,10 +92,11 @@ class Project:
                 "anchors": self.anchors, "labels": self.labels,
                 "crater_detection": self.crater_settings,
                 "automatic_recognition": self.identification,
+                "terrain_rims": self.terrain_rims,
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": os.path.relpath(Path(self.terrain_path).resolve(), path.parent.resolve()) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape")}}
         write_json(path, data)
 
     @classmethod
@@ -81,6 +114,7 @@ class Project:
         project.terrain_settings = terrain.get("settings", {})
         project.crater_settings = data.get("crater_detection", {})
         project.identification = data.get("automatic_recognition", {})
+        project.terrain_rims = data.get("terrain_rims", {})
         if data["geometry"]:
             project.geometry = Geometry.from_dict(data["geometry"])
         if data["matrix"] is not None:
@@ -90,8 +124,10 @@ class Project:
             project.matrix = matrix
         project.font_percent = None  # Older projects only store a pixel size.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines"):
+            if key in ("font_size", "font_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape"):
                 setattr(project, key, value)
+        if project.crater_outline_shape not in ("ellipse", "terrain"):
+            project.crater_outline_shape = "ellipse"
         return project
 
     def label_text(self, feature):
@@ -165,7 +201,13 @@ class Project:
         return candidates[:self.max_labels]
 
     def _project_crater_rim(self, feature, radius_factors=(1.,)):
-        """Catalogue rim coordinates shared by lighting and outline drawing."""
+        """Terrain crest when available; otherwise the catalogue reference rim."""
+        rim = self.terrain_rims.get(feature['id']) if radius_factors == (1.,) else None
+        if rim:
+            coordinates = np.asarray(rim['coordinates'], float)
+            if coordinates.ndim == 2 and coordinates.shape[1] == 3 and len(coordinates) >= 16 and np.isfinite(coordinates).all():
+                points, visible, _ = self.geometry.project(coordinates[:, 0], coordinates[:, 1], coordinates[:, 2])
+                return transform_points(self.matrix, points), visible
         center = surface_vectors([feature["lat"]], [feature["lon"]])[0]
         east = np.array([-np.sin(np.radians(feature["lon"])), np.cos(np.radians(feature["lon"])), 0.])
         north = np.cross(center, east)
@@ -180,7 +222,7 @@ class Project:
         return pixels, visible
 
     def crater_outline(self, feature, shape):
-        """A geodesic catalogue rim projected into the registered photograph.
+        """An ellipse (default) or the projected rim contour in the photograph.
 
         Catalogue diameter describes a reference outline, not a detected rim.
         Hidden hemisphere arcs are separated so limb contours cannot connect.
@@ -189,10 +231,14 @@ class Project:
             return []
         if feature["kind"] not in ("Crater, craters", "Satellite Feature"):
             return []
+        if feature['diameter'] < MIN_OUTLINE_DIAMETER_KM:
+            return []
         pixels, visible = self._project_crater_rim(feature)
         extent = np.ptp(pixels, axis=0)
         if min(extent) < self.font_size*1.6 or max(extent) < min(shape[:2])*.055:
             return []
+        if self.crater_outline_shape != "terrain":
+            pixels = _ellipse_outline(pixels)
         # Split at any occulted vertices; do not connect across the lunar limb.
         segments, segment = [], []
         for point, okay in zip(pixels, visible):

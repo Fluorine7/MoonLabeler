@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.4.5** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.4.6** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -21,7 +21,7 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 - 照片画布在左、紧凑检查器在右；低频参数折叠，候选坑确认操作固定在页脚。
 - 标注布局：自动避让标签、地形中心和引线；拖动标签或双击改名。
 - 字号按照片短边比例缩放，默认 **1.5%**；新照片的标签上限为 **200**。
-- 默认近白色文字与深色描边；大环形山显示投影坑缘轮廓，小坑使用短引线。
+- 默认近白色文字与深色描边；大环形山默认用平滑椭圆，可选坑缘轮廓，小坑使用短引线。
 - 设置修改后，点击 **“重新生成标注”** 统一应用。
 - 中文译名来自国家天文科学数据中心词表；没有可靠译名的名称保留英文。
 - 保存 `.moonlabel` 工程，导出与原图同尺寸 PNG 或可编辑 SVG；另提供 LOLA DEM 光照模拟参考。
@@ -52,11 +52,13 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 ### 使用与限制
 
-打开照片，选择拍摄日期（默认使用当日 **UTC 15:00**），点击“自动识别并标注”。“具体时间”默认折叠，展开后可设置 UTC 时分秒；收起或更换日期不会重置时间，可点击恢复默认。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，高程后备匹配另需约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
+打开照片，选择拍摄日期（默认使用当日 **UTC 15:00**），点击“自动识别并标注”。“具体时间”默认折叠，展开后可设置 UTC 时分秒；收起或更换日期不会重置时间，可点击恢复默认。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，坑群精修和高程后备匹配使用约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
 
 自动识别属于实验性功能。强阴影、月缘与极区的严重压缩、模糊、水印、日期错误或候选坑太少时仍可能失败。不能通过验证的结果不会作为地名标注，也不会替换已有配准。可改用已知地形点手动校准。
 
-坑缘圈根据目录经纬度与直径投影，是参考轮廓，并非逐像素拟合真实坑壁。极区后备匹配会尝试小范围观测方向微调，仅在空间分区留出点和重新渲染的纹理验证都改善时采用。该修正不是反推出的拍摄地点或天平动测量值。当前使用球面模型；不规则坑形、地形高差、检测中心和整体配准偏差都可能影响圈的位置。小拟合残差不等于绝对定位精度。
+局部坑群识别通过后，会使用同一份约 33 MB 的 LOLA DEM 精修相机与观测方向；局部参考渲染和拟合都考虑地形高度。修正必须通过空间分区留出点与重新渲染的整幅纹理检查，否则保留原配准。该修正不代表反推出的拍摄地点或天平动测量值。
+
+坑缘圈仅用于直径至少 35 km 且在照片中足够大的坑，小坑保留短引线。“标注 → 排版选项 → 轮廓形状”默认选择平滑 **椭圆**，也可选 **坑缘轮廓（手绘风）**；点击“重新生成标注”应用。局部坑群路径优先沿 DEM 中连续的坑缘高地取点，考虑地形高度投影，再拟合椭圆；坑缘轮廓选项保留这些点的不规则形状。数据不足或其他识别路径使用目录参考圈。形状设置与高程坑缘保存在工程中，并用于 PNG / SVG。这些轮廓受 DEM 约 1.9 km 网格、遮挡与配准残差限制，并非逐像素测得的真实坑壁。小拟合残差不等于绝对定位精度。
 
 本仓库包含源码、公开数据来源记录及可公开示例。用户提供的摄影师实拍、相关导出图、运行缓存和虚拟环境不随源码分发。
 
@@ -90,7 +92,7 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 Requires **Python 3.11+**. Development and native UI testing are primarily on macOS.
 Clone the repository and run `./start-mac.command` on macOS, or create a virtual environment, install `requirements.txt`, and run `python -m moonlabeler` as shown above. Windows and Linux have not received native UI validation.
 
-Open a photograph, select the capture date (default **15:00 UTC** on that date; saved projects retain their original timestamps), then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours, minutes and seconds. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; the terrain fallback additionally downloads about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
+Open a photograph, select the capture date (default **15:00 UTC** on that date; saved projects retain their original timestamps), then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours, minutes and seconds. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; crater refinement and the terrain fallback use about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
 
 For manual calibration, open **校准 → 已知地名取点** (Calibration → Known-name points). A reference point pairs a known terrain name with its location in your photograph:
 
@@ -108,9 +110,9 @@ Automatic recognition is experimental. Strong shadows, severely foreshortened po
 
 The wide-limb fallback requires at least a 120° outer arc, clear phase agreement, distinct albedo correlation, and separation from competing rotations / reflections. Its reported residual is the outer-edge fit, not crater-center accuracy. The local 2026-08-17 crescent regression passes. The 2025-09-14 north- and south-polar crops now pass broad region-identification checks; these are not pixel-accurate rim benchmarks.
 
-After terrain identification, an optional two-axis view correction plus camera similarity fit is accepted only with spatially held-out improvement and a fresh dense-render check. The estimated direction is an image-derived projection correction, not a recovered observing location or a libration measurement. The original ephemeris geometry and validation record are retained in the project. Regional rim offsets remain possible.
+After crater-pattern identification, local refinement uses the same small LOLA DEM, with terrain height included consistently in reference rendering and pose fitting. A small camera correction is followed by retrieval of further independent terrain points and a bounded two-axis view fit. The terrain fallback also attempts view refinement. Changes are accepted only with spatially held-out improvement and a fresh dense-render check. The estimated direction is an image-derived projection correction, not a recovered observing location or a libration measurement. The original ephemeris geometry and validation record are retained in the project.
 
-Crater outlines are projected from catalogue coordinates and diameters, not fitted pixel by pixel to the photographed rim. The current spherical model does not fully account for terrain relief, irregular rims, or atmospheric refraction. A low fitting residual measures internal consistency, not absolute lunar positioning accuracy.
+Outlines are shown for craters at least 35 km across that are also large enough in the photograph; smaller craters use short leaders. Under 标注 → 排版选项 → 轮廓形状, smooth **ellipses** are the default; the optional **rim contour (hand-drawn appearance)** preserves irregular terrain shapes. Click 重新生成标注 to apply changes. The close-up crater-pattern route samples continuous DEM crests with terrain-height projection before fitting ellipses. Catalogue reference circles remain the fallback when suitable elevation contours are unavailable. Both the style and elevation contours are saved in projects and shared by PNG/SVG export. These are not pixel-accurate photographic rim measurements: the approximately 1.9 km DEM grid, occlusion and registration residuals can still cause offsets. A low fitting residual measures internal consistency, not absolute lunar positioning accuracy.
 
 Third-party photographers' test images and derived exports remain local and are not distributed with this repository. Public data sources and processing provenance are documented separately.
 

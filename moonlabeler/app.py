@@ -33,6 +33,7 @@ from .identification import identify_from_candidates
 from .atlas import identify_from_atlas
 from .limb import identify_from_limb
 from .terrain_identification import identify_from_terrain
+from .terrain_refinement import refine_crater_identification
 from .geometry import compute_geometry, MOON_RADIUS_KM
 from .layout import LabelBox, arrange_labels, leader_segment
 from .project import Project, export_svg, DEFAULT_FONT_PERCENT
@@ -332,6 +333,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 except ValueError as limb_error:
                     try:
                         recognition = identify_from_candidates(detection.candidates, catalog, geometry, image.shape, image=image)
+                        recognition = refine_crater_identification(recognition, image, geometry, CACHE, catalog)
                     except ValueError as exc:
                         try:
                             recognition = identify_from_terrain(image, geometry, CACHE)
@@ -349,7 +351,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def accept_identification(self, result):
         detection, recognition, geometry, lat, lon = result
         geometry = recognition.projection_geometry or geometry
-        known = [a for a in self.project.anchors if a.get("enabled", True) and a["id"] in self.catalog_by_id]
+        # Previous detections are not independent user evidence and must not
+        # prevent a newly validated refinement from replacing a coarse pose.
+        known = [a for a in self.project.anchors if a.get("enabled", True)
+                 and a.get('source') != 'automatic' and a["id"] in self.catalog_by_id]
         if len(known) >= 3:
             features = [self.catalog_by_id[a["id"]] for a in known]
             points, visible, _ = geometry.project([f["lat"] for f in features], [f["lon"] for f in features])
@@ -360,14 +365,18 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 return
         self.project.geometry = geometry
         self.project.matrix = recognition.matrix
+        self.project.terrain_rims = recognition.crater_rims or {}
         self.project.utc = geometry.utc
         self.project.latitude, self.project.longitude = lat, lon
+        previous_auto = {a['id']: a for a in self.project.anchors if a.get('source') == 'automatic'}
+        self.project.anchors = [a for a in self.project.anchors if a.get('source') != 'automatic']
         existing = {a["id"] for a in self.project.anchors}
         for match in recognition.matches:
             candidate = detection.candidates[match.candidate_index]
             fid = match.feature["id"]
             if fid not in existing:
-                self.project.anchors.append({"id": fid, "pixel": [float(candidate.x), float(candidate.y)], "enabled": True, "source": "automatic"})
+                enabled = previous_auto.get(fid, {}).get('enabled', True)
+                self.project.anchors.append({"id": fid, "pixel": [float(candidate.x), float(candidate.y)], "enabled": enabled, "source": "automatic"})
             # Recognition anchors prove the pose. Lettered satellites should
             # not take layout precedence over the main named formations.
             if match.feature["kind"] == "Crater, craters":
@@ -394,6 +403,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         names = [m.feature["name"] for m in recognition.matches if m.feature["kind"] == "Crater, craters"]
         if recognition.limb_inliers:
             message = f"月盘外缘与月海纹理配准成功 · 纹理相关 {recognition.texture_correlation:.2f} · 外缘拟合偏差 {recognition.rms_px:.2f} px"
+        elif recognition.refinement and recognition.matches:
+            message = f"坑群识别后精修 · {recognition.image_inliers} 个图像对应点 · 覆盖 {recognition.coverage:.1%} · 拟合偏差 {recognition.rms_px:.2f} px。大坑优先使用高程坑缘，轮廓精度受数据分辨率限制"
         elif recognition.method.startswith("LOLA"):
             message = f"已定位月面区域 · {recognition.image_inliers} 个图像对应点 · 覆盖 {recognition.coverage:.1%} · 拟合偏差 {recognition.rms_px:.2f} px。圈为目录参考轮廓，尚未贴合实际坑缘"
             if recognition.refinement:
@@ -779,6 +790,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.lit.setChecked(self.project.illuminated_only)
         self.optimize_layout.setChecked(self.project.optimize_layout)
         self.crater_outlines.setChecked(self.project.crater_outlines)
+        self.crater_outline_shape.setCurrentIndex(self.crater_outline_shape.findData(self.project.crater_outline_shape))
         self.pending_color = self.project.color
         self.color_button.setText(f"文字与引线颜色：{self.pending_color}")
         self.style_pending = False
@@ -1330,7 +1342,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                            ("max_labels", self.maximum.value()), ("language", self.language.currentText()),
                            ("font_percent", self.font_size.value()), ("illuminated_only", self.lit.isChecked()),
                            ("optimize_layout", self.optimize_layout.isChecked()),
-                           ("crater_outlines", self.crater_outlines.isChecked()), ("color", self.pending_color)):
+                           ("crater_outlines", self.crater_outlines.isChecked()),
+                           ("crater_outline_shape", self.crater_outline_shape.currentData()), ("color", self.pending_color)):
             setattr(self.project, key, value)
         if self.image is not None:
             self.project.update_font_size(self.image.shape)

@@ -46,6 +46,7 @@ class IdentificationResult:
     texture_correlation: float = 0.
     projection_geometry: Geometry | None = None
     refinement: dict | None = None
+    crater_rims: dict | None = None
 
 
 def _triangle_index(points, radii, neighbors=14, centered=False):

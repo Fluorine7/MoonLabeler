@@ -6,7 +6,7 @@ import numpy as np
 from .geometry import surface_vectors
 from .registration import transform_points, _gray
 from .terrain import terrain_shadow
-from .pose_refinement import refine_view
+from .pose_refinement import refine_view, refine_camera
 
 
 def render_local_reference(dem, geometry, matrix, shape):
@@ -70,10 +70,17 @@ def local_correspondences(reference, photograph):
     return source[keep], target[keep]
 
 
-def refine_terrain_pose(image, geometry, matrix, dem):
+def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False):
     """Retain initial registration unless spatial and fresh-render checks pass."""
     from .terrain_identification import terrain_agreement
     from .identification import IdentificationError
+    from .geometry import Geometry
+    from .terrain_view import TerrainView
+    if crater_verified:
+        # The map pixels and pose fit must refer to the same 3-D surface. A
+        # sphere-draped shading reference otherwise turns relief into a false
+        # direction correction, particularly in oblique crater photographs.
+        geometry = TerrainView.from_geometry(geometry, dem)
     h, w = image.shape[:2]
     scale = min(1., 1200/max(h, w))
     photograph = cv2.resize(image, (round(w*scale), round(h*scale)), interpolation=cv2.INTER_AREA)
@@ -81,7 +88,21 @@ def refine_terrain_pose(image, geometry, matrix, dem):
     working_matrix = np.diag([sx, sy])@matrix
     reference = render_local_reference(dem, geometry, working_matrix, photograph.shape)
     source, target = local_correspondences(reference, photograph)
-    result = refine_view(geometry, working_matrix, source, target, photograph.shape)
+    camera = None
+    if crater_verified:
+        camera = refine_camera(geometry, working_matrix, source, target, photograph.shape)
+    if camera is not None:
+        # Re-retrieve at the corrected camera. Keeping only matches near the
+        # initial biased pose would omit valid terrain elsewhere in the photo.
+        aligned = render_local_reference(dem, geometry, camera.matrix, photograph.shape)
+        source, target = local_correspondences(aligned, photograph)
+        result = refine_view(geometry, camera.matrix, source, target, photograph.shape)
+        if result is None:
+            result = camera
+        else:
+            result.details['camera_alignment'] = camera.details
+    else:
+        result = refine_view(geometry, working_matrix, source, target, photograph.shape)
     if result is None:
         return None
     identity = np.array([[1., 0., 0.], [0., 1., 0.]])
@@ -100,4 +121,33 @@ def refine_terrain_pose(image, geometry, matrix, dem):
                            'rms_working_px': result.rms_px})
     result.matrix = np.diag([1/sx, 1/sy])@result.matrix
     result.rms_px /= min(sx, sy)
+    # Never retain a view whose memory-mapped DEM will close after this call.
+    result.geometry = Geometry.from_dict(result.geometry.to_dict())
     return result
+
+
+def refine_crater_identification(result, image, geometry, cache, catalog):
+    """Refine a verified crater-region pose; optional DEM failure keeps it intact."""
+    from dataclasses import replace
+    from .terrain import ElevationMap, download_basic_dem
+    from .terrain_rims import trace_catalog_rims
+    if len(result.matches) < 7 or result.coverage < .06:
+        return result
+    try:
+        dem = ElevationMap.load(download_basic_dem(cache))
+        try:
+            refined = refine_terrain_pose(image, geometry, result.matrix, dem, crater_verified=True)
+            rims = trace_catalog_rims(dem, refined.geometry if refined else geometry,
+                                      refined.matrix if refined else result.matrix, catalog, image.shape)
+        finally:
+            dem.close()
+    except (ValueError, OSError):
+        return result
+    if refined is None:
+        return replace(result, crater_rims=rims)
+    refined.details['initial_crater_rms_px'] = result.rms_px
+    return replace(result, matrix=refined.matrix, rms_px=refined.rms_px,
+                   method=result.method + ' / local LOLA refinement',
+                   projection_geometry=refined.geometry, refinement=refined.details,
+                   image_inliers=refined.details['points'], coverage=refined.details['coverage'],
+                   texture_correlation=refined.details['light_before_after'][1], crater_rims=rims)

@@ -34,14 +34,17 @@ class Geometry:
     distance_km: float
     utc: str
 
-    def project(self, latitudes, longitudes):
+    def project(self, latitudes, longitudes, height_km=None):
         vectors = surface_vectors(latitudes, longitudes)
+        if height_km is not None:
+            heights = np.broadcast_to(np.asarray(height_km, float), (len(vectors),))
+            vectors *= (1 + heights/MOON_RADIUS_KM)[:, None]
         depth = vectors @ self.observer
         perspective = 1.0 - MOON_RADIUS_KM / self.distance_km * depth
         xy = np.column_stack((vectors @ self.right, -vectors @ self.north))
         xy /= perspective[:, None]
         # Finite-distance horizon, rather than merely the near hemisphere.
-        visible = depth > MOON_RADIUS_KM / self.distance_km
+        visible = depth > MOON_RADIUS_KM / self.distance_km * np.sum(vectors*vectors, axis=1)
         illuminated = vectors @ self.sun > 0.0
         return xy, visible, illuminated
 

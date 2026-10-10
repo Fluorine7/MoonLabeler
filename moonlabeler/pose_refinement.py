@@ -5,7 +5,7 @@
 The fitted direction is an image-derived projection correction, not a recovered
 observing site or measured libration. No per-crater deformation is allowed.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import numpy as np
 import cv2
 from .geometry import Geometry, unit
@@ -25,7 +25,7 @@ def shifted_geometry(geometry, offsets_deg):
                     + np.tan(np.radians(offsets_deg[1]))*geometry.north)
     north = unit(geometry.north - np.dot(geometry.north, observer)*observer)
     right = unit(np.cross(north, observer))
-    return Geometry(observer, right, north, geometry.sun.copy(), geometry.distance_km, geometry.utc)
+    return replace(geometry, observer=observer, right=right, north=north, sun=geometry.sun.copy())
 
 
 def _camera(params):
@@ -127,4 +127,62 @@ def refine_view(geometry, matrix, source_pixels, target_pixels, image_shape):
                'validation_before_px': float(before), 'validation_after_px': float(after),
                'validation_folds': folds, 'base_geometry': geometry.to_dict()}
     return PoseRefinement(shifted_geometry(geometry, fit[:2]), updated,
+                          rms(_predict(fit, geometry, matrix, lat, lon)-target), details)
+
+
+def refine_camera(geometry, matrix, source_pixels, target_pixels, image_shape):
+    """Validate a small rigid correction before retrieving further map points.
+
+    Crater centers can initialize a biased camera even with the correct lunar
+    region. Spatial holdouts compare against that initial camera; this step
+    does not change the observing direction or fit any local deformation.
+    """
+    source, target = np.asarray(source_pixels, float), np.asarray(target_pixels, float)
+    if source.shape != target.shape or source.ndim != 2 or source.shape[1] != 2:
+        raise ValueError('Correspondences must have matching N x 2 shapes')
+    if len(source) < 40 or not np.isfinite(source).all() or not np.isfinite(target).all():
+        return None
+    h, w = image_shape[:2]
+    coverage = cv2.contourArea(cv2.convexHull(target.astype(np.float32)))/(h*w)
+    if coverage < .18:
+        return None
+    inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
+    lat, lon, visible = geometry.unproject(transform_points(inverse, source))
+    if not visible.all():
+        return None
+    fit = _fit(geometry, matrix, lat, lon, target, False)
+    if fit is None or abs(fit[2]) > .03 or abs(fit[3]) > np.radians(3):
+        return None
+    if np.max(np.linalg.norm(_predict(fit, geometry, matrix, lat, lon)-source, axis=1)) > min(h, w)*.04:
+        return None
+    rms = lambda residual: float(np.sqrt(np.mean(np.sum(residual**2, axis=1))))
+    cell_xy = np.clip((source/np.array([w, h])*3).astype(int), 0, 2)
+    cells = cell_xy[:, 0] + 3*cell_xy[:, 1]
+    folds = []
+    for cell in np.unique(cells):
+        hold = cells == cell
+        if hold.sum() < 3 or (~hold).sum() < 20:
+            continue
+        candidate = _fit(geometry, matrix, lat[~hold], lon[~hold], target[~hold], False)
+        if candidate is None:
+            return None
+        before = rms(source[hold]-target[hold])
+        after = rms(_predict(candidate, geometry, matrix, lat[hold], lon[hold])-target[hold])
+        if after > before*1.1 + .25:
+            return None
+        folds.append({'cell': int(cell), 'count': int(hold.sum()), 'before_px': before, 'after_px': after})
+    if len(folds) < 4 or sum(f['after_px'] < f['before_px'] for f in folds) < .75*len(folds):
+        return None
+    count = sum(f['count'] for f in folds)
+    before = np.sqrt(sum(f['count']*f['before_px']**2 for f in folds)/count)
+    after = np.sqrt(sum(f['count']*f['after_px']**2 for f in folds)/count)
+    if after > before*.85 or before-after < .25:
+        return None
+    camera = _camera(fit)
+    updated = np.column_stack((camera@matrix[:, :2], camera@matrix[:, 2]+fit[4:6]))
+    details = {'camera_only': True, 'view_offset_deg': [0., 0.],
+               'points': len(source), 'coverage': coverage,
+               'validation_before_px': float(before), 'validation_after_px': float(after),
+               'validation_folds': folds, 'base_geometry': geometry.to_dict()}
+    return PoseRefinement(geometry, updated,
                           rms(_predict(fit, geometry, matrix, lat, lon)-target), details)

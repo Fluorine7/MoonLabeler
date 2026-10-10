@@ -26,20 +26,26 @@ def test_style_edits_wait_for_generate_and_preserve_dragged_label(monkeypatch):
     fid = item.feature["id"]
     item.setPos(122, 234)
     previous = window.project.language, window.project.max_labels, window.project.font_size
+    assert window.crater_outline_shape.currentData() == window.project.crater_outline_shape == 'ellipse'
     refreshes = []
     refresh = window.refresh_annotations
     monkeypatch.setattr(window, "refresh_annotations", lambda: (refreshes.append(True), refresh()))
     window.language.setCurrentText("中文")
     window.maximum.setValue(240)
     window.font_size.setValue(1.8)
+    window.crater_outline_shape.setCurrentIndex(window.crater_outline_shape.findData('terrain'))
     assert not refreshes, "Editing settings regenerated every label before Apply"
     assert (window.project.language, window.project.max_labels, window.project.font_size) == previous
+    assert window.project.crater_outline_shape == 'ellipse' and window.style_pending
     window.generate_labels_button.click()
     assert len(refreshes) == 1
     assert window.project.language == "中文" and window.project.max_labels == 240
     assert window.project.font_size == round(min(window.image.shape[:2])*.018)
+    assert window.project.crater_outline_shape == 'terrain'
     assert window.project.labels[fid]["position"] == [122, 234]
     assert not window.style_pending
+    window.sync_controls()
+    assert window.crater_outline_shape.currentData() == 'terrain' and not window.style_pending
     window.dirty = False
     window.close()
 
@@ -69,8 +75,10 @@ def test_legacy_project_keeps_original_pixel_font_size(tmp_path):
     project.save(path)
     data = json.loads(path.read_text())
     data["style"].pop("font_percent", None)
+    data["style"].pop("crater_outline_shape", None)
     path.write_text(json.dumps(data))
     loaded = Project.load(path)
+    assert loaded.crater_outline_shape == 'ellipse'
     loaded.update_font_size((4864, 3811, 3))
     assert loaded.font_size == 80
     loaded.update_font_size((9728, 7622, 3))
