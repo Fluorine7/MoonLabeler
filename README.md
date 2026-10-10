@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.4.6** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.4.7** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -17,9 +17,11 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 
 - 自动识别：匹配内置 LROC 纹理；也可拟合较完整的月盘外缘，并联合验证月相和月海纹理；局部图再通过坑群搜索目录；仍失败时使用小型 LOLA 高程数据生成阴影参考。
 - 手动校准：以至少 3 个已知地形中心求解比例、旋转、偏移和镜像；显示逐点偏差。
+- 手动校准区域默认折叠，识别失败或返回参考点时自动展开。
 - 疑似坑检测：本地 OpenCV 检测圆形 / 椭圆坑缘，支持修正中心与导出 CSV。
 - 照片画布在左、紧凑检查器在右；低频参数折叠，候选坑确认操作固定在页脚。
 - 标注布局：自动避让标签、地形中心和引线；拖动标签或双击改名。
+- 候选选择综合投影大小、坑缘与周围地表对比及区域分布；主地形优先于附属字母坑，避让后从其余候选补位，数量上限约束最终显示结果。
 - 字号按照片短边比例缩放，默认 **1.5%**；新照片的标签上限为 **200**。
 - 默认近白色文字与深色描边；大环形山默认用平滑椭圆，可选坑缘轮廓，小坑使用短引线。
 - 设置修改后，点击 **“重新生成标注”** 统一应用。
@@ -78,9 +80,11 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 
 - Automatic registration using a bundled LROC texture, a wide-limb fallback validated with phase and albedo texture, crater-pattern catalogue matching for close-up views, and a small LOLA slope/shadow-reference fallback.
 - Manual calibration from at least three known terrain centers, with rotation, scale, translation, reflection, and per-point error review.
+- Manual calibration is collapsed by default and opens after identification failure or when returning to reference points.
 - Local OpenCV crater-rim candidate detection, center correction, and CSV export.
 - Photo-first layout with a compact right-hand inspector, collapsible advanced settings, and a pinned crater-confirmation panel.
 - Automatic label placement with collision avoidance, draggable labels, and editable names.
+- Candidate ranking considers apparent size, rim/background contrast and regional coverage. Named formations precede lettered satellites; reserves fill layout omissions until the final display limit is reached.
 - Font sizes proportional to the image's shorter dimension, defaulting to **1.5%**, and a default limit of **200** labels.
 - Near-white annotations with dark text outlines; projected reference outlines for large craters and short leaders for small craters.
 - A **Regenerate annotations** button (重新生成标注) that applies edited settings together.

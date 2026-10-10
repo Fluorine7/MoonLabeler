@@ -129,3 +129,32 @@ def test_geometry_failure_preserves_collected_reference_points(monkeypatch):
     finally:
         window.dirty = False
         window.close()
+
+
+def test_registration_failures_reveal_manual_calibration_without_losing_fit(monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    errors = []
+    window.error = errors.append
+    try:
+        window.open_example()
+        matrix = window.project.matrix.copy()
+        anchors = list(window.project.anchors)
+        window.ui_set_manual_section_expanded(False)
+        # Exercise the actual failure callback without rerunning recognition.
+        monkeypatch.setattr(window, 'run_background',
+                            lambda title, work, success, failure=None: failure('No validated region'))
+        window.identify_photo()
+        assert window.ui_manual_section_expanded()
+        assert window.workspace_tabs.currentIndex() == 0
+        assert np.array_equal(window.project.matrix, matrix) and window.project.anchors == anchors
+        window.ui_set_manual_section_expanded(False)
+        window.nasa_failed('Connection timed out')
+        assert window.ui_manual_section_expanded()
+        assert errors == ['No validated region', 'Connection timed out']
+        window.ui_set_manual_section_expanded(False)
+        window.show_manual_points()
+        assert window.ui_manual_section_expanded()
+    finally:
+        window.dirty = False
+        window.close()

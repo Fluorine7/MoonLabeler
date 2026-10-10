@@ -4,6 +4,7 @@
 import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QPushButton, QToolButton
 
 from moonlabeler.app import MainWindow
@@ -171,6 +172,59 @@ def test_enter_prefills_first_search_hit_and_escape_leaves_pick_mode():
         window.canvas.picking = True
         window.ui_cancel_pick()
         assert not window.canvas.picking
+    finally:
+        window.dirty = False
+        window.close()
+
+
+def test_manual_calibration_section_collapsed_by_default_with_expand_hook():
+    window, application = make_window()
+    try:
+        # Collapsed on start, but the toggle stays visible as the entry point.
+        assert not window.manual_section_block.isVisible()
+        assert window.ui_manual_section_expanded() is False
+        assert window.manual_section_toggle.isVisible()
+        # All contract widgets keep living inside the collapsible block.
+        assert window.manual_section_block.isAncestorOf(window.registration_tabs)
+        assert window.manual_section_block.isAncestorOf(window.feature_search)
+        assert window.manual_section_block.isAncestorOf(window.crater_button)
+        # Public expand/collapse hook drives visibility both ways.
+        window.ui_set_manual_section_expanded(True)
+        application.processEvents()
+        assert window.manual_section_block.isVisible()
+        assert not window.crater_settings_block.isVisible()
+        window.registration_tabs.setCurrentWidget(window.crater_tab)
+        window.crater_settings_toggle.click()
+        assert window.crater_settings_block.isVisible()
+        window.ui_set_manual_section_expanded(False)
+        application.processEvents()
+        assert not window.manual_section_block.isVisible()
+        # app.py revealing the confirmation bar (辅助找坑 review) expands the
+        # section in the same moment, keeping controls and bar consistent.
+        # Re-entering the review tab is the real app.py path: it re-evaluates
+        # the bar via review_page_changed, and the section follows.
+        assert not window.crater_action_panel.isVisible()
+        window.registration_tabs.setCurrentIndex(0)
+        window.registration_tabs.setCurrentWidget(window.crater_tab)
+        application.processEvents()
+        assert window.crater_action_panel.isVisible()
+        assert window.ui_manual_section_expanded() is True
+        # Entering manual picking expands the section: an extra ui_ listener on
+        # pick_button.clicked opens it alongside the business callback. A feature
+        # is selected first, mirroring the real flow (button is disabled otherwise).
+        window.open_example()
+        feature = next(f for f in window.catalog if f["name"] == "Copernicus")
+        window.feature_search.setText("Copernicus")
+        for row in range(window.feature_list.count()):
+            if window.feature_list.item(row).data(Qt.ItemDataRole.UserRole) == feature["id"]:
+                window.feature_list.setCurrentRow(row)
+                break
+        window.ui_set_manual_section_expanded(False)
+        window.pick_button.click()
+        application.processEvents()
+        assert window.ui_manual_section_expanded() is True
+        # 拍摄条件 stays outside the collapsible and always visible.
+        assert window.geometry_group.isVisible()
     finally:
         window.dirty = False
         window.close()

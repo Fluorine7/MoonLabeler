@@ -6,6 +6,8 @@ import base64
 import io
 import json
 import os
+import heapq
+import re
 from xml.sax.saxutils import escape
 
 import cv2
@@ -141,7 +143,13 @@ class Project:
             return f"{zh} · {name}"
         return name
 
-    def visible_features(self, catalog, shape, image=None):
+    def visible_features(self, catalog, shape, image=None, *, all_candidates=False):
+        """Rank visible catalogue entries; the scene requests reserves as well.
+
+        This estimates photographic prominence, not crater identification.
+        The display budget is enforced after placement, independently of this
+        convenience method's default candidate limit.
+        """
         if self.geometry is None or self.matrix is None:
             return []
         points, visible, lit = self.geometry.project([f["lat"] for f in catalog], [f["lon"] for f in catalog])
@@ -153,28 +161,38 @@ class Project:
         stride = max(1, int(np.ceil(max(h, w)/1600)))
         sampled = image[::stride, ::stride] if image is not None else None
         gray = sampled.mean(axis=2) if sampled is not None and sampled.ndim == 3 else sampled
+        # Separate small-scale background texture from an isolated rim. Raw
+        # brightness range alone favors rugged highlands and the black sky at
+        # the lunar limb over distinct craters on smoother mare surfaces.
+        noise = abs(gray-cv2.GaussianBlur(gray.astype(float), (0, 0), 1.2)) if gray is not None else None
         scale = np.sqrt(abs(np.linalg.det(self.matrix[:, :2])))
-        brightness_limit = max(4., float(np.percentile(gray[::8, ::8], 95))*.08) if gray is not None else None
+        bright = max(16., float(np.percentile(gray[::8, ::8], 95))) if gray is not None else None
+        brightness_limit = max(4., bright*.08) if gray is not None else None
         offsets = np.linspace(-1, 1, 13)
         dx, dy = np.meshgrid(offsets, offsets)
         disk = dx*dx+dy*dy <= 1
         dx, dy = dx[disk], dy[disk]
         inside = (pixels[:,0] >= 0) & (pixels[:,0] < w) & (pixels[:,1] >= 0) & (pixels[:,1] < h)
         candidates = []
-        for f, xy, okay, sunlight in zip(catalog, pixels, visible & inside, lit):
+        depths = surface_vectors([f['lat'] for f in catalog], [f['lon'] for f in catalog]) @ self.geometry.observer
+        for f, xy, okay, sunlight, depth in zip(catalog, pixels, visible & inside, lit, depths):
             if not okay:
                 continue
             if f["diameter"] < self.min_diameter or (self.kind != "全部" and f["kind"] != self.kind):
                 continue
+            contrast, roughness = 0., 0.
+            if gray is not None:
+                radius = max(4., min(min(h, w)*.08, f["diameter"]*scale/(2*MOON_RADIUS_KM)*1.12))
+                sx = np.clip(np.rint((xy[0]+radius*dx)/stride).astype(int), 0, gray.shape[1]-1)
+                sy = np.clip(np.rint((xy[1]+radius*dy)/stride).astype(int), 0, gray.shape[0]-1)
+                low, light, high = np.percentile(gray[sy, sx], (10, 80, 90))
+                contrast = min(1., (high-low)/bright)
             if self.illuminated_only:
                 if gray is None:
                     if not sunlight:
                         continue
                 else:
-                    radius = max(4., min(min(h, w)*.08, f["diameter"]*scale/(2*MOON_RADIUS_KM)*1.12))
-                    sx = np.clip(np.rint((xy[0]+radius*dx)/stride).astype(int), 0, gray.shape[1]-1)
-                    sy = np.clip(np.rint((xy[1]+radius*dy)/stride).astype(int), 0, gray.shape[0]-1)
-                    if np.percentile(gray[sy, sx], 80) < brightness_limit:
+                    if light < brightness_limit:
                         # A large crater can have a completely dark floor.
                         # Sample its foreshortened rim, even outside the small
                         # center neighborhood; this is independent of drawing
@@ -190,15 +208,60 @@ class Project:
                         ry = np.clip(locations[:, 1], 0, gray.shape[0]-1)
                         if np.percentile(gray[ry, rx], 80) < brightness_limit:
                             continue
-            candidates.append((f, xy))
-        # A rille's catalogue diameter is its length: sorting every kind by
-        # that number can crowd Tycho/Copernicus out of a whole-Moon result.
-        # Explicitly requested labels and named craters/seas get first choice.
-        primary = {"Crater, craters", "Mare, maria", "Oceanus, oceani"}
-        candidates.sort(key=lambda pair: (bool(self.labels.get(pair[0]["id"], {}).get("force")),
-                                          pair[0]["kind"] in primary,
-                                          pair[0]["name"] in COMMON_FEATURES, pair[0]["diameter"]), reverse=True)
-        return candidates[:self.max_labels]
+            if gray is not None:
+                if f['kind'] in ('Crater, craters', 'Satellite Feature'):
+                    rim, rim_visible = self._project_crater_rim(f, (.4, .7, 1., 1.3, 1.6, 2.))
+                    on_photo = rim_visible & (rim[:, 0] >= 0) & (rim[:, 0] < w) & (rim[:, 1] >= 0) & (rim[:, 1] < h)
+                    inside_rim = on_photo.copy()
+                    inside_rim[len(rim)//2:] = False
+                    background = on_photo & ~inside_rim
+                    locations = np.rint(rim/stride).astype(int)
+                    rx = np.clip(locations[:, 0], 0, gray.shape[1]-1)
+                    ry = np.clip(locations[:, 1], 0, gray.shape[0]-1)
+                    if inside_rim.sum() >= 12:
+                        low, high = np.percentile(gray[ry[inside_rim], rx[inside_rim]], (10, 90))
+                        contrast = min(1., (high-low)/bright)
+                    if background.sum() >= 12:
+                        roughness = float(np.percentile(noise[ry[background], rx[background]], 80)/bright)
+                else:
+                    roughness = float(np.percentile(noise[sy, sx], 80)/bright)
+            data = self.labels.get(f['id'], {})
+            satellite = f['kind'] == 'Satellite Feature' or bool(re.search(r'\s[A-Z]$', f['name']))
+            tier = (0 if data.get('force') or 'position' in data else
+                    1 if f['name'] in COMMON_FEATURES else 3 if satellite else 2)
+            # Apparent size saturates: a huge flooded floor should not always
+            # outrank a smaller, high-contrast rim. Foreshortened limb features
+            # receive less size credit. Long rilles/cliffs share the same cap.
+            apparent = f['diameter']*scale/MOON_RADIUS_KM*np.sqrt(max(0., depth))
+            score = 2.5*contrast/(1+12*roughness) + min(1., np.sqrt(apparent/max(6, self.font_size)))
+            score += .4*np.sqrt(max(0., depth))
+            score += .4 if f['kind'] == 'Crater, craters' else 0.
+            cell = (min(3, int(xy[0]*4/w)), min(3, int(xy[1]*4/h)))
+            candidates.append((tier, float(score), cell, f, xy))
+        # A soft per-region penalty balances coverage without giving a tiny
+        # populated corner the same quota as the entire lunar disk. Hidden
+        # entries remain in the checklist but spend no regional priority.
+        ranked, used = [], {}
+        for tier in range(4):
+            cells = {}
+            for group, score, cell, f, xy in candidates:
+                if group == tier:
+                    cells.setdefault(cell, []).append((score, f, xy))
+            for values in cells.values():
+                values.sort(key=lambda row: (-row[0], row[1]['id']))
+            queue = []
+            for cell, values in cells.items():
+                heapq.heappush(queue, (-(values[0][0]-.08*used.get(cell, 0)), cell, 0))
+            while queue:
+                _, cell, index = heapq.heappop(queue)
+                _, f, xy = cells[cell][index]
+                ranked.append((f, xy))
+                if not self.labels.get(f['id'], {}).get('hidden'):
+                    used[cell] = used.get(cell, 0)+1
+                index += 1
+                if index < len(cells[cell]):
+                    heapq.heappush(queue, (-(cells[cell][index][0]-.08*used.get(cell, 0)), cell, index))
+        return ranked if all_candidates else ranked[:self.max_labels]
 
     def _project_crater_rim(self, feature, radius_factors=(1.,)):
         """Terrain crest when available; otherwise the catalogue reference rim."""

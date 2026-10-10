@@ -43,3 +43,40 @@ MoonLabeler UI → Codex 接入请求
 影响范围：app.py 1–2 行、window.py 1–2 行；无数据格式变化。
 过渡状态：当前 window.py 维持现状（标注页复选框持有属性），行为自洽、测试全绿；
 该请求落地前"显示全部候选轮廓"暂不可用，已在设计说明中注明。
+
+==============================================================================
+#2 手动校准区域默认折叠——识别失败时的自动展开由 app.py 接入
+==============================================================================
+状态：2026-10-11 Codex 已接入识别失败、NASA 配准失败和返回参考点的展开时机；失败保留原配准的业务回归已通过。
+
+UI 侧已完成（moonlabeler/ui/window.py，无需 Codex 改动）
+- 校准页"手动校准"区域默认折叠：manual_section_toggle（可见的展开入口，
+  折叠箭头 + 标题"手动校准 · 已知地名取点 / 辅助找坑"）+ manual_section_block
+  （内容容器）。区域内部所有控件名与业务信号连接保持不变。
+- 公开接口（纯 UI，app.py 可直接调用）：
+    ui_set_manual_section_expanded(bool)   # 展开 / 收起
+    ui_manual_section_expanded() -> bool   # 当前状态
+- 两处已在 UI 层自动展开（无需 app.py 参与）：
+    a) pick_button.clicked 追加了 ui_expand_for_pick 监听——进入手动取点时展开
+       （业务回调 start_pick 的连接原样保留）；
+    b) cancel_pick_button 与 crater_action_panel 的 Show 事件过滤器——业务层
+       显示"取消取点"按钮或"确认地形"操作条时展开。app.py 的
+       scroll.ensureWidgetVisible(cancel_pick_button)（取点启动路径）因此
+       在区域展开之后执行，行为不变。
+- 收起联动：手动收起区域时，若"确认地形"操作条正在显示则一并收起
+  （ui_reconcile_confirm_bar）；app.py 在下次 review_page_changed 会重新评估。
+
+请 Codex 接入（app.py，约 2 行）
+1. identify_photo 的 failure 回调（identification_status 显示失败原因处）调用
+       self.ui_set_manual_section_expanded(True)
+   引导用户改用手动校准。
+2. nasa_failed() 在 setCurrentIndex 切换后调用
+       self.ui_set_manual_section_expanded(True)
+   使随后的 scroll.ensureWidgetVisible(self.feature_search) 真正滚动到位
+   （区域折叠时该调用目前是空操作，不报错）。
+3. 可选：solve_manual 成功后如需回到自动流视图，可调用
+   ui_set_manual_section_expanded(False)；不做也不影响正确性。
+
+影响范围：仅 app.py 2 行调用；无数据格式变化。
+回归：tests/test_ui_layout.py（8 项）与 tests/test_manual_workflow.py、
+test_gui.py 坑位复核/手动配准等 112 项全部通过，未修改任何既有测试。

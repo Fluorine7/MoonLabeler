@@ -14,18 +14,34 @@ Layout contract notes:
   reachable while the detector settings scroll.
 - crater_overlay_toggle controls temporary detection overlays; crater_outlines
   controls persistent exported annotations. They are independent.
+- The manual calibration section (manual_section_toggle / manual_section_block)
+  is collapsed by default; ui_set_manual_section_expanded() is the hook for
+  app.py to open it on manual picks or identification failures.
 Do not import app.py here (it imports this mixin).
 """
 from pathlib import Path
-from PySide6.QtCore import Qt, QDateTime, QTime, QTimeZone
+from PySide6.QtCore import Qt, QDateTime, QEvent, QTime, QTimeZone
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
     QPushButton, QToolButton, QLabel, QLineEdit, QComboBox, QSpinBox,
     QDoubleSpinBox, QCheckBox, QDateTimeEdit, QTimeEdit, QGroupBox, QScrollArea,
     QSplitter, QTableWidget, QHeaderView, QListWidget, QAbstractItemView,
-    QTabWidget, QSizePolicy,
+    QListView, QTabWidget, QSizePolicy,
 )
+
+
+class WidePopupComboBox(QComboBox):
+    """Combo box whose drop-down widens to the longest item.
+
+    The styled popup otherwise keeps the combo's own width and clips long
+    Chinese entries, e.g. 坑缘轮廓（手绘风） or search results.
+    """
+    def showPopup(self):
+        super().showPopup()
+        view = self.view()
+        widest = view.sizeHintForColumn(0) + 30  # item padding + vertical scrollbar
+        view.setFixedWidth(max(widest, self.width()))
 
 
 class WindowUiMixin:
@@ -53,6 +69,48 @@ class WindowUiMixin:
         """Flat titled section: a QGroupBox without the box."""
         group = QGroupBox(title)
         return group
+
+    def ui_combo(self, minimum_contents_length=None):
+        """Combo with a stylesheet-friendly view whose popup fits its items."""
+        combo = WidePopupComboBox()
+        combo.setView(QListView(combo))
+        if minimum_contents_length is not None:
+            combo.setMinimumContentsLength(minimum_contents_length)
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        return combo
+
+    # Manual calibration section (collapsed by default). These two methods are
+    # the presentation hook for app.py: open the section when a manual pick
+    # starts or after identification fails, close it on flow completion.
+    def ui_set_manual_section_expanded(self, expanded):
+        self.manual_section_toggle.setChecked(bool(expanded))
+
+    def ui_manual_section_expanded(self):
+        return self.manual_section_toggle.isChecked()
+
+    def ui_expand_for_pick(self):
+        """Extra listener on pick_button.clicked: entering manual picking must
+        surface the section. No-op when it is already open (the usual case,
+        since the button itself lives inside it)."""
+        self.ui_set_manual_section_expanded(True)
+
+    def ui_reconcile_confirm_bar(self, expanded):
+        """While 辅助找坑 review is active, the fixed confirmation bar must not
+        outlive a manually collapsed section. app.py re-evaluates the bar on
+        every review-page change, so stashing it here stays consistent."""
+        if not expanded and self.crater_action_panel.isVisible():
+            self.crater_action_panel.hide()
+
+    def eventFilter(self, watched, event):
+        # app.py reveals the cancel button when a manual pick starts and the
+        # crater confirmation bar when 辅助找坑 review starts; expand the
+        # collapsed manual section at the same moment so those controls are
+        # actually on screen. Pure presentation: app.py keeps its own flow.
+        if event.type() == QEvent.Type.Show and watched in (getattr(self, "cancel_pick_button", None),
+                                                            getattr(self, "crater_action_panel", None)):
+            if not self.manual_section_toggle.isChecked():
+                self.manual_section_toggle.setChecked(True)
+        return super().eventFilter(watched, event)
 
     def ui_collapsible(self, title, expanded=False):
         """Disclosure triangle plus a hidden content block, shared by the
@@ -242,11 +300,14 @@ class WindowUiMixin:
         auto_layout.addWidget(self.identification_status)
         layout.addWidget(group)
 
-        # -------------------------------------------------- 校准 · 手动配准
-        group = QGroupBox("手动校准")
-        group_box = QVBoxLayout(group)
-        group_box.setContentsMargins(0, 4, 0, 0)
-        group_box.setSpacing(0)
+        # -------------------------------------------------- 校准 · 手动校准（默认折叠）
+        # Collapsed so the automatic flow owns the page; ui_set_manual_section_expanded()
+        # is the hook app.py uses to open it when a manual pick starts or after
+        # identification fails. The toggle below stays visible as the entry point.
+        self.manual_section_toggle, self.manual_section_block, group_box = \
+            self.ui_collapsible("手动校准 · 已知地名取点 / 辅助找坑")
+        layout.addWidget(self.manual_section_toggle)
+        layout.addWidget(self.manual_section_block)
         self.registration_tabs = QTabWidget()
         self.registration_tabs.setObjectName("subTabs")
         self.registration_tabs.setDocumentMode(True)
@@ -268,7 +329,10 @@ class WindowUiMixin:
         reference_layout.addWidget(self.reference_tabs, 1)
         reference_layout.addStretch()
         group_box.addWidget(self.registration_tabs)
-        layout.addWidget(group)
+        # With the manual section collapsed the page is shorter than the
+        # viewport; the trailing stretch keeps sections at their natural height
+        # instead of being stretched apart.
+        layout.addStretch(1)
 
         # 影像匹配（自动配准入口）
         auto_box = QVBoxLayout(automatic)
@@ -306,6 +370,7 @@ class WindowUiMixin:
         self.pick_button = QPushButton("选择地名后取点")
         self.pick_button.setToolTip("点击按钮，再到照片中点所选坑的完整坑缘中心。不要点亮斑或阴影中心；可先放大照片。同名取点会更新位置。")
         self.pick_button.clicked.connect(self.start_pick)
+        self.pick_button.clicked.connect(self.ui_expand_for_pick)
         box.addWidget(self.pick_button)
         self.cancel_pick_button = QPushButton("取消取点 · Esc")
         self.cancel_pick_button.clicked.connect(self.cancel_pick)
@@ -350,7 +415,7 @@ class WindowUiMixin:
         box.addWidget(toggle)
         box.addWidget(block)
         mirror_form = self.ui_form()
-        self.mirror = QComboBox()
+        self.mirror = self.ui_combo()
         self.mirror.addItems(["自动判断镜像（至少三点）", "不镜像", "镜像"])
         mirror_form.addRow("镜像判定", self.mirror)
         advanced.addLayout(mirror_form)
@@ -388,7 +453,7 @@ class WindowUiMixin:
         self.terrain_search.textChanged.connect(self.search_terrain_features)
         self.terrain_search.returnPressed.connect(self.ui_select_first_terrain_match)
         terrain_box.addWidget(self.terrain_search)
-        self.terrain_center = QComboBox()
+        self.terrain_center = self.ui_combo()
         self.terrain_center.setMinimumContentsLength(12)
         self.terrain_center.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         terrain_box.addWidget(self.terrain_center)
@@ -404,11 +469,11 @@ class WindowUiMixin:
         terrain_box.addWidget(self.terrain_advanced_toggle)
         terrain_box.addWidget(self.terrain_advanced_block)
         advanced_form = self.ui_form()
-        self.terrain_size = QComboBox()
+        self.terrain_size = self.ui_combo()
         self.terrain_size.addItems(["512", "768", "1024", "1536"])
         self.terrain_size.setCurrentText("768")
         advanced_form.addRow("图像边长", self.terrain_size)
-        self.terrain_model = QComboBox()
+        self.terrain_model = self.ui_combo()
         self.terrain_model.addItems(["Lommel-Seeliger", "Lambert"])
         advanced_form.addRow("光照模型", self.terrain_model)
         self.terrain_gamma = QDoubleSpinBox()
@@ -437,7 +502,7 @@ class WindowUiMixin:
         # -------------------------------------------------- 标注
         group = QGroupBox("筛选与数量")
         form = self.ui_form(group)
-        self.kind = QComboBox()
+        self.kind = self.ui_combo()
         self.kind.addItems(["全部"] + sorted(set(f["kind"] for f in self.catalog)))
         self.kind.currentTextChanged.connect(self.style_changed)
         form.addRow("地形类别", self.kind)
@@ -461,7 +526,7 @@ class WindowUiMixin:
 
         group = QGroupBox("名称与文字")
         form = self.ui_form(group)
-        self.language = QComboBox()
+        self.language = self.ui_combo()
         self.language.addItems(["双语", "英文", "中文"])
         self.language.currentTextChanged.connect(self.style_changed)
         form.addRow("名称语言", self.language)
@@ -497,7 +562,7 @@ class WindowUiMixin:
         self.crater_outlines.setToolTip("直径至少 35 km 且在照片中足够大的环形山显示轮廓，小坑保留短引线。")
         option_box.addWidget(self.crater_outlines)
         outline_form = QFormLayout()
-        self.crater_outline_shape = QComboBox()
+        self.crater_outline_shape = self.ui_combo()
         self.crater_outline_shape.addItem("椭圆", "ellipse")
         self.crater_outline_shape.addItem("坑缘轮廓（手绘风）", "terrain")
         self.crater_outline_shape.setToolTip("椭圆：将投影坑缘拟合为平滑椭圆。坑缘轮廓：保留高程数据中的不规则形状；无高程坑缘时使用目录参考圈。")
@@ -535,7 +600,8 @@ class WindowUiMixin:
         apply_box.addWidget(restore)
         apply_box.addWidget(self.ui_note("拖动调整位置 · 双击编辑文字"))
         self.language.setToolTip("中文译名未收录时显示官方原名。")
-        labels_layout.addWidget(group)
+        # The label list absorbs any surplus page height on tall windows.
+        labels_layout.addWidget(group, 1)
         self.catalog_button = QPushButton(f"更新 USGS 地名（现有 {len(self.catalog):,} 项）")
         self.catalog_button.clicked.connect(self.update_catalog)
         labels_layout.addWidget(self.catalog_button)
@@ -546,6 +612,11 @@ class WindowUiMixin:
         # settings and the candidate list scroll; app.py toggles visibility.
         self.crater_action_panel = QGroupBox("确认地形")
         self.crater_action_panel.setObjectName("confirmPanel")
+        # Showing either widget is app.py's way of entering a manual flow;
+        # the section opens with them (see eventFilter).
+        for review_widget in (self.cancel_pick_button, self.crater_action_panel):
+            review_widget.installEventFilter(self)
+        self.manual_section_toggle.toggled.connect(self.ui_reconcile_confirm_bar)
         action_box = QVBoxLayout(self.crater_action_panel)
         action_box.setSpacing(7)
         self.crater_controls_layout.removeItem(self.crater_review_actions)
@@ -661,7 +732,7 @@ class WindowUiMixin:
         self.crater_search.textChanged.connect(self.search_crater_features)
         self.crater_search.returnPressed.connect(self.ui_select_first_crater_match)
         box.addWidget(self.crater_search)
-        self.crater_feature = QComboBox()
+        self.crater_feature = self.ui_combo()
         self.crater_feature.setMinimumContentsLength(12)
         self.crater_feature.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.crater_feature.currentIndexChanged.connect(self.update_crater_buttons)

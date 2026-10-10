@@ -3,10 +3,10 @@
 """Native Qt desktop application. All processing happens on this computer."""
 from datetime import datetime, timezone
 from dataclasses import replace
+from itertools import islice
 from pathlib import Path
 import os
 import csv
-import re
 import shutil
 import unicodedata
 import sys
@@ -38,7 +38,7 @@ from .geometry import compute_geometry, MOON_RADIUS_KM
 from .layout import LabelBox, arrange_labels, leader_segment
 from .project import Project, export_svg, DEFAULT_FONT_PERCENT
 from .registration import calibration_report, transform_points, auto_register
-from .sources import load_catalog, read_image, nasa_reference, refresh_catalog, COMMON_FEATURES, feature_search_text
+from .sources import load_catalog, read_image, nasa_reference, refresh_catalog, feature_search_text
 from .terrain import ElevationMap, download_basic_dem, render_region
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -343,6 +343,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         def failure(message):
             self.identification_status.setText("识别失败，可改用手动校准")
             self.identification_status.setToolTip(message)
+            self.show_manual_points()
             self.error(message)
         self.identification_status.setText("正在识别…")
         self.run_background("正在识别，首次运行需下载参考数据…",
@@ -867,6 +868,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def show_manual_points(self):
         self.workspace_tabs.setCurrentIndex(0)
         self.registration_tabs.setCurrentIndex(0)
+        self.ui_set_manual_section_expanded(True)
         self.scroll.ensureWidgetVisible(self.solve_button)
 
     def start_pick(self):
@@ -1104,6 +1106,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def nasa_failed(self, text):
         self.workspace_tabs.setCurrentIndex(0)
         self.registration_tabs.setCurrentIndex(0)
+        self.ui_set_manual_section_expanded(True)
         self.scroll.ensureWidgetVisible(self.feature_search)
         self.registration_status.setText("NASA 配准失败，可用手动校准")
         self.error(text)
@@ -1378,58 +1381,57 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.layout_status.setText("")
             self.rebuilding = False
             return
-        candidates = self.project.visible_features(self.catalog, self.image.shape, image=self.image)
-        # Named formations precede lettered satellite craters. User edits and
-        # explicit requests retain first choice, independent of diameter.
-        candidates.sort(key=lambda pair: (not bool(self.project.labels.get(pair[0]["id"], {}).get("force")),
-                                          bool(re.search(r"\s[A-Z]$", pair[0]["name"])),
-                                          pair[0]["name"] not in COMMON_FEATURES, -pair[0]["diameter"]))
-        objects, requests = {}, []
+        candidates = self.project.visible_features(self.catalog, self.image.shape, image=self.image, all_candidates=True)
+        objects = {}
         scale = np.sqrt(abs(np.linalg.det(self.project.matrix[:, :2]))) if self.project.matrix is not None else 1.
-        for feature, xy in candidates:
-            fid = feature["id"]
-            data = self.project.labels.get(fid, {})
-            if data.get("hidden", False):
-                continue
-            item = Annotation(feature, xy, self.project.label_text(feature), self.project, self.move_label, self.edit_label)
-            outline = self.project.crater_outline(feature, self.image.shape)
-            if outline:
-                item.outline_segments = outline
-                contour = QPainterPath()
-                for segment in outline:
-                    contour.moveTo(*segment[0])
-                    for point in segment[1:]:
-                        contour.lineTo(*point)
-                ring = self.canvas.scene().addPath(contour, QPen(QColor(self.project.color), max(1.2, self.project.font_size*.045)))
-                # Own the absolute image-coordinate contour with the leader,
-                # which stays at (0, 0) when the movable caption is repositioned.
-                self.canvas.scene().removeItem(ring)
-                ring.setParentItem(item.line)
-                ring.setZValue(-1)
-                for child in item.line.childItems():
-                    if isinstance(child, QGraphicsEllipseItem):
-                        child.hide()
-            bounds = item.boundingRect()
-            fixed = (data["position"][0]+bounds.x(), data["position"][1]+bounds.y()) if "position" in data else None
-            # Keep crater captions outside their projected rim, rather than
-            # treating a large crater as a star-sized point marker.
-            if feature["kind"] in ("Crater, craters", "Satellite Feature"):
-                radius = min(min(self.image.shape[:2])*.12, max(4., feature["diameter"]*scale/(2*MOON_RADIUS_KM)))
-            else:
-                radius = min(self.project.font_size*1.3, max(4., feature["diameter"]*scale/(4*MOON_RADIUS_KM)))
-            requests.append(LabelBox(fid, tuple(xy), bounds.width(), bounds.height(), radius, fixed,
-                                     data.get("force", False), item.outline_segments))
-            objects[fid] = item
+        def requests():
+            # Build text paths and rim graphics only for candidates actually
+            # considered by layout; the catalogue can contain thousands more.
+            for feature, xy in candidates:
+                fid = feature["id"]
+                data = self.project.labels.get(fid, {})
+                if data.get("hidden", False):
+                    continue
+                item = Annotation(feature, xy, self.project.label_text(feature), self.project, self.move_label, self.edit_label)
+                outline = self.project.crater_outline(feature, self.image.shape)
+                if outline:
+                    item.outline_segments = outline
+                    contour = QPainterPath()
+                    for segment in outline:
+                        contour.moveTo(*segment[0])
+                        for point in segment[1:]:
+                            contour.lineTo(*point)
+                    ring = self.canvas.scene().addPath(contour, QPen(QColor(self.project.color), max(1.2, self.project.font_size*.045)))
+                    # Own the absolute contour with the leader; moving the
+                    # caption must leave the projected crater rim in place.
+                    self.canvas.scene().removeItem(ring)
+                    ring.setParentItem(item.line)
+                    ring.setZValue(-1)
+                    for child in item.line.childItems():
+                        if isinstance(child, QGraphicsEllipseItem):
+                            child.hide()
+                bounds = item.boundingRect()
+                fixed = (data["position"][0]+bounds.x(), data["position"][1]+bounds.y()) if "position" in data else None
+                if feature["kind"] in ("Crater, craters", "Satellite Feature"):
+                    radius = min(min(self.image.shape[:2])*.12, max(4., feature["diameter"]*scale/(2*MOON_RADIUS_KM)))
+                else:
+                    radius = min(self.project.font_size*1.3, max(4., feature["diameter"]*scale/(4*MOON_RADIUS_KM)))
+                objects[fid] = item
+                yield LabelBox(fid, tuple(xy), bounds.width(), bounds.height(), radius, fixed,
+                               data.get("force", False), item.outline_segments)
         h, w = self.image.shape[:2]
         if self.project.optimize_layout:
-            placements, self.auto_omitted = arrange_labels(requests, w, h, gap=max(5., self.project.font_size*.4))
+            placements, self.auto_omitted = arrange_labels(requests(), w, h, gap=max(5., self.project.font_size*.4),
+                                                          max_labels=self.project.max_labels)
         else:
             placements = {request.key: (*(request.fixed or (request.anchor[0]+request.radius+8, request.anchor[1]-request.height/2)),
-                                        request.width, request.height) for request in requests}
+                                        request.width, request.height) for request in islice(requests(), self.project.max_labels)}
         for feature, xy in candidates:
             fid = feature["id"]
             data = self.project.labels.get(fid, {})
             hidden = data.get("hidden", False)
+            if fid not in objects and not hidden:
+                continue  # Unused reserves are not collision-hidden labels.
             listing = QListWidgetItem(self.project.label_text(feature))
             listing.setData(Qt.ItemDataRole.UserRole, fid)
             listing.setFlags(listing.flags() | Qt.ItemFlag.ItemIsUserCheckable)

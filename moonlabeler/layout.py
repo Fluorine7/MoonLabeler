@@ -6,6 +6,7 @@ Inspired by AnnotateImage's candidate relocation / local clearance strategy;
 independently implemented for a lunar photograph and user-pinned captions.
 """
 from dataclasses import dataclass
+from itertools import islice
 import math
 
 @dataclass
@@ -119,38 +120,100 @@ def candidate_boxes(label, gap):
             yield (x, y, label.width, label.height)
 
 
-def arrange_labels(labels, width, height, gap=8.):
+class _SpatialIndex:
+    """Conservative grid lookup; exact collision tests still decide placement."""
+    def __init__(self, cell_size):
+        self.cell_size = cell_size
+        self.buckets = {}
+        self.cells = {}
+        self.values = {}
+
+    def _cells(self, rect, padding=0.):
+        x, y, w, h = rect
+        size = self.cell_size
+        for column in range(math.floor((x-padding)/size), math.floor((x+w+padding)/size)+1):
+            for row in range(math.floor((y-padding)/size), math.floor((y+h+padding)/size)+1):
+                yield column, row
+
+    def remove(self, key):
+        for cell in self.cells.pop(key, ()):
+            bucket = self.buckets[cell]
+            bucket.remove(key)
+            if not bucket:
+                del self.buckets[cell]
+        self.values.pop(key, None)
+
+    def put(self, key, rect, value=None):
+        self.remove(key)
+        self.cells[key] = tuple(self._cells(rect))
+        self.values[key] = rect if value is None else value
+        for cell in self.cells[key]:
+            self.buckets.setdefault(cell, set()).add(key)
+
+    def near(self, rect, padding=0., exclude=None):
+        keys = set()
+        for cell in self._cells(rect, padding):
+            keys.update(self.buckets.get(cell, ()))
+        keys.discard(exclude)
+        # A stable order preserves deterministic floating-point scoring.
+        return [self.values[key] for key in sorted(keys)]
+
+
+def _line_bounds(line):
+    x, y, a, b = line
+    return min(x, a), min(y, b), abs(a-x), abs(b-y)
+
+
+def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
     """Return non-overlapping placements and temporarily omitted keys.
 
     Input order expresses priority. User-pinned captions are fixed obstacles.
     A forced caption can fall back to the least-conflicting candidate. Automatic
     positions are never stored as user edits, so filtering can reflow the image.
+    With a budget, consume candidates lazily and refill omissions from reserves.
+    Unused reserve centers are not obstacles and do not count as omissions.
     """
+    reserve = iter(labels)
+    labels = list(reserve) if max_labels is None else list(islice(reserve, max(0, max_labels)))
     placements = {}
     leaders = {}
+    text_index, line_index, marker_index = (_SpatialIndex(max(32., gap*4)) for _ in range(3))
+
+    def place(label, rect, line):
+        placements[label.key], leaders[label.key] = rect, line
+        text_index.put(label.key, rect)
+        line_index.put(label.key, _line_bounds(line), line)
     # Other centers are obstacles, not their entire crater interiors. Treating
     # every large, eroded catalogue crater as a forbidden disk can leave no
     # caption space around an otherwise prominent crater on a whole-Moon map.
     marker_radius = {label.key: min(label.radius, max(4., label.height*.45)) for label in labels}
     markers = {label.key: (label.anchor[0]-marker_radius[label.key], label.anchor[1]-marker_radius[label.key],
                             2*marker_radius[label.key], 2*marker_radius[label.key]) for label in labels}
+    for key, rect in markers.items():
+        marker_index.put(key, rect)
     fixed = {label.key for label in labels if label.fixed is not None}
     for label in labels:
         if label.fixed is not None:
             rect = (*label.fixed, label.width, label.height)
-            placements[label.key] = rect
-            leaders[label.key] = leader_segment(label.anchor, rect, outline=label.outline)
+            place(label, rect, leader_segment(label.anchor, rect, outline=label.outline))
 
     def best_position(label):
         candidates = []
-        other_rects = [rect for key, rect in placements.items() if key != label.key]
-        other_lines = [line for key, line in leaders.items() if key != label.key]
-        other_markers = [rect for key, rect in markers.items() if key != label.key]
         for rect in candidate_boxes(label, gap):
             x, y, w, h = rect
             if x < gap or y < gap or x+w > width-gap or y+h > height-gap:
                 continue
             line = leader_segment(label.anchor, rect, outline=label.outline)
+            lx, ly, lw, lh = _line_bounds(line)
+            # All intersections and the capped clearance reward lie inside
+            # this neighborhood. Distant captions cannot affect the decision.
+            left, top = min(x, lx), min(y, ly)
+            neighborhood = (left, top, max(x+w, lx+lw)-left, max(y+h, ly+lh)-top)
+            other_rects = text_index.near(neighborhood, 3*gap, label.key)
+            other_lines = line_index.near(neighborhood, 3*gap, label.key)
+            nearby_markers = marker_index.near(neighborhood, 3*gap)
+            own_marker = markers.get(label.key)
+            other_markers = [marker for marker in nearby_markers if marker is not own_marker]
             # Captions cannot hide their own center, or other selected centers.
             if not label.force:
                 # Most rejected positions hit a nearby caption or marker.
@@ -158,7 +221,7 @@ def arrange_labels(labels, width, height, gap=8.):
                 # conflict and performing expensive line tests unnecessarily.
                 if any(rect_intersects(rect, old, gap*.65) for old in other_rects):
                     continue
-                if any(rect_intersects(rect, old, gap*.3) for old in markers.values()):
+                if any(rect_intersects(rect, old, gap*.3) for old in nearby_markers):
                     continue
                 if any(segment_hits_rect(line, old, 1) for old in other_rects):
                     continue
@@ -169,7 +232,7 @@ def arrange_labels(labels, width, height, gap=8.):
                 conflicts = 0
             else:
                 conflicts = sum(rect_intersects(rect, old, gap*.65) for old in other_rects)
-                conflicts += sum(rect_intersects(rect, old, gap*.3) for old in markers.values())
+                conflicts += sum(rect_intersects(rect, old, gap*.3) for old in nearby_markers)
                 conflicts += sum(segment_hits_rect(line, old, 1) for old in other_rects)
                 conflicts += sum(segment_hits_rect(old, rect, 1) for old in other_lines)
                 conflicts += sum(segments_cross(line, old) for old in other_lines)
@@ -187,7 +250,8 @@ def arrange_labels(labels, width, height, gap=8.):
     for label in pending:
         best = best_position(label)
         if best:
-            _, placements[label.key], leaders[label.key] = best
+            _, rect, line = best
+            place(label, rect, line)
     # Relocate existing captions and reinsert omissions, with a bounded loop.
     for _ in range(2):
         moved = False
@@ -195,9 +259,46 @@ def arrange_labels(labels, width, height, gap=8.):
             previous = placements.get(label.key)
             best = best_position(label)
             if best:
-                _, placements[label.key], leaders[label.key] = best
+                _, rect, line = best
+                place(label, rect, line)
                 moved |= previous != placements[label.key]
         if not moved:
             break
+    if max_labels is not None:
+        # Protect only the centers of actual annotations when filling gaps.
+        # The initial pool still gets joint relocation; later candidates may
+        # not displace higher-priority captions or obscure their centers.
+        for key in set(markers)-placements.keys():
+            marker_index.remove(key)
+            del markers[key]
+        def refill(candidates):
+            for label in candidates:
+                if len(placements) >= max_labels:
+                    break
+                radius = min(label.radius, max(4., label.height*.45))
+                marker = (label.anchor[0]-radius, label.anchor[1]-radius, 2*radius, 2*radius)
+                if not label.force and (
+                    any(rect_intersects(marker, rect, gap*.3) for rect in text_index.near(marker, gap*.3)) or
+                    any(segment_hits_rect(line, marker) for line in line_index.near(marker))
+                ):
+                    continue
+                markers[label.key] = marker
+                marker_index.put(label.key, marker)
+                best = best_position(label)
+                if best:
+                    _, rect, line = best
+                    place(label, rect, line)
+                else:
+                    markers.pop(label.key)
+                    marker_index.remove(label.key)
+        refill(label for label in pending if label.key not in placements)
+        def remaining():
+            while len(placements) < max_labels:
+                label = next(reserve, None)
+                if label is None:
+                    break
+                labels.append(label)
+                yield label
+        refill(remaining())
     omitted = {label.key for label in labels if label.key not in placements}
     return placements, omitted
