@@ -2,6 +2,8 @@
 
 MoonLabeler 作者：**Fluorine Zhu**。本项目代码采用 **GPL-3.0-or-later**，完整许可见 [LICENSE](LICENSE)；第三方代码与数据的原有条款见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
+感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考。
+
 向 **Jim Mosher 与 Henrik Bondo** 致敬。他们创建的 **Lunar Terminator Visualization Tool（LTVT）** 将月面几何、已知地形校准和高程光照模拟带给了业余观测者。
 
 MoonLabeler 参考这些公开方法，以 Python / Qt 独立实现当前功能。当前项目没有复制 LTVT 的 Delphi 源码，也不是原作者发布的 LTVT 版本。
@@ -54,6 +56,7 @@ MoonLabeler is authored by **Fluorine Zhu** and released under **GNU GPL version
 - **NASA SVS, Ernie Wright, Noah Petro, LRO, LROC, and LOLA teams:** Lunar textures, elevation data, and visualization references. The bundled texture's canonical source, fixed mirror, and JPEG recompression provenance are recorded with the data.
 - **USGS / IAU planetary nomenclature contributors:** Terrain names, positions, categories, and diameters.
 - **JPL and Skyfield contributors:** Ephemerides, lunar orientation, and observing geometry.
+- **樊仕达 (10deg) — moonlib:** Provided code as a reference for this project's lunar geometry research and implementation.
 - **National Astronomical Data Center and Chinese astronomical terminology contributors:** Sourced Chinese names. Each imported term retains its source URL. Lettered satellites derive their names from the parent term and the original official letter; they are not presented as independently approved translations.
 - **chase-kusterer/lunar_stack, wdoppenberg/crater-detection, and cosinekitty/astronomy:** Studied for image matching, crater-pattern methods, and possible future ephemeris alternatives. Their code and models are not incorporated into the current application. Scope and fixed versions are documented in [REPOSITORY_RESEARCH.md](REPOSITORY_RESEARCH.md).
 - The new wide-limb fallback independently fits the lunar outer circle and compares phase and high-pass LROC albedo templates. The limb-fitting approach was informed by the lunar_stack research; no SAM, learned model, or upstream source code is included. It rejects short polar arcs and ambiguous rotations or reflections.

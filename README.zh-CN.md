@@ -120,6 +120,8 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q
 
 来源及前辈工作见 [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)。
 
+感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考。
+
 改编代码的版权和许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 环形山识别与备用星历候选项目的源码核对及适用范围见 [REPOSITORY_RESEARCH.md](REPOSITORY_RESEARCH.md)。
