@@ -7,7 +7,14 @@ sits on the near-black left side, the inspector panel on the right recedes
 into a calm dark blue-grey. A single warm "moon dust" accent is reserved for
 primary actions and focus; sections are flat (hairlines and spacing instead
 of boxed frames) so the sidebar reads as text hierarchy, not a stack of boxes.
+Checkboxes and item-view check indicators are plain: an empty bordered box
+when unchecked, a light check mark inside the same box when checked
+(assets/check_dark.png, drawn programmatically).
 """
+from pathlib import Path
+
+ASSETS = Path(__file__).resolve().parent / "assets"
+CHECK_MARK = (ASSETS / "check_dark.png").as_posix()
 
 BG = "#131821"          # window chrome / toolbar / status bar
 PANEL = "#171d28"       # inspector panel
@@ -89,11 +96,16 @@ QComboBox QAbstractItemView {{ background: #1a212d; border: 1px solid {LINE_HI};
 
 QCheckBox {{ spacing: 7px; color: #c3cedb; }}
 QCheckBox:disabled {{ color: {DISABLED_TEXT}; }}
-QCheckBox::indicator {{ width: 13px; height: 13px; border: 1px solid #3a485c;
-                       border-radius: 4px; background: {SURFACE}; }}
-QCheckBox::indicator:hover {{ border-color: #4d6079; }}
-QCheckBox::indicator:checked {{ border: 3px solid {ACCENT}; background: {SURFACE}; }}
-QCheckBox::indicator:disabled {{ border-color: #333f4d; background: #151b25; }}
+/* One plain check style everywhere: form checkboxes, label list, anchor table. */
+QCheckBox::indicator, QListView::indicator, QTableView::indicator {{
+    width: 13px; height: 13px; border: 1px solid #3a485c;
+    border-radius: 4px; background: {SURFACE}; }}
+QCheckBox::indicator:hover, QListView::indicator:hover,
+QTableView::indicator:hover {{ border-color: #4d6079; }}
+QCheckBox::indicator:checked, QListView::indicator:checked,
+QTableView::indicator:checked {{ image: url({CHECK_MARK}); }}
+QCheckBox::indicator:disabled, QListView::indicator:disabled,
+QTableView::indicator:disabled {{ border-color: #333f4d; background: #151b25; }}
 
 /* ---- lists and tables ----------------------------------------------------- */
 QListWidget, QTableWidget {{ background: {SURFACE}; border: 1px solid {LINE};

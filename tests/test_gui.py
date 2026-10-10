@@ -24,13 +24,15 @@ def test_photo_workflow_has_automatic_name_recognition():
     assert buttons, '照片流程缺少自动地名识别入口，用户仍需逐个输入地名。'
 
 
-def test_capture_date_hides_time_and_uses_utc_1500():
+def test_capture_time_defaults_collapsed_and_preserves_explicit_time(tmp_path):
     from datetime import timezone
-    from PySide6.QtCore import QDate
+    from PySide6.QtCore import QDate, QTime
     application = QApplication.instance() or QApplication([])
     window = MainWindow()
     try:
         assert window.date.displayFormat() == 'yyyy-MM-dd'
+        assert not window.capture_time_toggle.isChecked()
+        assert window.capture_time_block.isHidden()
         assert (window.utc().hour, window.utc().minute, window.utc().second) == (15, 0, 0)
         window.date.setDate(QDate(2025, 9, 14))
         assert window.utc().isoformat() == '2025-09-14T15:00:00+00:00'
@@ -39,9 +41,46 @@ def test_capture_date_hides_time_and_uses_utc_1500():
         window.project.utc = '2025-09-13T12:34:56+00:00'
         window.sync_controls()
         assert window.utc().isoformat() == '2025-09-13T12:34:56+00:00'
-        # Selecting a new date resets the hidden time to the stated default.
+        assert window.capture_time.time() == QTime(12, 34, 56)
+        assert '12:34:56' in window.capture_time_toggle.text()
+        # Calendar changes retain precise times; only the explicit reset resets.
         window.date.setDate(QDate(2025, 9, 15))
+        assert window.utc().isoformat() == '2025-09-15T12:34:56+00:00'
+        window.capture_time_toggle.click()
+        assert not window.capture_time_block.isHidden()
+        window.capture_time.setTime(QTime(23, 59, 42))
+        assert window.utc().isoformat() == '2025-09-15T23:59:42+00:00'
+        assert window.project.utc == window.utc().isoformat()
+        window.capture_time_toggle.click()
+        assert window.capture_time_block.isHidden()
+        assert window.utc().hour == 23
+        saved = tmp_path / 'time.moonlabel'
+        window.project.save(saved)
+        assert Project.load(saved).utc == '2025-09-15T23:59:42+00:00'
+        window.reset_capture_time.click()
         assert window.utc().isoformat() == '2025-09-15T15:00:00+00:00'
+        assert window.capture_time.time() == QTime(15, 0)
+    finally:
+        window.dirty = False
+        window.close()
+
+
+def test_time_edit_invalidates_registration_but_folding_does_not():
+    from PySide6.QtCore import QTime
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    try:
+        window.open_example()
+        matrix = window.project.matrix.copy()
+        utc = window.project.utc
+        window.capture_time_toggle.click()
+        window.capture_time_toggle.click()
+        assert np.array_equal(window.project.matrix, matrix)
+        assert window.project.utc == utc and not window.dirty
+        window.capture_time.setTime(QTime(9, 25, 17))
+        assert window.project.utc.endswith('T09:25:17+00:00')
+        assert window.project.geometry is None and window.project.matrix is None
+        assert window.dirty
     finally:
         window.dirty = False
         window.close()

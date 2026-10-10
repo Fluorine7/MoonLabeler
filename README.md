@@ -52,7 +52,7 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 ### 使用与限制
 
-打开照片，选择拍摄日期（默认使用当日 **UTC 15:00**），点击“自动识别并标注”。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，高程后备匹配另需约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
+打开照片，选择拍摄日期（默认使用当日 **UTC 15:00**），点击“自动识别并标注”。“具体时间”默认折叠，展开后可设置 UTC 时分秒；收起或更换日期不会重置时间，可点击恢复默认。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，高程后备匹配另需约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
 
 自动识别属于实验性功能。强阴影、月缘与极区的严重压缩、模糊、水印、日期错误或候选坑太少时仍可能失败。不能通过验证的结果不会作为地名标注，也不会替换已有配准。可改用已知地形点手动校准。
 
@@ -88,7 +88,7 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 Requires **Python 3.11+**. Development and native UI testing are primarily on macOS.
 Clone the repository and run `./start-mac.command` on macOS, or create a virtual environment, install `requirements.txt`, and run `python -m moonlabeler` as shown above. Windows and Linux have not received native UI validation.
 
-Open a photograph, select the capture date (default **15:00 UTC** on that date; saved projects retain their original timestamps), then click **自动识别并标注** (Identify and annotate). An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; the terrain fallback additionally downloads about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
+Open a photograph, select the capture date (default **15:00 UTC** on that date; saved projects retain their original timestamps), then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours, minutes and seconds. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; the terrain fallback additionally downloads about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
 
 For manual calibration, open **校准 → 已知地名取点** (Calibration → Known-name points). A reference point pairs a known terrain name with its location in your photograph:
 

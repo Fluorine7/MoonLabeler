@@ -584,14 +584,14 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.statusBar().showMessage("操作未完成。")
         QMessageBox.warning(self, "MoonLabeler", text)
 
-    def capture_date_changed(self, *args):
-        if self.rebuilding:
-            return
-        # Calendar edits use the documented default. Project loading remains
-        # lossless, including older projects calibrated at a precise time.
-        blocked = self.date.blockSignals(True)
-        self.date.setTime(QTime(15, 0))
-        self.date.blockSignals(blocked)
+    def sync_capture_time(self, *args):
+        # date remains the single timestamp source for geometry and projects.
+        # The disclosure only changes visibility, never the selected time.
+        time = self.date.time()
+        blocked = self.capture_time.blockSignals(True)
+        self.capture_time.setTime(time)
+        self.capture_time.blockSignals(blocked)
+        self.capture_time_toggle.setText(f"具体时间 · UTC {time.toString('HH:mm:ss')}")
 
     def utc(self):
         # Treat displayed components as UTC, independent of host timezone.
@@ -1536,7 +1536,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def help_dialog(self):
         QMessageBox.information(self, "使用 MoonLabeler",
-            "1. 打开照片，选择拍摄日期。默认按当日 UTC 15:00 计算；旧工程保留已记录的时间。准确校准建议填写拍摄地点。\n\n"
+            "1. 打开照片，选择拍摄日期。默认 UTC 15:00；展开“具体时间”可精确到秒。收起设置或更换日期不会重置时间，旧工程保留原时间。北京时间请换算为 UTC，注意日期跨天。准确校准建议填写拍摄地点。\n\n"
             "2. 点击“自动识别并标注”：检测坑缘、搜索月面地名目录并用其他坑验证，成功后直接生成标签。无需先计算几何或输入地名。失败时核对日期，或改用地形点校准。\n\n"
             "手动校准：参考点就是“已知地名 + 照片中的位置”。在“已知地名取点”中搜索并选中一个你认得的坑，点“在照片中标记”，再点照片中同一个坑的坑缘中心。重复添加 3–6 处分散、不共线的点，再点“完成校准并生成标注”；月面几何会自动计算。取点时 Esc 取消，双击参考点表格可重选中心。\n\n"
             "“校准 → 疑似坑”可先检测候选中心；调节原图像素半径和灵敏度，或只检测当前视野。选中候选、搜索并确认地名后加入参考点。它不会自动识别名称。\n\n"

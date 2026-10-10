@@ -22,7 +22,7 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
     QPushButton, QToolButton, QLabel, QLineEdit, QComboBox, QSpinBox,
-    QDoubleSpinBox, QCheckBox, QDateTimeEdit, QGroupBox, QScrollArea,
+    QDoubleSpinBox, QCheckBox, QDateTimeEdit, QTimeEdit, QGroupBox, QScrollArea,
     QSplitter, QTableWidget, QHeaderView, QListWidget, QAbstractItemView,
     QTabWidget, QSizePolicy,
 )
@@ -193,11 +193,25 @@ class WindowUiMixin:
         self.date.setDateTime(QDateTime.currentDateTimeUtc())
         self.date.setDisplayFormat("yyyy-MM-dd")
         self.date.setTime(QTime(15, 0))
-        self.date.setToolTip("选择拍摄日期，默认按当日 UTC 15:00 计算。打开旧工程时保留其原始时间。")
+        self.date.setToolTip("默认 UTC 15:00；展开“具体时间”可修改。修改日期或收起设置不会重置已选时间。")
         self.date.setCalendarPopup(True)
-        self.date.dateChanged.connect(self.capture_date_changed)
-        self.date.dateTimeChanged.connect(self.geometry_changed)
         form.addRow("拍摄日期", self.date)
+        self.capture_time_toggle, self.capture_time_block, time_box = self.ui_collapsible("具体时间 · UTC 15:00:00")
+        self.capture_time = QTimeEdit(QTime(15, 0))
+        self.capture_time.setDisplayFormat("HH:mm:ss")
+        self.capture_time.setToolTip("输入 UTC 时间；北京时间需要减去 8 小时，注意日期跨天。")
+        time_form = self.ui_form()
+        time_form.addRow("时间（UTC）", self.capture_time)
+        time_box.addLayout(time_form)
+        self.reset_capture_time = QPushButton("恢复默认 15:00:00 UTC")
+        self.reset_capture_time.clicked.connect(lambda: self.date.setTime(QTime(15, 0)))
+        time_box.addWidget(self.reset_capture_time)
+        time_box.addWidget(self.ui_note("收起后仍使用所设时间。北京时间请换算为 UTC，注意日期跨天。"))
+        form.addRow(self.capture_time_toggle)
+        form.addRow(self.capture_time_block)
+        self.capture_time.timeChanged.connect(self.date.setTime)
+        self.date.dateTimeChanged.connect(self.sync_capture_time)
+        self.date.dateTimeChanged.connect(self.geometry_changed)
         self.topocentric = QCheckBox("使用拍摄地点")
         self.topocentric.toggled.connect(self.geometry_changed)
         form.addRow(self.topocentric)

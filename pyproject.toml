@@ -32,6 +32,7 @@ include = ["moonlabeler*"]
 
 [tool.setuptools.package-data]
 moonlabeler = ["data/*.json", "data/*.jpg"]
+"moonlabeler.ui" = ["assets/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
