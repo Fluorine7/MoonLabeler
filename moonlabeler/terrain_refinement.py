@@ -70,13 +70,13 @@ def local_correspondences(reference, photograph):
     return source[keep], target[keep]
 
 
-def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False):
+def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False, relief_aware=False):
     """Retain initial registration unless spatial and fresh-render checks pass."""
     from .terrain_identification import terrain_agreement
     from .identification import IdentificationError
     from .geometry import Geometry
     from .terrain_view import TerrainView
-    if crater_verified:
+    if crater_verified or relief_aware:
         # The map pixels and pose fit must refer to the same 3-D surface. A
         # sphere-draped shading reference otherwise turns relief into a false
         # direction correction, particularly in oblique crater photographs.
@@ -119,6 +119,8 @@ def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False):
                            'light_before_after': [before[0], after[0]],
                            'detail_before_after': [before[1], after[1]],
                            'rms_working_px': result.rms_px})
+    if crater_verified or relief_aware:
+        result.details['relief_aware'] = True
     result.matrix = np.diag([1/sx, 1/sy])@result.matrix
     result.rms_px /= min(sx, sy)
     # Never retain a view whose memory-mapped DEM will close after this call.

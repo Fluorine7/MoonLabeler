@@ -343,7 +343,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                             recognition = refine_crater_identification(recognition, image, geometry, CACHE, catalog)
                         except ValueError as exc:
                             try:
-                                recognition = identify_from_terrain(image, geometry, CACHE)
+                                recognition = identify_from_terrain(image, geometry, CACHE, catalog=catalog)
                             except (ValueError, OSError) as terrain_error:
                                 raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；纹理、月盘轮廓和坑群验证均未通过。\n{limb_error}\n{exc}\n高程参考：{terrain_error}") from terrain_error
             return detection, recognition, geometry, lat, lon
@@ -419,7 +419,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         elif recognition.refinement and recognition.matches:
             message = f"坑群识别后精修 · {recognition.image_inliers} 个图像对应点 · 覆盖 {recognition.coverage:.1%} · 拟合偏差 {recognition.rms_px:.2f} px。大坑优先使用高程坑缘，轮廓精度受数据分辨率限制"
         elif recognition.method.startswith("LOLA"):
-            message = f"已定位月面区域 · {recognition.image_inliers} 个图像对应点 · 覆盖 {recognition.coverage:.1%} · 拟合偏差 {recognition.rms_px:.2f} px。圈为目录参考轮廓，尚未贴合实际坑缘"
+            message = f"已定位月面区域 · {recognition.image_inliers} 个图像对应点 · 覆盖 {recognition.coverage:.1%} · 拟合偏差 {recognition.rms_px:.2f} px"
+            message += "。大坑使用高程参考轮廓" if recognition.crater_rims else "。圈为目录参考轮廓，尚未贴合实际坑缘"
             if recognition.refinement:
                 message += "。观测方向微调已通过分区验证"
         elif recognition.image_inliers:

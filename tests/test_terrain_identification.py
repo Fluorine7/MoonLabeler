@@ -61,7 +61,8 @@ def test_borderline_light_needs_stronger_detail_count_and_distribution():
     assert not terrain_consensus(np.nan, .5, 60, .5)
 
 
-def test_repeated_terrain_in_different_regions_is_ambiguous(monkeypatch, tmp_path):
+@pytest.mark.parametrize('coarse', [False, True])
+def test_repeated_terrain_in_different_regions_is_ambiguous(monkeypatch, tmp_path, coarse):
     import moonlabeler.terrain_identification as terrain
     rng = np.random.default_rng(7)
     reference = cv2.GaussianBlur(rng.integers(0, 256, (800, 800), dtype=np.uint8), (0, 0), .8)
@@ -71,5 +72,51 @@ def test_repeated_terrain_in_different_regions_is_ambiguous(monkeypatch, tmp_pat
     monkeypatch.setattr(terrain, 'download_basic_dem', lambda cache: tmp_path/'test.lbl')
     monkeypatch.setattr(terrain.ElevationMap, 'load', lambda path: SimpleNamespace(close=lambda: None))
     monkeypatch.setattr(terrain, 'render_terrain_atlas', lambda *args: (reference, projection))
+    if coarse:
+        import moonlabeler.terrain_refinement as refinement
+        monkeypatch.setattr(terrain, 'terrain_agreement', lambda *args, **kwargs: (.53, .35))
+        def correct(image, geometry, matrix, dem, **kwargs):
+            return SimpleNamespace(matrix=matrix, geometry=object(), rms_px=1.,
+                                   details={'points': 100, 'coverage': .4,
+                                            'light_before_after': [.53, .72],
+                                            'detail_before_after': [.35, .5]})
+        monkeypatch.setattr(refinement, 'refine_terrain_pose', correct)
     with pytest.raises(IdentificationError, match='多个接近'):
-        identify_from_terrain(photograph, None, tmp_path, atlas_size=800, tile_size=400, refine=False)
+        identify_from_terrain(photograph, None, tmp_path, atlas_size=800, tile_size=400, refine=coarse)
+
+
+@pytest.mark.parametrize('fresh_light,accepted', [(.72, True), (.58, False)])
+def test_distributed_coarse_pose_needs_relief_refinement_and_fresh_validation(monkeypatch, tmp_path, fresh_light, accepted):
+    """A real SIFT retrieval can precede a failed coarse sphere/light check.
+
+    The physical refinement is isolated here; its fresh evidence must pass the
+    original dense thresholds, even when it reports many correspondences.
+    """
+    import moonlabeler.terrain_identification as terrain
+    import moonlabeler.terrain_refinement as refinement
+    rng = np.random.default_rng(18)
+    reference = cv2.GaussianBlur(rng.integers(0, 256, (400, 400), dtype=np.uint8), (0, 0), .8)
+    photograph = reference[80:320, 80:320].copy()
+    projection = np.array([[188., 0., 199.5], [0., 188., 199.5]])
+    monkeypatch.setattr(terrain, 'download_basic_dem', lambda cache: tmp_path/'test.lbl')
+    monkeypatch.setattr(terrain.ElevationMap, 'load', lambda path: SimpleNamespace(close=lambda: None))
+    monkeypatch.setattr(terrain, 'render_terrain_atlas', lambda *args: (reference, projection))
+    monkeypatch.setattr(terrain, 'terrain_agreement', lambda *args, **kwargs: (.53, .35))
+    calls = []
+    corrected_geometry = object()
+    def correct(image, geometry, matrix, dem, **kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(matrix=matrix, geometry=corrected_geometry, rms_px=1.,
+                               details={'points': 100, 'coverage': .4,
+                                        'light_before_after': [.53, fresh_light],
+                                        'detail_before_after': [.35, .5]})
+    monkeypatch.setattr(refinement, 'refine_terrain_pose', correct)
+    if accepted:
+        result = identify_from_terrain(photograph, None, tmp_path, atlas_size=400, tile_size=400)
+        assert result.projection_geometry is corrected_geometry
+        assert result.image_inliers == 100 and result.texture_correlation == fresh_light
+        assert np.linalg.norm(transform_points(result.matrix, [[0., 0.]])[0]-[119.5,119.5]) < 1
+    else:
+        with pytest.raises(IdentificationError):
+            identify_from_terrain(photograph, None, tmp_path, atlas_size=400, tile_size=400)
+    assert len(calls) == 1 and calls[0]['relief_aware']

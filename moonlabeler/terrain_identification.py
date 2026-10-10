@@ -2,10 +2,11 @@
 # Copyright (c) 2026 Fluorine Zhu
 """Automatic full-Moon search using coarse LOLA slope/shadow references.
 
-This is a spherical 2.5-D reference, not a terrain ray-tracer. It is used only
-after the albedo, limb and crater searches fail. No region or names are given
-to the search. Distributed image correspondences, photometric agreement and
-competing poses validate a result; catalogue labels then share its map pose.
+The coarse search uses a spherical 2.5-D reference; strongly supported poses
+may then use relief-aware local refinement before final validation. This is
+used only after the albedo, limb and crater searches fail. No region or names
+are given to the search. Distributed correspondences, photometric agreement
+and competing poses validate a result; catalogue labels share its map pose.
 """
 import math
 
@@ -84,7 +85,29 @@ def terrain_consensus(light, detail, inliers, coverage):
     return light >= .59 and detail >= .30 and inliers >= 32 and coverage >= .15
 
 
-def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=1536, refine=True):
+def _pose_difference(first, second, shape):
+    h, w = shape[:2]
+    probes = np.array([[w/2, h/2], [w*.75, h/2], [w/2, h*.75]])
+    inverse = np.linalg.inv(np.vstack((first, [0., 0., 1.])))[:2]
+    return np.linalg.norm(transform_points(second, transform_points(inverse, probes))-probes, axis=1).mean()
+
+
+def _foreground_inside(matrix, foreground):
+    inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
+    return not len(foreground) or (np.linalg.norm(transform_points(inverse, foreground), axis=1) < 1.015).mean() >= .95
+
+
+def _adopt_refinement(result, refined):
+    result.matrix, result.rms_px = refined.matrix, refined.rms_px
+    result.projection_geometry = refined.geometry
+    result.refinement = refined.details
+    result.image_inliers = refined.details['points']
+    result.coverage = refined.details['coverage']
+    result.texture_correlation = refined.details['light_before_after'][1]
+    result.score = result.image_inliers*(result.texture_correlation+refined.details['detail_before_after'][1])
+
+
+def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=1536, refine=True, catalog=None):
     """Search every atlas tile, both handednesses, at a coarse image scale."""
     dem = ElevationMap.load(download_basic_dem(cache))
     try:
@@ -105,6 +128,7 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
     count = max(1, math.ceil((atlas_size-tile_size)/(tile_size*.82))+1)
     starts = np.unique(np.rint(np.linspace(0, atlas_size-tile_size, count)).astype(int))
     solutions = []
+    pending = []
     for y in starts:
         for x in starts:
             tile = reference[y:y+tile_size, x:x+tile_size]
@@ -126,44 +150,72 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
                 light, detail = terrain_agreement(reference, photograph, reference_to_photo, require_match=False)
             except IdentificationError:
                 continue
-            if not terrain_consensus(light, detail, match.inliers, match.coverage):
-                continue
             matrix = (np.vstack((reference_to_photo, [0., 0., 1.])) @ np.vstack((projection, [0., 0., 1.])))[:2]
             matrix = np.diag([1/sx, 1/sy]) @ matrix
-            inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
-            if len(foreground) and (np.linalg.norm(transform_points(inverse, foreground), axis=1) < 1.015).mean() < .95:
+            if not _foreground_inside(matrix, foreground):
                 continue
             score = match.inliers*(light+detail)
-            solutions.append((score, matrix, match, light))
+            result = IdentificationResult(matrix, [], match.rms_px/min(sx, sy), float(score), 0,
+                                          "LOLA slope + cast-shadow tiles / symmetric SIFT / JPL projection",
+                                          match.inliers, match.coverage, 0, light)
+            if terrain_consensus(light, detail, match.inliers, match.coverage):
+                solutions.append(result)
+            elif refine and match.inliers >= 40 and match.coverage >= .18 and light >= .4 and detail >= .25:
+                # A coarse sphere can retrieve the correct oblique region but
+                # displace its relief/shadows. This only nominates a candidate:
+                # fresh relief rendering and held-out validation must certify it.
+                pending.append(result)
+    if not solutions and pending:
+        from .terrain_refinement import refine_terrain_pose
+        pending.sort(key=lambda result: -result.score)
+        distinct = []
+        for candidate in pending:
+            if all(_pose_difference(other.matrix, candidate.matrix, image.shape) > max(w, h)*.08 for other in distinct):
+                distinct.append(candidate)
+        # Overlapping tiles often retrieve the same pose. Refine it once, and
+        # at most one competing region; preserve a bounded fallback cost.
+        dem = ElevationMap.load(download_basic_dem(cache))
+        try:
+            for candidate in distinct[:2]:
+                refined = refine_terrain_pose(image, geometry, candidate.matrix, dem, relief_aware=True)
+                if refined is None:
+                    continue
+                light = refined.details['light_before_after'][1]
+                detail = refined.details['detail_before_after'][1]
+                if (light < .6 or detail < .25 or
+                        not terrain_consensus(light, detail, refined.details['points'], refined.details['coverage']) or
+                        not _foreground_inside(refined.matrix, foreground)):
+                    continue
+                _adopt_refinement(candidate, refined)
+                candidate.method += ' / relief-aware refinement'
+                solutions.append(candidate)
+        finally:
+            dem.close()
     if not solutions:
         raise IdentificationError("高程阴影参考也未找到通过纹理与分布验证的月面区域。")
-    solutions.sort(key=lambda result: -result[0])
-    score, matrix, match, light = solutions[0]
-    center = np.array([[w/2, h/2], [w*.75, h/2], [w/2, h*.75]])
-    inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
-    source = transform_points(inverse, center)
-    alternatives = 0
-    for other_score, other_matrix, _, _ in solutions[1:]:
-        difference = np.linalg.norm(transform_points(other_matrix, source)-center, axis=1).mean()
+    solutions.sort(key=lambda result: -result.score)
+    result = solutions[0]
+    for other in solutions[1:]:
+        difference = _pose_difference(result.matrix, other.matrix, image.shape)
         if difference > max(w, h)*.08:
-            alternatives += 1
-            if other_score > score*.8:
+            result.alternatives += 1
+            if other.score > result.score*.8:
                 raise IdentificationError("出现多个接近的高程纹理匹配，未采用结果。")
-    result = IdentificationResult(matrix, [], match.rms_px/min(sx, sy), float(score), alternatives,
-                                "LOLA slope + cast-shadow tiles / symmetric SIFT / JPL projection",
-                                match.inliers, match.coverage, 0, light)
-    if refine:
+    if refine and result.refinement is None:
         from .terrain_refinement import refine_terrain_pose
         dem = ElevationMap.load(download_basic_dem(cache))
         try:
-            refined = refine_terrain_pose(image, geometry, matrix, dem)
+            refined = refine_terrain_pose(image, geometry, result.matrix, dem)
         finally:
             dem.close()
         if refined is not None:
-            result.matrix, result.rms_px = refined.matrix, refined.rms_px
-            result.projection_geometry = refined.geometry
-            result.refinement = refined.details
-            result.image_inliers = refined.details['points']
-            result.coverage = refined.details['coverage']
-            result.texture_correlation = refined.details['light_before_after'][1]
+            _adopt_refinement(result, refined)
+    if catalog is not None and result.refinement and result.refinement.get('relief_aware'):
+        from .terrain_rims import trace_catalog_rims
+        dem = ElevationMap.load(download_basic_dem(cache))
+        try:
+            result.crater_rims = trace_catalog_rims(dem, result.projection_geometry or geometry,
+                                                   result.matrix, catalog, image.shape)
+        finally:
+            dem.close()
     return result

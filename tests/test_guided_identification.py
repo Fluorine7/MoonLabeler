@@ -14,6 +14,7 @@ from PySide6.QtCore import QDateTime, QPoint, QRect, Qt
 from PySide6.QtWidgets import QApplication
 
 from moonlabeler.app import MainWindow
+from moonlabeler import __version__
 from moonlabeler.geometry import Geometry
 from moonlabeler.identification import IdentificationError
 from moonlabeler.project import Project
@@ -24,7 +25,7 @@ def test_manual_point_enables_guided_action_but_does_not_enable_a_full_manual_fi
     application = QApplication.instance() or QApplication([])
     window = MainWindow()
     try:
-        assert 'MoonLabeler 0.5.1' in window.windowTitle()
+        assert f'MoonLabeler {__version__}' in window.windowTitle()
         assert '©️Fluorine Zhu（正七价的氟离子）' in window.windowTitle()
         window.set_image(np.full((600, 600, 3), 40, np.uint8))
         feature = next(f for f in window.catalog if f['name'] == 'Hadley C')
