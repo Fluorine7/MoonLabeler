@@ -1,0 +1,45 @@
+接入状态：2026-10-11 Codex 已完成 #1，候选开关使用 crater_overlay_toggle；仅为临时复核显示设置，不改变工程格式。下文为原始交接记录。
+
+MoonLabeler UI → Codex 接入请求
+（由 zcode 的 UI 重构产生，日期 2026-10-11。除此之外未改动边界外任何文件。）
+
+==============================================================================
+#1 crater_outlines 属性被两个复选框先后绑定，"显示全部候选轮廓"成为死控件
+==============================================================================
+背景
+- moonlabeler/ui/window.py 的 build_crater_controls() 先创建"显示全部候选轮廓"
+  复选框并赋值 self.crater_outlines（校准页 · 疑似坑，本意是画布候选轮廓开关），
+  连接 toggled → show_crater_overlays。
+- 随后 build_sidebar() 的"排版选项"分段创建"大环形山描绘坑缘，小坑使用短引线"
+  并再次赋值 self.crater_outlines（标注页，对应 project.crater_outlines 标注
+  样式设置），连接 toggled → style_changed。
+- 属性最终由标注页复选框持有。app.py 三处消费：
+  * show_crater_overlays(): item.outline = self.crater_outlines.isChecked()
+    → 实际读到标注页复选框；
+  * sync_controls(): self.crater_outlines.setChecked(project.crater_outlines)
+    → 同步到标注页复选框（语义正确的目标）；
+  * apply_label_settings(): 读取 self.crater_outlines 写回 project（同上）。
+- 后果："显示全部候选轮廓"复选框点击后只触发一次重算，读到的永远是标注页的值，
+  无法独立控制候选轮廓显示。
+- 历史：git HEAD（拆分前）赋值顺序相反，持有属性的是疑似坑页复选框——当时
+  "大环形山描绘坑缘"是死的，且标注样式 project.crater_outlines 会被疑似坑页的
+  开关意外读写覆盖。两种顺序都不对，需要拆成两个属性。
+
+请求（改动 app.py，约 1 行）
+1. 在 moonlabeler/ui/window.py 的 build_crater_controls() 中，把疑似坑页复选框
+   改名为独立属性，例如：
+       self.crater_overlay_toggle = QCheckBox("显示全部候选轮廓")
+       self.crater_overlay_toggle.toggled.connect(self.show_crater_overlays)
+   （由 zcode 配合修改；或由 Codex 在合并时统一处理。）
+2. app.py 的 show_crater_overlays() 中改为读取该属性：
+       item.outline = self.crater_overlay_toggle.isChecked()
+3. sync_controls() 与 apply_label_settings() 继续读写 self.crater_outlines
+  （标注页复选框），保持不变。
+4. 可选：sync_controls() 里补一行
+   self.crater_overlay_toggle.setChecked(...)，把该开关纳入工程持久化
+   （project.py 增加 crater_settings["overlay"] 或类似字段）；若暂不做持久化，
+   维持默认勾选即可。
+
+影响范围：app.py 1–2 行、window.py 1–2 行；无数据格式变化。
+过渡状态：当前 window.py 维持现状（标注页复选框持有属性），行为自洽、测试全绿；
+该请求落地前"显示全部候选轮廓"暂不可用，已在设计说明中注明。

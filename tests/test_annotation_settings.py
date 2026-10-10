@@ -136,6 +136,23 @@ def test_real_copernicus_photo_includes_main_crater_with_lighting_filter():
     assert 1550 < center[0] < 1720 and 2300 < center[1] < 2530
 
 
+def test_large_shadowed_crater_uses_rim_beyond_small_center_neighborhood():
+    import cv2
+    geometry = Geometry(np.array([1., 0, 0]), np.array([0., 1, 0]), np.array([0., 0, 1]),
+                        np.array([1., 0, 0]), 384400, "2025-09-14T15:00:00+00:00")
+    project = Project(geometry=geometry, matrix=np.array([[2000., 0, 300.], [0., 2000., 300.]]),
+                      min_diameter=0, font_size=9)
+    feature = dict(id='large', name='Large dark floor', lat=0, lon=0, diameter=260., kind='Crater, craters')
+    image = np.zeros((600, 600, 3), np.uint8)
+    # Lit wall at 150 px from the center, beyond the old 8%-of-frame cap.
+    cv2.circle(image, (300, 300), 150, (180, 180, 180), 18)
+    assert [f['id'] for f, xy in project.visible_features([feature], image.shape, image=image)] == ['large']
+    project.crater_outlines = False
+    assert project.visible_features([feature], image.shape, image=image)
+    image[:] = 0
+    assert not project.visible_features([feature], image.shape, image=image)
+
+
 def test_default_label_count_supports_whole_moon():
     assert Project().max_labels >= 200
 

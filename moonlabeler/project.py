@@ -139,7 +139,21 @@ class Project:
                     sx = np.clip(np.rint((xy[0]+radius*dx)/stride).astype(int), 0, gray.shape[1]-1)
                     sy = np.clip(np.rint((xy[1]+radius*dy)/stride).astype(int), 0, gray.shape[0]-1)
                     if np.percentile(gray[sy, sx], 80) < brightness_limit:
-                        continue
+                        # A large crater can have a completely dark floor.
+                        # Sample its foreshortened rim, even outside the small
+                        # center neighborhood; this is independent of drawing
+                        # outlines and never samples clipped off-frame points.
+                        if f["kind"] not in ("Crater, craters", "Satellite Feature"):
+                            continue
+                        rim, rim_visible = self._project_crater_rim(f, (.85, 1., 1.15))
+                        on_photo = rim_visible & (rim[:, 0] >= 0) & (rim[:, 0] < w) & (rim[:, 1] >= 0) & (rim[:, 1] < h)
+                        if on_photo.sum() < 12:
+                            continue
+                        locations = np.rint(rim[on_photo]/stride).astype(int)
+                        rx = np.clip(locations[:, 0], 0, gray.shape[1]-1)
+                        ry = np.clip(locations[:, 1], 0, gray.shape[0]-1)
+                        if np.percentile(gray[ry, rx], 80) < brightness_limit:
+                            continue
             candidates.append((f, xy))
         # A rille's catalogue diameter is its length: sorting every kind by
         # that number can crowd Tycho/Copernicus out of a whole-Moon result.
@@ -149,6 +163,21 @@ class Project:
                                           pair[0]["kind"] in primary,
                                           pair[0]["name"] in COMMON_FEATURES, pair[0]["diameter"]), reverse=True)
         return candidates[:self.max_labels]
+
+    def _project_crater_rim(self, feature, radius_factors=(1.,)):
+        """Catalogue rim coordinates shared by lighting and outline drawing."""
+        center = surface_vectors([feature["lat"]], [feature["lon"]])[0]
+        east = np.array([-np.sin(np.radians(feature["lon"])), np.cos(np.radians(feature["lon"])), 0.])
+        north = np.cross(center, east)
+        angle = feature["diameter"]/(2*MOON_RADIUS_KM)*np.asarray(radius_factors)
+        theta = np.linspace(0, 2*np.pi, 97)
+        tangent = np.cos(theta[:, None])*north + np.sin(theta[:, None])*east
+        rim = (np.cos(angle[:, None, None])*center + np.sin(angle[:, None, None])*tangent).reshape(-1, 3)
+        lat = np.degrees(np.arcsin(np.clip(rim[:, 2], -1, 1)))
+        lon = np.degrees(np.arctan2(rim[:, 1], rim[:, 0]))
+        xy, visible, _ = self.geometry.project(lat, lon)
+        pixels = transform_points(self.matrix, xy)
+        return pixels, visible
 
     def crater_outline(self, feature, shape):
         """A geodesic catalogue rim projected into the registered photograph.
@@ -160,16 +189,7 @@ class Project:
             return []
         if feature["kind"] not in ("Crater, craters", "Satellite Feature"):
             return []
-        center = surface_vectors([feature["lat"]], [feature["lon"]])[0]
-        east = np.array([-np.sin(np.radians(feature["lon"])), np.cos(np.radians(feature["lon"])), 0.])
-        north = np.cross(center, east)
-        angle = feature["diameter"]/(2*MOON_RADIUS_KM)
-        theta = np.linspace(0, 2*np.pi, 97)
-        rim = np.cos(angle)*center + np.sin(angle)*(np.cos(theta[:, None])*north + np.sin(theta[:, None])*east)
-        lat = np.degrees(np.arcsin(np.clip(rim[:, 2], -1, 1)))
-        lon = np.degrees(np.arctan2(rim[:, 1], rim[:, 0]))
-        xy, visible, _ = self.geometry.project(lat, lon)
-        pixels = transform_points(self.matrix, xy)
+        pixels, visible = self._project_crater_rim(feature)
         extent = np.ptp(pixels, axis=0)
         if min(extent) < self.font_size*1.6 or max(extent) < min(shape[:2])*.055:
             return []

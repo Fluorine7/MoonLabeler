@@ -13,7 +13,7 @@ import math
 import cv2
 import numpy as np
 
-from .geometry import MOON_RADIUS_KM
+from .geometry import MOON_RADIUS_KM, Geometry
 from .registration import fit_similarity, transform_points
 
 
@@ -44,6 +44,8 @@ class IdentificationResult:
     coverage: float = 0.
     limb_inliers: int = 0
     texture_correlation: float = 0.
+    projection_geometry: Geometry | None = None
+    refinement: dict | None = None
 
 
 def _triangle_index(points, radii, neighbors=14, centered=False):

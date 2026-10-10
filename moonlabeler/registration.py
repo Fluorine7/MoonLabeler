@@ -104,7 +104,8 @@ class MatchResult:
     mirrored: bool
 
 
-def auto_register(reference, photograph):
+def auto_register(reference, photograph, *, ratio_threshold=.75,
+                  contrast_threshold=.02, min_inlier_fraction=.35):
     """Map reference pixels to photograph pixels. No assumed crop/rotation.
 
     Reflections are tested explicitly. RANSAC uses a similarity rather than an
@@ -112,7 +113,7 @@ def auto_register(reference, photograph):
     """
     ref, rs = _gray(reference)
     photo, ps = _gray(photograph)
-    sift = cv2.SIFT_create(nfeatures=10000, contrastThreshold=0.02)
+    sift = cv2.SIFT_create(nfeatures=10000, contrastThreshold=contrast_threshold)
     pk, pd = sift.detectAndCompute(photo, None)
     if pd is None or len(pk) < 12:
         raise ValueError("照片细节不足，自动配准失败。请使用手动地形参考点。")
@@ -126,9 +127,9 @@ def auto_register(reference, photograph):
         forward = matcher.knnMatch(rd, pd, k=2)
         reverse = matcher.knnMatch(pd, rd, k=2)
         backwards = {pair[0].queryIdx: pair[0].trainIdx for pair in reverse
-                     if len(pair) == 2 and pair[0].distance < 0.75 * pair[1].distance}
+                     if len(pair) == 2 and pair[0].distance < ratio_threshold * pair[1].distance}
         good = [p[0] for p in forward if len(p) == 2 and
-                p[0].distance < 0.75 * p[1].distance and
+                p[0].distance < ratio_threshold * p[1].distance and
                 backwards.get(p[0].trainIdx) == p[0].queryIdx]
         if len(good) < 12:
             continue
@@ -141,7 +142,7 @@ def auto_register(reference, photograph):
             continue
         inliers = mask.ravel().astype(bool)
         count = int(inliers.sum())
-        if count < 12 or count / len(good) < 0.35:
+        if count < 12 or count / len(good) < min_inlier_fraction:
             continue
         hull = cv2.convexHull(dst[inliers])
         coverage = cv2.contourArea(hull) / (photo.shape[0] * photo.shape[1])

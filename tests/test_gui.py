@@ -24,13 +24,35 @@ def test_photo_workflow_has_automatic_name_recognition():
     assert buttons, '照片流程缺少自动地名识别入口，用户仍需逐个输入地名。'
 
 
-@pytest.mark.xfail(strict=True, reason='Extreme north-polar limb photo remains unsupported; preserve the reproduction.')
-def test_one_click_recognizes_real_north_polar_limb_photo(monkeypatch):
+def test_capture_date_hides_time_and_uses_utc_1500():
+    from datetime import timezone
+    from PySide6.QtCore import QDate
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    try:
+        assert window.date.displayFormat() == 'yyyy-MM-dd'
+        assert (window.utc().hour, window.utc().minute, window.utc().second) == (15, 0, 0)
+        window.date.setDate(QDate(2025, 9, 14))
+        assert window.utc().isoformat() == '2025-09-14T15:00:00+00:00'
+        assert window.utc().tzinfo == timezone.utc
+        # Existing calibrated projects retain their recorded time on loading.
+        window.project.utc = '2025-09-13T12:34:56+00:00'
+        window.sync_controls()
+        assert window.utc().isoformat() == '2025-09-13T12:34:56+00:00'
+        # Selecting a new date resets the hidden time to the stated default.
+        window.date.setDate(QDate(2025, 9, 15))
+        assert window.utc().isoformat() == '2025-09-15T15:00:00+00:00'
+    finally:
+        window.dirty = False
+        window.close()
+
+
+def test_one_click_recognizes_real_north_polar_limb_photo(monkeypatch, tmp_path):
     import pytest
     source = Path(__file__).parents[1]
     photo = source/'250914.jpg'
-    if not photo.exists() or not (source/'.cache/ephemeris/de421.bsp').exists():
-        pytest.skip('Local polar photograph and JPL cache required')
+    if not photo.exists() or not (source/'.cache/ephemeris/de421.bsp').exists() or not (source/'.cache/terrain/LDEM_16.IMG').exists():
+        pytest.skip('Local polar photograph, JPL and DEM caches required')
     application = QApplication.instance() or QApplication([])
     window = MainWindow()
     errors = []
@@ -50,10 +72,66 @@ def test_one_click_recognizes_real_north_polar_limb_photo(monkeypatch):
         window.identify_button.click()
         assert not errors, errors
         assert window.project.matrix is not None
-        assert len(window.project.anchors) >= 7
-        # The original image caption independently identifies the north pole.
-        assert all(window.catalog_by_id[a['id']]['lat'] > 55 for a in window.project.anchors)
-        assert window.annotation_items
+        assert window.project.identification['method'].startswith('LOLA')
+        assert window.project.identification['image_inliers'] >= 24
+        refinement = window.project.identification['refinement']
+        assert refinement['validation_after_px'] < refinement['validation_before_px']*.85
+        assert len(refinement['validation_folds']) >= 4
+        assert '图像微调' in window.geometry_status.text()
+        # Broad independent region checks, NOT a precise crater-rim test.
+        # User-observed outline offsets remain a documented limitation.
+        for name, bounds in {'Archytas': (2190, 2370, 1770, 1950),
+                             'Timaeus': (1550, 1750, 1370, 1570),
+                             'Epigenes': (1250, 1480, 1030, 1210)}.items():
+            item = next(item for item in window.annotation_items if item.feature['name'] == name)
+            left, right, top, bottom = bounds
+            assert left < item.anchor.x() < right and top < item.anchor.y() < bottom
+        assert '参考轮廓' in window.identification_status.text()
+        saved = tmp_path/'refined.moonlabel'
+        window.project.save(saved)
+        restored = Project.load(saved)
+        assert restored.identification['refinement'] == refinement
+        assert restored.geometry.to_dict() == window.project.geometry.to_dict()
+    finally:
+        window.dirty = False
+        window.close()
+
+
+def test_one_click_recognizes_real_south_polar_limb_photo(monkeypatch):
+    source = Path(__file__).parents[1]
+    photo = source/'250914-2.jpg'
+    if not photo.exists() or not (source/'.cache/ephemeris/de421.bsp').exists() or not (source/'.cache/terrain/LDEM_16.IMG').exists():
+        pytest.skip('Local polar photograph and JPL cache required')
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    errors = []
+    window.error = errors.append
+    def run_work(message, work, success, failure=None):
+        try:
+            result = work()
+        except ValueError as exc:
+            (failure or window.error)(str(exc))
+        else:
+            success(result)
+    monkeypatch.setattr(window, 'run_background', run_work)
+    window.open_image(str(photo))
+    window.date.setDateTime(QDateTime.fromString('2025-09-14T15:22:06Z', Qt.DateFormat.ISODate))
+    try:
+        window.identify_button.click()
+        assert not errors, errors
+        assert window.project.matrix is not None and window.annotation_items
+        assert window.project.identification['method'].startswith('LOLA')
+        assert window.project.identification['image_inliers'] >= 24
+        # Lower point residuals alone did not pass the fresh dense-render
+        # check for this image; retain the accepted coarse registration.
+        assert not window.project.identification.get('refinement')
+        # Independently inspected large formations, never supplied to search.
+        for name, bounds in {'Moretus': (950, 1170, 1900, 2170),
+                             'Short': (820, 1110, 1330, 1640),
+                             'Newton': (1400, 1720, 1050, 1330)}.items():
+            item = next(item for item in window.annotation_items if item.feature['name'] == name)
+            left, right, top, bottom = bounds
+            assert left < item.anchor.x() < right and top < item.anchor.y() < bottom
     finally:
         window.dirty = False
         window.close()
@@ -135,6 +213,9 @@ def test_one_click_identifies_real_partial_photo_and_preserves_fit_on_failure(tm
     original_anchors = list(window.project.anchors)
     original_labels = dict(window.project.labels)
     monkeypatch.setattr('moonlabeler.app.detect_crater_rims',lambda image: DetectionResult([],(0,0,2363,1833),1.))
+    def reject_terrain(*args, **kwargs):
+        raise ValueError('测试模拟高程匹配失败')
+    monkeypatch.setattr('moonlabeler.app.identify_from_terrain', reject_terrain)
     window.identify_button.click()
     for _ in range(100):
         if not window.busy:
@@ -233,7 +314,7 @@ def test_manual_registration_of_partial_lunar_image_without_nasa(tmp_path, monke
     assert not errors
     assert np.allclose(window.project.matrix,matrix,atol=1e-6)
     assert window.registration_tabs.currentIndex()==0
-    assert window.workspace_tabs.currentIndex()==0
+    assert window.workspace_tabs.currentIndex()==1
     assert '镜像' in window.registration_status.text()
     # Failed NASA operation must not invalidate already valid registration.
     before=window.project.matrix.copy()
@@ -492,6 +573,38 @@ def test_one_click_recognizes_partial_photo_with_satellite_crater_chain(tmp_path
         assert 1580 < main.anchor.x() < 1690 and 840 < main.anchor.y() < 950
         window.render_png(tmp_path/'partial-moon.png')
         assert Image.open(tmp_path/'partial-moon.png').size == (2628,2256)
+    finally:
+        window.dirty = False
+        window.close()
+
+
+def test_candidate_outline_toggle_is_independent_of_exported_crater_style():
+    from PySide6.QtWidgets import QCheckBox
+    from moonlabeler.craters import CraterCandidate, DetectionResult
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    try:
+        window.open_example()
+        window.workspace_tabs.setCurrentIndex(0)
+        window.registration_tabs.setCurrentWidget(window.crater_tab)
+        window.accept_crater_candidates(DetectionResult([
+            CraterCandidate(100., 120., 25., 20., 0., .8, 'edge-drawing'),
+            CraterCandidate(180., 200., 20., 15., 0., .8, 'edge-drawing'),
+        ], (0, 0, 1600, 1450), 1.))
+        review = next(c for c in window.findChildren(QCheckBox) if c.text() == '显示全部候选轮廓')
+        review.setChecked(False)
+        window.show_crater_overlays()
+        assert not window.crater_items[1].outline
+        review.setChecked(True)
+        assert window.crater_items[1].outline
+        assert not window.style_pending
+        window.crater_outlines.setChecked(False)
+        assert window.style_pending and window.project.crater_outlines
+        window.apply_label_settings()
+        assert not window.project.crater_outlines
+        assert review.isChecked() and window.crater_items[1].outline
+        window.sync_controls()
+        assert not window.crater_outlines.isChecked() and review.isChecked()
     finally:
         window.dirty = False
         window.close()

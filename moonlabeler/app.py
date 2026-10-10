@@ -13,7 +13,7 @@ import sys
 import traceback
 
 import numpy as np
-from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QTimeZone, QObject, Signal, QRunnable, QThreadPool, QTimer
+from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QTime, QTimeZone, QObject, Signal, QRunnable, QThreadPool, QTimer
 from PySide6.QtGui import QColor, QFont, QImage, QPixmap, QPainter, QPen, QAction, QKeySequence, QPainterPath, QPainterPathStroker
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
@@ -26,10 +26,13 @@ from PySide6.QtWidgets import (
 )
 
 from . import __version__
+from .ui.theme import STYLE
+from .ui.window import WindowUiMixin
 from .craters import DetectionOptions, detect_craters, detect_crater_rims
 from .identification import identify_from_candidates
 from .atlas import identify_from_atlas
 from .limb import identify_from_limb
+from .terrain_identification import identify_from_terrain
 from .geometry import compute_geometry, MOON_RADIUS_KM
 from .layout import LabelBox, arrange_labels, leader_segment
 from .project import Project, export_svg, DEFAULT_FONT_PERCENT
@@ -226,41 +229,9 @@ class CraterOverlay(QGraphicsItem):
         event.accept()
 
 
-STYLE = """
-QMainWindow, QWidget { background: #1b212b; color: #dce4ef; font-size: 13px; }
-QToolBar { background: #202733; border-bottom: 1px solid #303b4b; padding: 9px 14px; spacing: 6px; }
-QToolButton { padding: 7px 12px; border-radius: 6px; color: #aebdce; }
-QToolButton:hover { background: #303b4b; color: #edf3fb; }
-QToolButton[primary="true"], QPushButton[primary="true"] { background: #c9a76f; color: #171e28; border-color: #c9a76f; font-weight: 600; }
-QToolButton[primary="true"]:hover, QPushButton[primary="true"]:hover { background: #dfbd85; }
-QGroupBox { border: 1px solid #323d4d; border-radius: 9px; margin-top: 17px; padding: 13px 10px 10px; }
-QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 5px; color: #aebdd0; font-weight: 600; }
-QPushButton { background: #2b3544; border: 1px solid #3b485b; padding: 7px 10px; border-radius: 6px; }
-QPushButton:hover { background: #36455a; border-color: #596d87; }
-QPushButton:disabled { color: #697789; background: #252e3b; border-color: #303b4a; }
-QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateTimeEdit { background: #151c26; border: 1px solid #394659; border-radius: 5px; padding: 6px; selection-background-color: #526c8b; }
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus, QDateTimeEdit:focus { border-color: #9bb4d1; }
-QTableWidget, QListWidget { background: #161e28; border: 1px solid #303d4e; border-radius: 6px; alternate-background-color: #202b3a; }
-QListWidget::item { padding: 5px 6px; }
-QListWidget::item:selected { background: #374b65; color: #f3f6fa; }
-QHeaderView::section { background: #253141; color: #a9bbd0; padding: 6px; border: 0; }
-QTabWidget::pane { border: 0; padding-top: 8px; }
-QTabBar::tab { background: #222c3a; color: #91a3b8; padding: 8px 12px; margin-right: 4px; border-radius: 5px; }
-QTabBar::tab:selected { background: #3a4c63; color: #f3f6fa; }
-QTabBar::tab:hover { color: #edf3fb; }
-QScrollArea { border: 0; }
-QScrollBar:vertical { background: #1b212b; width: 7px; margin: 2px 0; }
-QScrollBar::handle:vertical { background: #3b485a; border-radius: 3px; min-height: 28px; }
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
-QStatusBar { background: #202733; color: #93a5ba; border-top: 1px solid #303b4b; padding: 3px; }
-QSplitter::handle { background: #303b4b; width: 1px; }
-QLabel#title { font-size: 21px; font-weight: 600; color: #e7c48f; }
-QLabel#canvasTitle { color: #dce5f1; font-size: 14px; font-weight: 600; }
-"""
 
 
-class MainWindow(QMainWindow):
+class MainWindow(WindowUiMixin, QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"MoonLabeler {__version__} · 月面照片标注")
@@ -277,6 +248,7 @@ class MainWindow(QMainWindow):
         self.crater_candidates = []
         self.crater_result = None
         self.picking_crater_index = None
+        self.picking_id = None
         self.calibration = None
         self.terrain_reference = None
         self.terrain_geometry = None
@@ -295,485 +267,14 @@ class MainWindow(QMainWindow):
         self.canvas.image_dropped.connect(self.open_image)
         self.build_toolbar()
         self.build_sidebar()
+        self.update_manual_guide()
         self.statusBar().showMessage("拖入月面照片，或先打开示例工程。滚轮缩放，空白处拖动平移。")
         self.empty_hint = self.canvas.scene().addText("拖入你的月面照片\n\n配准地形 · 选择名称 · 编辑标注 · 导出作品", QFont("PingFang SC", 24))
         self.empty_hint.setDefaultTextColor(QColor("#718399"))
         self.empty_hint.setPos(70, 100)
 
-    def build_toolbar(self):
-        self.toolbar = self.addToolBar("文件与导出")
-        self.toolbar.setMovable(False)
-        self.actions = []
-        def action(text, callback, shortcut=None):
-            a = QAction(text, self)
-            a.triggered.connect(lambda checked=False: callback())
-            if shortcut:
-                a.setShortcut(QKeySequence(shortcut))
-            self.toolbar.addAction(a)
-            self.actions.append(a)
-            return a
-        primary = action("打开照片", lambda: self.open_image(), "Ctrl+O")
-        self.toolbar.widgetForAction(primary).setProperty("primary", True)
-        action("打开工程", lambda: self.open_project(), "Ctrl+Shift+O")
-        action("保存工程", self.save_project, "Ctrl+S")
-        self.toolbar.addSeparator()
-        action("导出 PNG", self.export_png)
-        action("导出 SVG", self.export_vector)
-        self.toolbar.addSeparator()
-        action("适合窗口", self.fit_canvas, "Ctrl+0")
-        action("打开示例", self.open_example)
-        action("帮助", self.help_dialog)
-        action("致谢", self.about_dialog)
-        delete = QAction("隐藏所选名称", self)
-        delete.setShortcut(QKeySequence("Backspace"))
-        delete.triggered.connect(self.hide_selected)
-        delete.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self.canvas.addAction(delete)
 
-    def build_sidebar(self):
-        self.sidebar = QWidget()
-        self.sidebar.setMinimumWidth(365)
-        self.sidebar.setMaximumWidth(440)
-        outer = QVBoxLayout(self.sidebar)
-        outer.setContentsMargins(16, 18, 14, 12)
-        outer.setSpacing(12)
-        title = QLabel("MoonLabeler")
-        title.setObjectName("title")
-        outer.addWidget(title)
-        subtitle = QLabel("局部月面校准与地形标注")
-        subtitle.setStyleSheet("color: #8d9eb3; margin-bottom: 4px;")
-        outer.addWidget(subtitle)
-        self.workspace_tabs = QTabWidget()
-        outer.addWidget(self.workspace_tabs, 1)
-        pages = []
-        for caption in ("校准", "标注", "参考"):
-            content = QWidget()
-            page_layout = QVBoxLayout(content)
-            page_layout.setContentsMargins(0, 0, 5, 8)
-            page_layout.setSpacing(12)
-            scroll = QScrollArea()
-            scroll.setWidgetResizable(True)
-            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            scroll.setWidget(content)
-            self.workspace_tabs.addTab(scroll, caption)
-            pages.append(page_layout)
-        layout, labels_layout, reference_layout = pages
-        self.scroll = self.workspace_tabs.widget(0)
 
-        group = QGroupBox("拍摄条件")
-        self.geometry_group = group
-        form = QFormLayout(group)
-        self.date = QDateTimeEdit(QDateTime.currentDateTimeUtc())
-        self.date.setTimeZone(QTimeZone(b"UTC"))
-        self.date.setDateTime(QDateTime.currentDateTimeUtc())
-        self.date.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
-        self.date.setCalendarPopup(True)
-        self.date.dateTimeChanged.connect(self.geometry_changed)
-        form.addRow("时间（UTC）", self.date)
-        self.topocentric = QCheckBox("使用拍摄地点")
-        self.topocentric.toggled.connect(self.geometry_changed)
-        form.addRow(self.topocentric)
-        self.latitude, self.longitude = QDoubleSpinBox(), QDoubleSpinBox()
-        self.latitude.setRange(-90, 90)
-        self.longitude.setRange(-180, 180)
-        for control in (self.latitude, self.longitude):
-            control.setDecimals(4)
-            control.valueChanged.connect(self.geometry_changed)
-        form.addRow("纬度（北为正）", self.latitude)
-        form.addRow("经度（东为正）", self.longitude)
-        def show_location(checked, location_form=form):
-            location_form.setRowVisible(self.latitude, checked)
-            location_form.setRowVisible(self.longitude, checked)
-        self.topocentric.toggled.connect(show_location)
-        show_location(False)
-        self.geometry_button = QPushButton("计算月面几何")
-        self.geometry_button.clicked.connect(self.calculate_geometry)
-        self.geometry_status = QLabel("手动配准前请先计算月面几何。")
-        self.geometry_status.setWordWrap(True)
-        layout.addWidget(group)
-
-        group = QGroupBox("自动识别")
-        auto_layout = QVBoxLayout(group)
-        hint = QLabel("打开照片 → 设置拍摄日期 / 大致时间 → 自动识别。\n程序会搜索月面目录、验证坑群并排布标签；无需先输入地名。地点可选，首次需下载 JPL 星历。")
-        hint.setWordWrap(True)
-        auto_layout.addWidget(hint)
-        self.identify_button = QPushButton("自动识别并标注")
-        self.identify_button.setProperty("primary", True)
-        self.identify_button.clicked.connect(self.identify_photo)
-        auto_layout.addWidget(self.identify_button)
-        self.identification_status = QLabel("通过月海纹理、月盘外缘和坑群定位；验证通过后自动标注。")
-        self.identification_status.setWordWrap(True)
-        auto_layout.addWidget(self.identification_status)
-        layout.addWidget(group)
-
-        group = QGroupBox("添加参考点")
-        group_box = QVBoxLayout(group)
-        self.registration_tabs = QTabWidget()
-        manual = QWidget()
-        automatic = QWidget()
-        terrain = QWidget()
-        craters = QWidget()
-        self.registration_tabs.addTab(manual, "地形点")
-        self.registration_tabs.addTab(craters, "疑似坑")
-        self.crater_tab = craters
-        self.reference_tabs = QTabWidget()
-        self.reference_tabs.addTab(automatic, "影像匹配")
-        self.reference_tabs.addTab(terrain, "DEM 模拟")
-        reference_layout.addWidget(self.reference_tabs)
-        reference_layout.addStretch()
-        group_box.addWidget(self.registration_tabs)
-        auto_box = QVBoxLayout(automatic)
-        self.nasa_button = QPushButton("自动配准 · NASA 同时刻影像")
-        self.nasa_button.clicked.connect(self.auto_nasa)
-        auto_box.addWidget(self.nasa_button)
-        self.local_button = QPushButton("自动配准 · 本地参考工程")
-        self.local_button.clicked.connect(self.auto_local)
-        auto_box.addWidget(self.local_button)
-        hint = QLabel("NASA 参考目前支持 2026 年，使用地心视角，需要联网。\n高倍局部照片可能因参考影像细节不足而无法匹配；可改用手动地形点。")
-        hint.setWordWrap(True)
-        hint.setStyleSheet("color: #8e9fb5; font-size: 12px;")
-        auto_box.addWidget(hint)
-        auto_box.addStretch()
-        box = QVBoxLayout(manual)
-        hint = QLabel("无需完整月盘，也无需下载 NASA 影像。\n搜索已知环形山 → 点照片中的中心 → 换下一处。\n建议 3–6 点，尽量分散且不共线。")
-        hint.setWordWrap(True)
-        hint.setStyleSheet("color: #8e9fb5; font-size: 12px;")
-        box.addWidget(hint)
-        box.addWidget(self.geometry_button)
-        box.addWidget(self.geometry_status)
-        self.feature_search = QLineEdit()
-        self.feature_search.setPlaceholderText("搜索已知地形：哥白尼 / Copernicus")
-        self.feature_search.textChanged.connect(self.search_features)
-        box.addWidget(self.feature_search)
-        self.feature_list = QListWidget()
-        self.feature_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.feature_list.setMaximumHeight(120)
-        self.feature_list.itemDoubleClicked.connect(lambda item: self.start_pick())
-        box.addWidget(self.feature_list)
-        self.pick_button = QPushButton("选择地形后，在照片上点中心")
-        self.pick_button.clicked.connect(self.start_pick)
-        box.addWidget(self.pick_button)
-        self.anchor_table = QTableWidget(0, 3)
-        self.anchor_table.setHorizontalHeaderLabels(["使用", "地形", "偏差 px"])
-        self.anchor_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.anchor_table.setColumnWidth(0, 40)
-        self.anchor_table.setColumnWidth(2, 65)
-        self.anchor_table.setMaximumHeight(140)
-        self.anchor_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.anchor_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.anchor_table.itemChanged.connect(self.anchor_enabled_changed)
-        self.anchor_table.cellDoubleClicked.connect(self.repick_anchor)
-        box.addWidget(self.anchor_table)
-        row = QHBoxLayout()
-        remove = QPushButton("移除参考点")
-        remove.clicked.connect(self.remove_anchor)
-        clear = QPushButton("清空")
-        clear.clicked.connect(self.clear_anchors)
-        row.addWidget(remove)
-        row.addWidget(clear)
-        box.addLayout(row)
-        self.mirror = QComboBox()
-        self.mirror.addItems(["自动判断镜像（至少三点）", "不镜像", "镜像"])
-        box.addWidget(self.mirror)
-        self.solve_button = QPushButton("用参考点配准")
-        self.solve_button.setProperty("primary", True)
-        self.solve_button.clicked.connect(self.solve_manual)
-        box.addWidget(self.solve_button)
-        self.registration_status = QLabel("建议至少选择三处、不共线的已知地形。")
-        self.registration_status.setWordWrap(True)
-        box.addWidget(self.registration_status)
-        hint = QLabel("取消勾选可停用参考点；双击该行可重选中心。\n偏差只表示拟合一致性，不等于实际月面定位精度。")
-        hint.setWordWrap(True)
-        hint.setStyleSheet("color: #8e9fb5; font-size: 12px;")
-        box.addWidget(hint)
-
-        self.build_crater_controls(craters)
-        self.registration_tabs.currentChanged.connect(self.review_page_changed)
-        self.workspace_tabs.currentChanged.connect(self.review_page_changed)
-
-        terrain_box = QVBoxLayout(terrain)
-        hint = QLabel("用本地高程数据生成当前时刻的局部参考图。\n先选择照片里已知的区域；数据下载后可离线模拟。")
-        hint.setWordWrap(True)
-        terrain_box.addWidget(hint)
-        self.dem_status = QLabel(Path(self.dem_path).name if self.dem_path else "尚未选择高程数据")
-        self.dem_status.setWordWrap(True)
-        terrain_box.addWidget(self.dem_status)
-        self.dem_import = QPushButton("导入本地 LOLA DEM（LBL / IMG）")
-        self.dem_import.clicked.connect(self.import_dem)
-        terrain_box.addWidget(self.dem_import)
-        self.dem_download = QPushButton("下载基础 LOLA DEM · 约 33 MB")
-        self.dem_download.clicked.connect(self.download_dem)
-        terrain_box.addWidget(self.dem_download)
-        self.terrain_search = QLineEdit()
-        self.terrain_search.setPlaceholderText("搜索模拟区域：Aristarchus / 阿里斯塔克斯")
-        self.terrain_search.textChanged.connect(self.search_terrain_features)
-        terrain_box.addWidget(self.terrain_search)
-        self.terrain_center = QComboBox()
-        self.terrain_center.setMinimumContentsLength(12)
-        self.terrain_center.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        terrain_box.addWidget(self.terrain_center)
-        terrain_form = QFormLayout()
-        self.terrain_width = QDoubleSpinBox()
-        self.terrain_width.setRange(10, 2000)
-        self.terrain_width.setValue(300)
-        self.terrain_width.setSuffix(" km")
-        terrain_form.addRow("视野宽度", self.terrain_width)
-        self.terrain_size = QComboBox()
-        self.terrain_size.addItems(["512", "768", "1024", "1536"])
-        self.terrain_size.setCurrentText("768")
-        terrain_form.addRow("图像边长", self.terrain_size)
-        self.terrain_model = QComboBox()
-        self.terrain_model.addItems(["Lommel-Seeliger", "Lambert"])
-        terrain_form.addRow("光照模型", self.terrain_model)
-        self.terrain_gamma = QDoubleSpinBox()
-        self.terrain_gamma.setRange(.3, 4)
-        self.terrain_gamma.setSingleStep(.1)
-        self.terrain_gamma.setValue(1.6)
-        terrain_form.addRow("提亮 Gamma", self.terrain_gamma)
-        terrain_box.addLayout(terrain_form)
-        self.terrain_shadows = QCheckBox("计算地形投影（耗时稍长）")
-        self.terrain_shadows.setChecked(True)
-        terrain_box.addWidget(self.terrain_shadows)
-        self.terrain_button = QPushButton("生成并预览局部模拟图")
-        self.terrain_button.clicked.connect(self.generate_terrain)
-        terrain_box.addWidget(self.terrain_button)
-        hint = QLabel("基础 DEM 约 1.9 km/采样点。高倍细节需更高分辨率数据；增加图像尺寸不会增加地形细节。\n当前使用球面投影和地形坡度光照，月缘区域不适用。")
-        hint.setWordWrap(True)
-        hint.setStyleSheet("color: #8e9fb5; font-size: 12px;")
-        terrain_box.addWidget(hint)
-        terrain_box.addStretch()
-        self.terrain_search.setText("Aristarchus")
-        for control in (self.terrain_width, self.terrain_gamma):
-            control.valueChanged.connect(self.terrain_settings_changed)
-        for control in (self.terrain_center, self.terrain_size, self.terrain_model):
-            control.currentIndexChanged.connect(self.terrain_settings_changed)
-        self.terrain_shadows.toggled.connect(self.terrain_settings_changed)
-        layout.addWidget(group)
-        layout.addStretch()
-
-        group = QGroupBox("标签与排版")
-        form = QFormLayout(group)
-        # macOS otherwise keeps short fields at their tiny size hints, which
-        # also leaves too little room for the popup's checkmark and text.
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        self.kind = QComboBox()
-        self.kind.addItems(["全部"] + sorted(set(f["kind"] for f in self.catalog)))
-        self.kind.currentTextChanged.connect(self.style_changed)
-        form.addRow("地形类别", self.kind)
-        self.diameter = QDoubleSpinBox()
-        self.diameter.setRange(0, 3000)
-        self.diameter.setSuffix(" km")
-        self.diameter.setValue(40)
-        self.diameter.valueChanged.connect(self.style_changed)
-        form.addRow("最小直径", self.diameter)
-        self.maximum = QSpinBox()
-        self.maximum.setRange(1, 1000)
-        self.maximum.setValue(self.project.max_labels)
-        self.maximum.valueChanged.connect(self.style_changed)
-        form.addRow("最多显示", self.maximum)
-        self.language = QComboBox()
-        self.language.addItems(["双语", "英文", "中文"])
-        self.language.currentTextChanged.connect(self.style_changed)
-        form.addRow("名称语言", self.language)
-        self.font_size = QDoubleSpinBox()
-        self.font_size.setRange(.05, 8.)
-        self.font_size.setDecimals(2)
-        self.font_size.setSingleStep(.1)
-        self.font_size.setSuffix(" %")
-        self.font_size.setValue(self.project.font_percent)
-        self.font_size.setToolTip("按照片短边计算，缩放与导出保持相同比例。调整后点击重新生成标注。")
-        self.font_size.valueChanged.connect(self.style_changed)
-        form.addRow("字号（短边比例）", self.font_size)
-        self.font_pixels_hint = QLabel("打开照片后显示对应的原图字号")
-        form.addRow(self.font_pixels_hint)
-        self.color_button = QPushButton("选择文字与引线颜色")
-        self.color_button.clicked.connect(self.choose_color)
-        form.addRow(self.color_button)
-        self.lit = QCheckBox("只标注照片中可见的受光地形")
-        self.lit.setToolTip("检查照片上的坑体与坑缘明暗，保留亮坑缘、暗坑底；避免日期计算误删可见地形。")
-        self.lit.setChecked(True)
-        self.lit.toggled.connect(self.style_changed)
-        form.addRow(self.lit)
-        self.optimize_layout = QCheckBox("自动避让标签、地形中心与引线")
-        self.optimize_layout.setChecked(True)
-        self.optimize_layout.toggled.connect(self.style_changed)
-        form.addRow(self.optimize_layout)
-        self.crater_outlines = QCheckBox("大环形山描绘坑缘，小坑使用短引线")
-        self.crater_outlines.setChecked(True)
-        self.crater_outlines.toggled.connect(self.style_changed)
-        self.crater_outlines.setToolTip("轮廓由目录直径与月面投影计算，是坑缘位置参考；并非逐像素检测出的真实坑缘。")
-        form.addRow(self.crater_outlines)
-        self.generate_labels_button = QPushButton("重新生成标注")
-        self.generate_labels_button.setProperty("primary", True)
-        self.generate_labels_button.clicked.connect(self.apply_label_settings)
-        form.addRow(self.generate_labels_button)
-        self.settings_status = QLabel("调整设置后，点击重新生成标注。")
-        self.settings_status.setWordWrap(True)
-        form.addRow(self.settings_status)
-        self.layout_status = QLabel("")
-        self.layout_status.setWordWrap(True)
-        form.addRow(self.layout_status)
-        reflow = QPushButton("重新自动排布标签")
-        reflow.clicked.connect(self.reflow_labels)
-        form.addRow(reflow)
-        self.names = QListWidget()
-        self.names.itemChanged.connect(self.label_visibility_changed)
-        self.names.itemDoubleClicked.connect(lambda item: self.edit_label(self.catalog_by_id[item.data(Qt.ItemDataRole.UserRole)]))
-        self.names.setMinimumHeight(170)
-        form.addRow(self.names)
-        restore = QPushButton("恢复名称与默认位置")
-        restore.clicked.connect(self.reset_labels)
-        form.addRow(restore)
-        note = QLabel("拖动名称调整位置；双击修改文字。\n中文译名来自天文学名词词表；未收录者保留官方原名。")
-        note.setWordWrap(True)
-        form.addRow(note)
-        labels_layout.addWidget(group)
-        self.catalog_button = QPushButton(f"更新 USGS 地名（现有 {len(self.catalog):,} 项）")
-        self.catalog_button.clicked.connect(self.update_catalog)
-        labels_layout.addWidget(self.catalog_button)
-        labels_layout.addStretch()
-        # Keep the confirmation action visible while the detector settings and
-        # candidate list scroll. Qt moves these widgets out of their old layout.
-        self.crater_action_panel = QGroupBox("确认地形")
-        action_box = QVBoxLayout(self.crater_action_panel)
-        action_box.setSpacing(7)
-        self.crater_controls_layout.removeItem(self.crater_review_actions)
-        self.crater_review_actions.setParent(None)
-        action_box.addLayout(self.crater_review_actions)
-        action_box.addWidget(self.crater_search)
-        action_box.addWidget(self.crater_feature)
-        action_box.addWidget(self.crater_anchor_button)
-        self.crater_anchor_button.setProperty("primary", True)
-        outer.addWidget(self.crater_action_panel)
-        self.crater_action_panel.hide()
-        splitter = QSplitter()
-        splitter.addWidget(self.sidebar)
-        canvas_panel = QWidget()
-        canvas_box = QVBoxLayout(canvas_panel)
-        canvas_box.setContentsMargins(0, 0, 0, 0)
-        canvas_box.setSpacing(0)
-        header = QWidget()
-        header.setStyleSheet("background: #202733; border-bottom: 1px solid #303b4b;")
-        header_box = QHBoxLayout(header)
-        header_box.setContentsMargins(18, 12, 18, 12)
-        self.canvas_title = QLabel("月面照片")
-        self.canvas_title.setObjectName("canvasTitle")
-        self.canvas_details = QLabel("滚轮缩放 · 拖动空白处平移")
-        self.canvas_details.setStyleSheet("color: #8195af; border: 0;")
-        self.canvas_title.setStyleSheet("border: 0;")
-        header_box.addWidget(self.canvas_title)
-        header_box.addStretch()
-        header_box.addWidget(self.canvas_details)
-        canvas_box.addWidget(header)
-        canvas_box.addWidget(self.canvas, 1)
-        splitter.addWidget(canvas_panel)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([390, 1050])
-        self.setCentralWidget(splitter)
-        self.search_features("")
-
-    def build_crater_controls(self, page):
-        box = QVBoxLayout(page)
-        self.crater_controls_layout = box
-        box.setContentsMargins(0, 4, 0, 0)
-        hint = QLabel("先检测中心，再确认地名。\n无需时间、地点或联网即可检测。")
-        hint.setWordWrap(True)
-        hint.setStyleSheet("color: #9aadc3; margin-bottom: 4px;")
-        box.addWidget(hint)
-        self.crater_settings_toggle = QToolButton()
-        self.crater_settings_toggle.setCheckable(True)
-        self.crater_settings_toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.crater_settings_toggle.setArrowType(Qt.ArrowType.RightArrow)
-        self.crater_settings_toggle.setText("检测设置 · 半径 8–180 px")
-        box.addWidget(self.crater_settings_toggle)
-        self.crater_settings_block = QWidget()
-        config_box = QVBoxLayout(self.crater_settings_block)
-        config_box.setContentsMargins(0, 0, 0, 0)
-        def toggle_settings(expanded):
-            self.crater_settings_block.setVisible(expanded)
-            self.crater_settings_toggle.setArrowType(Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow)
-        self.crater_settings_toggle.toggled.connect(toggle_settings)
-        self.crater_settings_block.hide()
-        box.addWidget(self.crater_settings_block)
-        form = QGridLayout()
-        form.setHorizontalSpacing(10)
-        form.setVerticalSpacing(6)
-        form.setColumnStretch(0, 1)
-        form.setColumnStretch(1, 1)
-        self.crater_min, self.crater_max = QSpinBox(), QSpinBox()
-        for control in (self.crater_min, self.crater_max):
-            control.setRange(3, 4000)
-            control.setSuffix(" px")
-        self.crater_min.setValue(8)
-        self.crater_max.setValue(180)
-        form.addWidget(QLabel("最小半径"), 0, 0)
-        form.addWidget(QLabel("最大半径"), 0, 1)
-        form.addWidget(self.crater_min, 1, 0)
-        form.addWidget(self.crater_max, 1, 1)
-        self.crater_sensitivity = QSpinBox()
-        self.crater_sensitivity.setRange(0, 100)
-        self.crater_sensitivity.setValue(50)
-        self.crater_sensitivity.setToolTip("调高会保留更多候选，也会增加误检。")
-        form.addWidget(QLabel("灵敏度"), 2, 0)
-        form.addWidget(self.crater_sensitivity, 3, 0)
-        self.crater_limit = QSpinBox()
-        self.crater_limit.setRange(1, 500)
-        self.crater_limit.setValue(80)
-        form.addWidget(QLabel("候选上限"), 2, 1)
-        form.addWidget(self.crater_limit, 3, 1)
-        config_box.addLayout(form)
-        self.crater_viewport = QCheckBox("只检测当前视野")
-        self.crater_viewport.setToolTip("先放大到感兴趣的区域，减少大片阴影、边框和水印的干扰。")
-        config_box.addWidget(self.crater_viewport)
-        self.crater_button = QPushButton("检测疑似坑中心")
-        self.crater_button.setProperty("primary", True)
-        self.crater_button.clicked.connect(self.detect_photo_craters)
-        box.addWidget(self.crater_button)
-        self.crater_status = QLabel("半径按原图像素计算。候选结果需人工核对。")
-        self.crater_status.setWordWrap(True)
-        self.crater_status.setStyleSheet("color: #8fa5bf; font-size: 12px;")
-        box.addWidget(self.crater_status)
-        self.crater_list = QListWidget()
-        self.crater_list.setMinimumHeight(100)
-        self.crater_list.setMaximumHeight(145)
-        self.crater_list.currentRowChanged.connect(self.select_crater_candidate)
-        box.addWidget(self.crater_list)
-        self.crater_outlines = QCheckBox("显示全部候选轮廓")
-        self.crater_outlines.toggled.connect(self.show_crater_overlays)
-        box.addWidget(self.crater_outlines)
-        row = QHBoxLayout()
-        self.crater_review_actions = row
-        self.crater_remove = QPushButton("移除候选")
-        self.crater_remove.clicked.connect(self.remove_crater_candidate)
-        self.crater_repick = QPushButton("重选中心")
-        self.crater_repick.clicked.connect(self.repick_crater_candidate)
-        self.crater_export = QPushButton("导出 CSV")
-        self.crater_export.clicked.connect(self.export_crater_candidates)
-        row.addWidget(self.crater_repick)
-        row.addWidget(self.crater_remove)
-        row.addWidget(self.crater_export)
-        box.addLayout(row)
-        self.crater_search = QLineEdit()
-        self.crater_search.setPlaceholderText("确认地名：Aristarchus / 阿里斯塔克斯")
-        self.crater_search.textChanged.connect(self.search_crater_features)
-        box.addWidget(self.crater_search)
-        self.crater_feature = QComboBox()
-        self.crater_feature.setMinimumContentsLength(12)
-        self.crater_feature.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.crater_feature.currentIndexChanged.connect(self.update_crater_buttons)
-        box.addWidget(self.crater_feature)
-        self.crater_anchor_button = QPushButton("确认地名，加入参考点")
-        self.crater_anchor_button.clicked.connect(self.use_crater_candidate)
-        box.addWidget(self.crater_anchor_button)
-        hint = QLabel("选中候选查看坑缘；中心不准可直接重选。阴影、山脊可能误检，地名由你确认。")
-        hint.setWordWrap(True)
-        hint.setStyleSheet("color: #8296af; font-size: 12px;")
-        box.addWidget(hint)
-        box.addStretch()
-        for control in (self.crater_min, self.crater_max, self.crater_sensitivity, self.crater_limit):
-            control.valueChanged.connect(self.crater_settings_changed)
-        self.crater_viewport.toggled.connect(self.crater_settings_changed)
-        self.update_crater_buttons()
 
     def crater_settings_changed(self, *args):
         self.crater_settings_toggle.setText(f"检测设置 · 半径 {self.crater_min.value()}–{self.crater_max.value()} px")
@@ -806,7 +307,7 @@ class MainWindow(QMainWindow):
 
     def identify_photo(self):
         if self.image is None:
-            self.error("请先打开月面照片，并设置拍摄日期 / 大致 UTC 时间。")
+            self.error("请先打开月面照片，并选择拍摄日期。默认按当日 UTC 15:00 计算。")
             return
         if self.busy:
             return
@@ -816,6 +317,10 @@ class MainWindow(QMainWindow):
         lon = self.longitude.value() if self.topocentric.isChecked() else None
         image, catalog = self.image, list(self.catalog)
         cached_geometry = self.project.geometry
+        # Never feed a previous image-derived correction back into ephemeris
+        # matching: repeated recognition must not accumulate view offsets.
+        if self.project.identification.get("refinement"):
+            cached_geometry = None
         def work():
             geometry = cached_geometry or compute_geometry(utc, CACHE / "ephemeris", lat, lon)
             detection = detect_crater_rims(image)
@@ -828,17 +333,21 @@ class MainWindow(QMainWindow):
                     try:
                         recognition = identify_from_candidates(detection.candidates, catalog, geometry, image.shape, image=image)
                     except ValueError as exc:
-                        raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；纹理、月盘轮廓和坑群验证均未通过。\n{limb_error}\n{exc}") from exc
+                        try:
+                            recognition = identify_from_terrain(image, geometry, CACHE)
+                        except (ValueError, OSError) as terrain_error:
+                            raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；纹理、月盘轮廓和坑群验证均未通过。\n{limb_error}\n{exc}\n高程参考：{terrain_error}") from terrain_error
             return detection, recognition, geometry, lat, lon
         def failure(message):
             self.identification_status.setText(message+"\n可用地形点校准；已有配准保留。")
             self.error(message)
         self.identification_status.setText("正在检查月海纹理、月盘外缘与坑群位置…")
-        self.run_background("正在自动识别地名；首次需下载约 20 MB 星历，随后可离线识别…",
+        self.run_background("正在自动识别；首次需下载约 20 MB 星历，地形后备匹配另需约 33 MB 高程数据…",
                             work, self.accept_identification, failure)
 
     def accept_identification(self, result):
         detection, recognition, geometry, lat, lon = result
+        geometry = recognition.projection_geometry or geometry
         known = [a for a in self.project.anchors if a.get("enabled", True) and a["id"] in self.catalog_by_id]
         if len(known) >= 3:
             features = [self.catalog_by_id[a["id"]] for a in known]
@@ -874,6 +383,8 @@ class MainWindow(QMainWindow):
                                        "limb_inliers": recognition.limb_inliers,
                                        "texture_correlation": recognition.texture_correlation,
                                        "rms_px": recognition.rms_px}
+        if recognition.refinement:
+            self.project.identification["refinement"] = recognition.refinement
         self.accept_crater_candidates(detection)
         self.sync_controls()
         self.show_geometry()
@@ -882,6 +393,10 @@ class MainWindow(QMainWindow):
         names = [m.feature["name"] for m in recognition.matches if m.feature["kind"] == "Crater, craters"]
         if recognition.limb_inliers:
             message = f"月盘外缘与月海纹理配准成功 · 纹理相关 {recognition.texture_correlation:.2f} · 外缘拟合偏差 {recognition.rms_px:.2f} px"
+        elif recognition.method.startswith("LOLA"):
+            message = f"已定位月面区域 · {recognition.image_inliers} 个图像对应点 · 覆盖 {recognition.coverage:.1%} · 拟合偏差 {recognition.rms_px:.2f} px。圈为目录参考轮廓，尚未贴合实际坑缘"
+            if recognition.refinement:
+                message += "。观测方向微调已通过分区验证"
         elif recognition.image_inliers:
             message = f"纹理配准成功 · {recognition.image_inliers} 个图像对应点 · 拟合偏差 {recognition.rms_px:.2f} px"
         else:
@@ -950,7 +465,7 @@ class MainWindow(QMainWindow):
             self.crater_action_panel.setVisible(visible)
         for index, item in enumerate(self.crater_items):
             item.active = index == self.crater_list.currentRow()
-            item.outline = self.crater_outlines.isChecked()
+            item.outline = self.crater_overlay_toggle.isChecked()
             item.setVisible(visible)
             item.update()
         for item in self.reference_items:
@@ -993,7 +508,8 @@ class MainWindow(QMainWindow):
         candidate = self.crater_candidates[index]
         self.add_anchor(candidate.x, candidate.y)
         self.update_crater_buttons()
-        self.statusBar().showMessage(f"已加入 {feature['name']} 参考点。继续选择其他候选，至少三处后在“地形点”配准。")
+        self.crater_status.setText(f"已确认 {feature.get('name_zh') or feature['name']}。{self.anchor_count.text()}。\n继续确认其他坑，或点击“查看已确认的参考点并校准”。")
+        self.statusBar().showMessage(self.crater_status.text())
 
     def remove_crater_candidate(self):
         self.cancel_pick()
@@ -1068,6 +584,15 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("操作未完成。")
         QMessageBox.warning(self, "MoonLabeler", text)
 
+    def capture_date_changed(self, *args):
+        if self.rebuilding:
+            return
+        # Calendar edits use the documented default. Project loading remains
+        # lossless, including older projects calibrated at a precise time.
+        blocked = self.date.blockSignals(True)
+        self.date.setTime(QTime(15, 0))
+        self.date.blockSignals(blocked)
+
     def utc(self):
         # Treat displayed components as UTC, independent of host timezone.
         dt = self.date.dateTime()
@@ -1077,6 +602,7 @@ class MainWindow(QMainWindow):
     def geometry_changed(self, *args):
         if self.rebuilding:
             return
+        self.cancel_pick()
         self.project.utc = self.utc().isoformat()
         self.project.latitude = self.latitude.value() if self.topocentric.isChecked() else None
         self.project.longitude = self.longitude.value() if self.topocentric.isChecked() else None
@@ -1087,13 +613,13 @@ class MainWindow(QMainWindow):
         self.clear_terrain_preview()
         self.refresh_anchor_table()
         self.refresh_annotations()
-        self.geometry_status.setText("拍摄条件已改变，请重新计算几何并配准。")
+        self.geometry_status.setText("拍摄条件已改变，完成校准时会自动重算。")
         self.identification_status.setText("拍摄条件已改变，请重新自动识别或校准。")
         self.registration_status.setText("配准已失效。参考点仍保留，可重新求解。")
         if self.image is not None:
             self.dirty = True
 
-    def calculate_geometry(self):
+    def calculate_geometry(self, checked=False, *, after=None):
         utc = self.utc()
         lat = self.latitude.value() if self.topocentric.isChecked() else None
         lon = self.longitude.value() if self.topocentric.isChecked() else None
@@ -1109,13 +635,16 @@ class MainWindow(QMainWindow):
             self.refresh_annotations()
             self.dirty = True
             self.statusBar().showMessage("月面几何已就绪，选择已知地形并添加参考点。")
+            if after is not None:
+                after()
         self.run_background("计算月面几何；首次需要下载约 20 MB 的 JPL 星历数据…",
                             lambda: compute_geometry(utc, CACHE / "ephemeris", lat, lon), success)
 
     def show_geometry(self):
         if self.project.geometry:
             lat, lon = self.project.geometry.libration
-            self.geometry_status.setText(f"天平动：纬度 {lat:+.3f}°，经度 {lon:+.3f}°")
+            label = "投影视角（图像微调）" if self.project.identification.get("refinement") else "天平动"
+            self.geometry_status.setText(f"{label}：纬度 {lat:+.3f}°，经度 {lon:+.3f}°")
 
     def confirm_discard(self):
         if not self.dirty:
@@ -1141,9 +670,9 @@ class MainWindow(QMainWindow):
             self.set_image(image)
             self.sync_controls()
             self.dirty = False
-            self.geometry_status.setText("手动配准前请先计算月面几何。")
+            self.geometry_status.setText("完成校准时会按拍摄日期自动计算。")
             self.registration_status.setText("尚未配准。")
-            self.identification_status.setText("照片已打开；设置拍摄日期 / 大致 UTC 时间后，点击自动识别并标注。")
+            self.identification_status.setText("照片已打开；选择拍摄日期后，点击自动识别并标注。默认按当日 UTC 15:00 计算。")
             self.statusBar().showMessage(f"{Path(path).name} · {image.shape[1]} × {image.shape[0]} 像素")
         except Exception as exc:
             self.error(str(exc))
@@ -1281,33 +810,75 @@ class MainWindow(QMainWindow):
             item = QListWidgetItem(f"{f.get('name_zh') or f['name']}  ·  {f['name']}  ({f['diameter']:.0f} km)")
             item.setData(Qt.ItemDataRole.UserRole, f["id"])
             self.feature_list.addItem(item)
+        self.update_manual_guide()
+
+    def manual_selection_changed(self, *args):
+        # A changed search result must never leave an old name armed on canvas.
+        self.cancel_pick()
+
+    def update_manual_guide(self, *args):
+        count = sum(a.get("enabled", True) for a in self.project.anchors)
+        required = 3 if self.mirror.currentIndex() == 0 else 2
+        self.anchor_count.setText(f"3  已添加 {count} 个有效参考点 · 至少需要 {required} 个")
+        self.solve_button.setEnabled(self.image is not None and count >= required and not self.canvas.picking)
+        item = self.feature_list.currentItem()
+        picking = self.canvas.picking and self.picking_id is not None
+        self.cancel_pick_button.setVisible(picking)
+        self.pick_button.setEnabled(self.image is not None and item is not None and not self.canvas.picking)
+        if self.image is None:
+            message = "先打开要标注的照片。"
+        elif picking:
+            feature = self.catalog_by_id[self.picking_id]
+            message = f"正在取点：{feature.get('name_zh') or feature['name']}。请在照片中点击它的坑缘中心；Esc 取消。"
+        elif count >= required:
+            message = "参考点数量已足够，可点击下方“完成校准并生成标注”；也可继续加点。"
+        else:
+            message = f"还需 {required-count} 个参考点。搜索地名、选中结果，再点击下方按钮到照片上取点。"
+        self.manual_guide.setText(message)
+        if picking:
+            self.pick_button.setText("等待在照片中点击中心…")
+        elif item is not None:
+            feature = self.catalog_by_id[item.data(Qt.ItemDataRole.UserRole)]
+            name = feature.get('name_zh') or feature['name']
+            self.pick_button.setText(f"在照片中标记：{name}")
+        else:
+            self.pick_button.setText("先从搜索结果中选择地名")
+
+    def show_manual_points(self):
+        self.workspace_tabs.setCurrentIndex(0)
+        self.registration_tabs.setCurrentIndex(0)
+        self.scroll.ensureWidgetVisible(self.solve_button)
 
     def start_pick(self):
-        if self.image is None or self.project.geometry is None:
-            self.error("请先打开照片并计算月面几何。")
+        if self.image is None:
+            self.error("请先打开照片。")
             return
         item = self.feature_list.currentItem()
         if item is None:
             self.error("请先搜索并选择一个已知地形。")
             return
+        self.cancel_pick()
         self.picking_id = item.data(Qt.ItemDataRole.UserRole)
-        feature = self.catalog_by_id[self.picking_id]
-        _, visible, _ = self.project.geometry.project([feature["lat"]], [feature["lon"]])
-        if not visible[0]:
-            self.error("此地形位于月球背面。请核对拍摄时间或地形名称。")
-            return
         self.canvas.picking = True
         self.canvas.setCursor(Qt.CursorShape.CrossCursor)
-        self.pick_button.setText(f"请点击 {feature.get('name_zh') or feature['name']} 的中心")
+        self.canvas.setFocus()
+        self.update_manual_guide()
+        self.statusBar().showMessage(self.manual_guide.text())
+        QTimer.singleShot(0, lambda: self.scroll.ensureWidgetVisible(self.cancel_pick_button)
+                          if self.canvas.picking else None)
 
     def cancel_pick(self):
+        was_picking = self.canvas.picking
         self.picking_crater_index = None
+        self.picking_id = None
         self.canvas.picking = False
         self.canvas.setCursor(Qt.CursorShape.ArrowCursor)
-        self.pick_button.setText("选择地形后，在照片上点中心")
+        self.update_manual_guide()
+        if was_picking:
+            self.statusBar().showMessage("已退出取点。" + self.manual_guide.text())
 
     def add_anchor(self, x, y):
-        if self.image is None or not (0 <= x < self.image.shape[1] and 0 <= y < self.image.shape[0]):
+        if self.picking_id not in self.catalog_by_id or self.image is None or not (0 <= x < self.image.shape[1] and 0 <= y < self.image.shape[0]):
             return
         # Re-clicking a named anchor updates it instead of adding duplicates.
         self.project.anchors = [a for a in self.project.anchors if a["id"] != self.picking_id]
@@ -1316,10 +887,15 @@ class MainWindow(QMainWindow):
         self.project.identification.clear()
         self.project.labels.clear()
         self.cancel_pick()
+        self.feature_list.setCurrentRow(-1)
         self.refresh_anchor_table()
         self.refresh_annotations()
-        self.registration_status.setText("参考点已更新，请重新配准。")
+        self.registration_status.setText(self.manual_guide.text())
+        self.statusBar().showMessage(self.manual_guide.text())
         self.dirty = True
+        if self.workspace_tabs.currentIndex() == 0 and self.registration_tabs.currentIndex() == 0:
+            target = self.solve_button if self.solve_button.isEnabled() else self.feature_search
+            QTimer.singleShot(0, lambda: self.scroll.ensureWidgetVisible(target))
 
     def refresh_anchor_table(self):
         enabled = [a for a in self.project.anchors if a.get("enabled", True)]
@@ -1340,12 +916,12 @@ class MainWindow(QMainWindow):
         self.anchor_table.setRowCount(len(self.project.anchors))
         for index, anchor in enumerate(self.project.anchors):
             feature = self.catalog_by_id.get(anchor["id"])
-            name = feature["name"] if feature else anchor["id"]
+            name = (feature.get("name_zh") or feature["name"]) if feature else anchor["id"]
             checked = QTableWidgetItem()
             checked.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable)
             checked.setCheckState(Qt.CheckState.Checked if anchor.get("enabled", True) else Qt.CheckState.Unchecked)
             error, check, suspect = diagnostics.get(anchor["id"], (None, float("nan"), False))
-            values = [checked, QTableWidgetItem(name), QTableWidgetItem(f"{error:.2f}" if error is not None else "—")]
+            values = [checked, QTableWidgetItem(f"{index+1}. {name}"), QTableWidgetItem(f"{error:.2f}" if error is not None else "—")]
             tooltip = f"中心：X {anchor['pixel'][0]:.1f}，Y {anchor['pixel'][1]:.1f}"
             if np.isfinite(check):
                 tooltip += f"\n留出该点后，其他点预测它的偏差：{check:.2f} px"
@@ -1358,6 +934,7 @@ class MainWindow(QMainWindow):
                 self.anchor_table.setItem(index, col, item)
         self.anchor_table.blockSignals(False)
         self.refresh_reference_markers()
+        self.update_manual_guide()
 
     def anchor_enabled_changed(self, item):
         if item.column() != 0 or self.rebuilding:
@@ -1366,7 +943,7 @@ class MainWindow(QMainWindow):
         self.invalidate_registration()
 
     def repick_anchor(self, row, column=0):
-        if self.image is None or self.project.geometry is None or row >= len(self.project.anchors):
+        if self.image is None or row >= len(self.project.anchors):
             return
         anchor = self.project.anchors[row]
         feature = self.catalog_by_id.get(anchor["id"])
@@ -1391,13 +968,17 @@ class MainWindow(QMainWindow):
             x, y = anchor["pixel"]
             color = "#75d6d6" if anchor.get("enabled", True) else "#718399"
             pen = QPen(QColor(color), 1.5)
-            for coords in ((x-10,y,x+10,y), (x,y-10,x,y+10)):
+            for coords in ((-8,0,8,0), (0,-8,0,8)):
                 item = scene.addLine(*coords, pen)
+                item.setPos(x, y)
+                item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations)
                 item.setZValue(30)
                 self.reference_items.append(item)
             text = scene.addText(str(number))
             text.setDefaultTextColor(QColor(color))
-            text.setPos(x+9,y+5)
+            text.setPos(x, y)
+            text.setHtml(f'<span style="background-color:#111821;color:{color}">&nbsp;{number}&nbsp;</span>')
+            text.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations)
             text.setZValue(30)
             self.reference_items.append(text)
             if self.project.matrix is not None and self.project.geometry and anchor.get("enabled", True):
@@ -1423,18 +1004,25 @@ class MainWindow(QMainWindow):
         self.invalidate_registration()
 
     def invalidate_registration(self):
+        self.cancel_pick()
         self.project.matrix = None
         self.project.identification.clear()
         self.project.labels.clear()
         self.refresh_anchor_table()
         self.refresh_annotations()
-        self.registration_status.setText("参考点已改变，请重新配准。")
+        self.registration_status.setText(self.manual_guide.text())
         self.dirty = True
 
     def solve_manual(self):
-        if self.project.geometry is None:
-            self.error("请先计算月面几何。")
+        anchors = [a for a in self.project.anchors if a.get("enabled", True)]
+        required = 3 if self.mirror.currentIndex() == 0 else 2
+        if self.image is None or len(anchors) < required:
+            self.error(f"请先添加至少 {required} 个已知环形山的参考点，尽量分散且不共线。")
             return
+        if self.project.geometry is None:
+            self.calculate_geometry(after=self.solve_manual)
+            return
+        self.cancel_pick()
         try:
             anchors = [a for a in self.project.anchors if a.get("enabled", True)]
             if len(anchors) < 2:
@@ -1455,6 +1043,8 @@ class MainWindow(QMainWindow):
             self.registration_status.setText(f"{len(features)} 个参考点 · 残差 {rms:.2f} px · {'镜像' if mirrored else '不镜像'}{warning}")
             self.refresh_anchor_table()
             self.refresh_annotations()
+            self.workspace_tabs.setCurrentIndex(1)
+            self.statusBar().showMessage("手动校准完成，已生成标注。请核对圈线位置；需要调整参考点时返回“校准”。")
             self.dirty = True
         except Exception as exc:
             self.error(str(exc))
@@ -1946,9 +1536,9 @@ class MainWindow(QMainWindow):
 
     def help_dialog(self):
         QMessageBox.information(self, "使用 MoonLabeler",
-            "1. 打开照片，设置拍摄 UTC 时间（北京时间减 8 小时）。准确校准建议填写拍摄地点。\n\n"
+            "1. 打开照片，选择拍摄日期。默认按当日 UTC 15:00 计算；旧工程保留已记录的时间。准确校准建议填写拍摄地点。\n\n"
             "2. 点击“自动识别并标注”：检测坑缘、搜索月面地名目录并用其他坑验证，成功后直接生成标签。无需先计算几何或输入地名。失败时核对日期，或改用地形点校准。\n\n"
-            "手动校准：计算月面几何，在“地形点”中搜索已知环形山、选择名称、点照片中心。添加 3–6 处分散、不共线的地形后，点“用参考点配准”。无需完整月盘。\n\n"
+            "手动校准：参考点就是“已知地名 + 照片中的位置”。在“已知地名取点”中搜索并选中一个你认得的坑，点“在照片中标记”，再点照片中同一个坑的坑缘中心。重复添加 3–6 处分散、不共线的点，再点“完成校准并生成标注”；月面几何会自动计算。取点时 Esc 取消，双击参考点表格可重选中心。\n\n"
             "“校准 → 疑似坑”可先检测候选中心；调节原图像素半径和灵敏度，或只检测当前视野。选中候选、搜索并确认地名后加入参考点。它不会自动识别名称。\n\n"
             "配准后表格显示每点偏差。橙色行提示核对；取消勾选可停用，再次配准。双击该行可重选中心。参考点至少五个时，才提示明显可疑的单点。\n\n"
             "3. “DEM 模拟”可导入本地 LOLA 的 LBL/IMG 数据，或下载一次基础数据。搜索区域、选择视野，生成当前时刻的局部模拟图，可保存为参考工程或尝试辅助匹配。\n\n"
