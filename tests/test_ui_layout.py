@@ -146,7 +146,7 @@ def test_every_business_consumed_widget_exists():
         assert window.reference_tabs.widget(0).isAncestorOf(window.local_button)
         assert window.reference_tabs.widget(1).isAncestorOf(window.terrain_button)
         # Persistent annotation style and temporary review overlays are separate.
-        assert window.crater_outlines.text() == "大环形山描绘坑缘，小坑使用短引线"
+        assert window.crater_outlines.text() == "大坑显示坑缘圈"
     finally:
         window.dirty = False
         window.close()

@@ -268,8 +268,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.build_toolbar()
         self.build_sidebar()
         self.update_manual_guide()
-        self.statusBar().showMessage("拖入月面照片，或先打开示例工程。滚轮缩放，空白处拖动平移。")
-        self.empty_hint = self.canvas.scene().addText("拖入你的月面照片\n\n配准地形 · 选择名称 · 编辑标注 · 导出作品", QFont("PingFang SC", 24))
+        self.statusBar().showMessage("滚轮缩放 · 拖动平移")
+        self.empty_hint = self.canvas.scene().addText("打开或拖入照片", QFont("PingFang SC", 20))
         self.empty_hint.setDefaultTextColor(QColor("#718399"))
         self.empty_hint.setPos(70, 100)
 
@@ -284,7 +284,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                         "sensitivity": self.crater_sensitivity.value(), "max_candidates": self.crater_limit.value(),
                                         "viewport": self.crater_viewport.isChecked()}
         if self.crater_candidates:
-            self.crater_status.setText("参数已改变，列表仍是上次结果。点击检测更新。")
+            self.crater_status.setText("参数已改，需重新检测")
         if self.image is not None:
             self.dirty = True
 
@@ -339,10 +339,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
                             raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；纹理、月盘轮廓和坑群验证均未通过。\n{limb_error}\n{exc}\n高程参考：{terrain_error}") from terrain_error
             return detection, recognition, geometry, lat, lon
         def failure(message):
-            self.identification_status.setText(message+"\n可用地形点校准；已有配准保留。")
+            self.identification_status.setText("识别失败，可改用手动校准")
+            self.identification_status.setToolTip(message)
             self.error(message)
-        self.identification_status.setText("正在检查月海纹理、月盘外缘与坑群位置…")
-        self.run_background("正在自动识别；首次需下载约 20 MB 星历，地形后备匹配另需约 33 MB 高程数据…",
+        self.identification_status.setText("正在识别…")
+        self.run_background("正在识别，首次运行需下载参考数据…",
                             work, self.accept_identification, failure)
 
     def accept_identification(self, result):
@@ -401,10 +402,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
             message = f"纹理配准成功 · {recognition.image_inliers} 个图像对应点 · 拟合偏差 {recognition.rms_px:.2f} px"
         else:
             message = f"识别到 {'、'.join(names[:4])} 等 {len(recognition.matches)} 处地形 · 拟合偏差 {recognition.rms_px:.2f} px"
-        self.identification_status.setText(message+"。小偏差不等于绝对定位精度，请对照照片检查。")
-        self.registration_status.setText(message)
+        self.identification_status.setText(f"配准完成 · 拟合偏差 {recognition.rms_px:.2f} px")
+        details = message + "。拟合偏差只反映一致性，不代表绝对定位精度。"
+        self.identification_status.setToolTip(details)
+        self.registration_status.setText("")
         self.workspace_tabs.setCurrentIndex(1)
-        self.statusBar().showMessage("已配准并标注。可拖动标签调整布局；标注位置由月面目录投影得到。")
+        self.statusBar().showMessage("配准完成")
         self.dirty = True
 
     def clear_crater_candidates(self):
@@ -414,7 +417,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.crater_candidates = []
         self.crater_result = None
         self.crater_list.clear()
-        self.crater_status.setText("半径按原图像素计算。候选结果需人工核对。")
+        self.crater_status.setText("未检测")
         self.update_crater_buttons()
 
     def accept_crater_candidates(self, result):
@@ -423,11 +426,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.crater_candidates = list(result.candidates)
         self.refresh_crater_candidates()
         count = len(self.crater_candidates)
-        message = f"找到 {count} 个疑似中心。" if count else "没有找到候选。可调高灵敏度或调整半径范围。"
+        message = f"{count} 个候选" if count else "未找到候选，可调整检测参数"
         if result.scale < .99:
-            message += " 大图已缩小检测；小坑建议放大后只检测当前视野。"
+            message += " · 已缩小检测"
         self.crater_status.setText(message)
-        self.statusBar().showMessage("检测完成；选择候选，核对中心与地名。" if count else "检测完成，未找到符合条件的候选。")
+        self.statusBar().showMessage("检测完成" if count else "未找到候选")
 
     def refresh_crater_candidates(self):
         for item in self.crater_items:
@@ -508,7 +511,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         candidate = self.crater_candidates[index]
         self.add_anchor(candidate.x, candidate.y)
         self.update_crater_buttons()
-        self.crater_status.setText(f"已确认 {feature.get('name_zh') or feature['name']}。{self.anchor_count.text()}。\n继续确认其他坑，或点击“查看已确认的参考点并校准”。")
+        self.crater_status.setText(f"已加入：{feature.get('name_zh') or feature['name']}")
         self.statusBar().showMessage(self.crater_status.text())
 
     def remove_crater_candidate(self):
@@ -517,7 +520,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if 0 <= index < len(self.crater_candidates):
             self.crater_candidates.pop(index)
             self.refresh_crater_candidates()
-            self.crater_status.setText(f"保留 {len(self.crater_candidates)} 个候选；已确认的参考点仍保留。")
+            self.crater_status.setText(f"保留 {len(self.crater_candidates)} 个候选")
 
     def repick_crater_candidate(self):
         index = self.crater_list.currentRow()
@@ -526,7 +529,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.picking_crater_index = index
             self.canvas.picking = True
             self.canvas.setCursor(Qt.CursorShape.CrossCursor)
-            self.statusBar().showMessage(f"在照片上点击候选 {index+1} 的真实中心。切换工作页可取消。")
+            self.statusBar().showMessage(f"点击候选 {index+1} 的坑中心 · Esc 取消")
 
     def canvas_point_clicked(self, x, y):
         if self.picking_crater_index is None:
@@ -542,7 +545,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.cancel_pick()
         self.refresh_crater_candidates()
         self.crater_list.setCurrentRow(index)
-        self.crater_status.setText(f"候选 {index+1} 中心已修正，可确认地名后加入参考点。")
+        self.crater_status.setText(f"候选 {index+1} 中心已更新")
 
     def export_crater_candidates(self):
         if not self.crater_candidates:
@@ -555,7 +558,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                     writer.writerow(["image", "candidate", "center_x_px", "center_y_px", "semimajor_px", "semiminor_px", "angle_deg", "edge_support", "method"])
                     for index, c in enumerate(self.crater_candidates):
                         writer.writerow([Path(self.project.image_path).name, index+1, f"{c.x:.3f}", f"{c.y:.3f}", f"{c.major:.3f}", f"{c.minor:.3f}", f"{c.angle:.3f}", "" if c.support is None else f"{c.support:.3f}", c.method])
-                self.statusBar().showMessage("候选 CSV 已保存，坐标为原图像素。")
+                self.statusBar().showMessage("CSV 已保存")
             except OSError as exc:
                 self.error(str(exc))
 
@@ -613,9 +616,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.clear_terrain_preview()
         self.refresh_anchor_table()
         self.refresh_annotations()
-        self.geometry_status.setText("拍摄条件已改变，完成校准时会自动重算。")
-        self.identification_status.setText("拍摄条件已改变，请重新自动识别或校准。")
-        self.registration_status.setText("配准已失效。参考点仍保留，可重新求解。")
+        self.geometry_status.setText("待重新计算")
+        self.identification_status.setText("拍摄条件已改，需重新校准")
+        self.identification_status.setToolTip("")
+        self.registration_status.setText("待重新校准")
         if self.image is not None:
             self.dirty = True
 
@@ -634,10 +638,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.refresh_anchor_table()
             self.refresh_annotations()
             self.dirty = True
-            self.statusBar().showMessage("月面几何已就绪，选择已知地形并添加参考点。")
+            self.statusBar().showMessage("月面几何已计算")
             if after is not None:
                 after()
-        self.run_background("计算月面几何；首次需要下载约 20 MB 的 JPL 星历数据…",
+        self.run_background("计算月面几何…",
                             lambda: compute_geometry(utc, CACHE / "ephemeris", lat, lon), success)
 
     def show_geometry(self):
@@ -670,9 +674,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.set_image(image)
             self.sync_controls()
             self.dirty = False
-            self.geometry_status.setText("完成校准时会按拍摄日期自动计算。")
-            self.registration_status.setText("尚未配准。")
-            self.identification_status.setText("照片已打开；选择拍摄日期后，点击自动识别并标注。默认按当日 UTC 15:00 计算。")
+            self.geometry_status.setText("未计算")
+            self.registration_status.setText("未配准")
+            self.identification_status.setText("未识别")
+            self.identification_status.setToolTip("")
             self.statusBar().showMessage(f"{Path(path).name} · {image.shape[1]} × {image.shape[0]} 像素")
         except Exception as exc:
             self.error(str(exc))
@@ -722,15 +727,18 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.sync_controls()
             self.set_image(image)
             self.show_geometry()
-            self.registration_status.setText("已加载工程配准。" if project.matrix is not None else "尚未配准。")
+            self.identification_status.setToolTip("")
+            self.registration_status.setText("已配准" if project.matrix is not None else "未配准")
             if project.identification and project.matrix is not None:
                 names = project.identification.get("matched_names", [])
                 if project.identification.get("image_inliers"):
-                    self.identification_status.setText(f"已加载纹理配准：{project.identification['image_inliers']} 个图像对应点。标注位置由月面目录投影得到。")
+                    self.identification_status.setText("已配准")
+                    self.identification_status.setToolTip(f"{project.identification['image_inliers']} 个图像对应点；标注由目录坐标投影得到。")
                 else:
-                    self.identification_status.setText("已加载自动识别结果："+"、".join(names[:4])+"。可在参考点表复核。")
+                    self.identification_status.setText("已识别")
+                    self.identification_status.setToolTip("、".join(names[:4]))
             else:
-                self.identification_status.setText("工程已打开，可重新自动识别或使用地形点校准。")
+                self.identification_status.setText("未识别")
             self.dirty = False
             self.statusBar().showMessage(f"已打开 {Path(path).name}")
         except Exception as exc:
@@ -774,7 +782,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.pending_color = self.project.color
         self.color_button.setText(f"文字与引线颜色：{self.pending_color}")
         self.style_pending = False
-        self.settings_status.setText("调整设置后，点击重新生成标注。")
+        self.settings_status.setText("")
         self.update_font_hint()
         if self.project.terrain_path:
             self.dem_path = self.project.terrain_path
@@ -819,30 +827,30 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def update_manual_guide(self, *args):
         count = sum(a.get("enabled", True) for a in self.project.anchors)
         required = 3 if self.mirror.currentIndex() == 0 else 2
-        self.anchor_count.setText(f"3  已添加 {count} 个有效参考点 · 至少需要 {required} 个")
+        self.anchor_count.setText(f"{count} 个有效参考点 · 最少 {required} 个")
         self.solve_button.setEnabled(self.image is not None and count >= required and not self.canvas.picking)
         item = self.feature_list.currentItem()
         picking = self.canvas.picking and self.picking_id is not None
         self.cancel_pick_button.setVisible(picking)
         self.pick_button.setEnabled(self.image is not None and item is not None and not self.canvas.picking)
         if self.image is None:
-            message = "先打开要标注的照片。"
+            message = "请打开照片"
         elif picking:
             feature = self.catalog_by_id[self.picking_id]
-            message = f"正在取点：{feature.get('name_zh') or feature['name']}。请在照片中点击它的坑缘中心；Esc 取消。"
+            message = f"{feature.get('name_zh') or feature['name']}：点击照片中的坑中心"
         elif count >= required:
-            message = "参考点数量已足够，可点击下方“完成校准并生成标注”；也可继续加点。"
+            message = "可校准，也可继续取点"
         else:
-            message = f"还需 {required-count} 个参考点。搜索地名、选中结果，再点击下方按钮到照片上取点。"
+            message = f"还需 {required-count} 个参考点"
         self.manual_guide.setText(message)
         if picking:
-            self.pick_button.setText("等待在照片中点击中心…")
+            self.pick_button.setText("点击照片中的坑中心…")
         elif item is not None:
             feature = self.catalog_by_id[item.data(Qt.ItemDataRole.UserRole)]
             name = feature.get('name_zh') or feature['name']
             self.pick_button.setText(f"在照片中标记：{name}")
         else:
-            self.pick_button.setText("先从搜索结果中选择地名")
+            self.pick_button.setText("选择地名后取点")
 
     def show_manual_points(self):
         self.workspace_tabs.setCurrentIndex(0)
@@ -875,7 +883,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.canvas.setCursor(Qt.CursorShape.ArrowCursor)
         self.update_manual_guide()
         if was_picking:
-            self.statusBar().showMessage("已退出取点。" + self.manual_guide.text())
+            self.statusBar().showMessage("已取消取点")
 
     def add_anchor(self, x, y):
         if self.picking_id not in self.catalog_by_id or self.image is None or not (0 <= x < self.image.shape[1] and 0 <= y < self.image.shape[0]):
@@ -890,7 +898,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.feature_list.setCurrentRow(-1)
         self.refresh_anchor_table()
         self.refresh_annotations()
-        self.registration_status.setText(self.manual_guide.text())
+        self.registration_status.setText("")
         self.statusBar().showMessage(self.manual_guide.text())
         self.dirty = True
         if self.workspace_tabs.currentIndex() == 0 and self.registration_tabs.currentIndex() == 0:
@@ -1010,7 +1018,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.labels.clear()
         self.refresh_anchor_table()
         self.refresh_annotations()
-        self.registration_status.setText(self.manual_guide.text())
+        self.registration_status.setText("")
         self.dirty = True
 
     def solve_manual(self):
@@ -1044,7 +1052,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.refresh_anchor_table()
             self.refresh_annotations()
             self.workspace_tabs.setCurrentIndex(1)
-            self.statusBar().showMessage("手动校准完成，已生成标注。请核对圈线位置；需要调整参考点时返回“校准”。")
+            self.statusBar().showMessage("校准完成")
             self.dirty = True
         except Exception as exc:
             self.error(str(exc))
@@ -1063,7 +1071,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.refresh_anchor_table()
         self.refresh_annotations()
         self.registration_status.setText(f"自动匹配：{match.inliers}/{match.matches} 个内点 · 残差 {match.rms_px:.2f} px · {'镜像' if match.mirrored else '不镜像'}")
-        self.statusBar().showMessage("自动配准完成。请检查几个已知地形，随后编辑标注。")
+        self.statusBar().showMessage("配准完成")
         self.dirty = True
 
     def auto_nasa(self):
@@ -1085,7 +1093,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.workspace_tabs.setCurrentIndex(0)
         self.registration_tabs.setCurrentIndex(0)
         self.scroll.ensureWidgetVisible(self.feature_search)
-        self.registration_status.setText("NASA 配准未完成，可使用地形点。已有几何和参考点仍保留。")
+        self.registration_status.setText("NASA 配准失败，可用手动校准")
         self.error(text)
 
     def auto_local(self):
@@ -1098,7 +1106,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         try:
             reference_project = Project.load(path)
             if reference_project.matrix is None or reference_project.geometry is None:
-                raise ValueError("参考工程尚未配准。")
+                raise ValueError("参考工程未配准")
             delta = abs((datetime.fromisoformat(reference_project.utc) - self.utc()).total_seconds())
             if delta > 3600:
                 raise ValueError("参考工程与当前拍摄时间相差超过一小时，请先设置为相同拍摄时刻。不同日期的天平动不能用同一平面变换处理。")
@@ -1153,7 +1161,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.dem_status.setText(f"{name} · 赤道采样约 {resolution:.3f} km")
         self.dem_status.setToolTip(self.dem_path)
         self.terrain_settings_changed()
-        self.statusBar().showMessage("高程数据已就绪，可生成局部模拟图。")
+        self.statusBar().showMessage("高程数据已加载")
 
     def import_dem(self, path=None):
         if not path:
@@ -1165,7 +1173,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def download_dem(self):
         def work():
             return self.dem_metadata(download_basic_dem(CACHE))
-        self.run_background("下载约 33 MB LOLA 数据；完成后可离线模拟…", work, self.accept_dem)
+        self.run_background("下载 LOLA 高程数据 · 约 33 MB…", work, self.accept_dem)
 
     def clear_terrain_preview(self):
         self.terrain_reference = None
@@ -1198,7 +1206,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 return reference, current, utc.isoformat(), lat, lon
             finally:
                 dem.close()
-        self.run_background("生成局部月面模拟图，计算坡度光照和地形投影…", work, self.accept_terrain_reference)
+        self.run_background("生成模拟图…", work, self.accept_terrain_reference)
 
     def accept_terrain_reference(self, result):
         reference, geometry, utc, lat, lon = result
@@ -1210,11 +1218,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if self.image is not None:
             self.dirty = True
         dialog = QDialog(self)
-        dialog.setWindowTitle("局部月面 DEM 模拟 · 辅助参考")
+        dialog.setWindowTitle("DEM 模拟")
         dialog.resize(900, 880)
         layout = QVBoxLayout(dialog)
-        note = QLabel(f"{utc} · 视野 {reference.width_km:.0f} km · 数据采样约 {reference.resolution_km:.3f} km\n"
-                      "模拟图使用球面投影，未加入反照率纹理；细节和阴影可能与实拍不同。")
+        note = QLabel(f"{utc} · 视野 {reference.width_km:.0f} km · 采样 {reference.resolution_km:.3f} km")
+        note.setToolTip("球面光照模拟，未加入反照率纹理；细节和阴影可能与实拍不同。")
         note.setWordWrap(True)
         layout.addWidget(note)
         preview = Canvas()
@@ -1224,7 +1232,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         row = QHBoxLayout()
         save = QPushButton("保存模拟图与参考工程")
         save.clicked.connect(self.save_terrain_reference)
-        match = QPushButton("尝试匹配当前照片")
+        match = QPushButton("匹配当前照片")
         match.setEnabled(self.image is not None)
         match.clicked.connect(self.match_terrain_reference)
         close = QPushButton("关闭预览")
@@ -1236,7 +1244,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.terrain_dialog = dialog
         dialog.show()
         QTimer.singleShot(0, lambda: preview.fitInView(preview.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio))
-        self.statusBar().showMessage("局部模拟完成。可观察地形、保存参考工程或尝试辅助匹配。")
+        self.statusBar().showMessage("模拟完成")
 
     def save_terrain_reference(self):
         if self.terrain_reference is None:
@@ -1270,7 +1278,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             match = auto_register(reference.image, photo)
             matrix = (np.vstack((match.matrix, [0., 0., 1.])) @ np.vstack((reference.matrix, [0., 0., 1.])))[:2]
             return match, geometry, matrix
-        self.run_background("尝试用局部 DEM 参考匹配照片…", work, self.accept_terrain_match)
+        self.run_background("匹配 DEM 参考图…", work, self.accept_terrain_match)
 
     def accept_terrain_match(self, result):
         match, geometry, matrix = result
@@ -1288,8 +1296,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.labels.clear()
         self.refresh_anchor_table()
         self.refresh_annotations()
-        self.registration_status.setText(f"DEM 辅助匹配：{match.inliers}/{match.matches} 个内点 · 残差 {match.rms_px:.2f} px。请用已知地形复核。")
-        self.statusBar().showMessage("已采用 DEM 辅助匹配；参考点仍保留，可继续检查偏差。")
+        self.registration_status.setText(f"DEM 配准 · {match.inliers}/{match.matches} 个内点 · 残差 {match.rms_px:.2f} px")
+        self.registration_status.setToolTip("辅助匹配，需用已知地形复核。")
+        self.statusBar().showMessage("DEM 配准完成")
         self.dirty = True
 
     def about_dialog(self):
@@ -1306,12 +1315,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
             return
         self.style_pending = True
         self.update_font_hint()
-        self.settings_status.setText("设置尚未应用；点击重新生成标注。导出仍使用当前画面。")
+        self.settings_status.setText("设置已改，需重新生成")
 
     def update_font_hint(self):
         if self.image is not None:
             pixels = max(6, round(min(self.image.shape[:2])*self.font_size.value()/100))
-            self.font_pixels_hint.setText(f"对应原图约 {pixels} px")
+            self.font_pixels_hint.setText(f"原图 {pixels} px")
 
     def apply_label_settings(self):
         if self.busy:
@@ -1326,7 +1335,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.project.update_font_size(self.image.shape)
         self.refresh_annotations()
         self.style_pending = False
-        self.settings_status.setText("设置已应用；手动调整的标签位置已保留。")
+        self.settings_status.setText("已更新")
         if self.image is not None:
             self.dirty = True
 
@@ -1426,8 +1435,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             scene.addItem(item)
             item.setPos(position)
             self.annotation_items.append(item)
-        self.layout_status.setText(f"显示 {len(self.annotation_items)} 个标签" +
-                                  (f"，拥挤区域暂时收起 {len(self.auto_omitted)} 个。" if self.auto_omitted else "，自动布局已完成。" if self.project.optimize_layout else "。"))
+        self.layout_status.setText(f"{len(self.annotation_items)} 个标签" +
+                                  (f" · 避让隐藏 {len(self.auto_omitted)} 个" if self.auto_omitted else ""))
         self.rebuilding = False
 
     def label_visibility_changed(self, item):
@@ -1504,7 +1513,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if path:
             try:
                 self.render_png(path if path.lower().endswith(".png") else path+".png")
-                self.statusBar().showMessage("PNG 已导出，尺寸与原图一致。")
+                self.statusBar().showMessage("PNG 已导出")
             except Exception as exc:
                 self.error(str(exc))
 
@@ -1516,7 +1525,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if path:
             try:
                 export_svg(path if path.lower().endswith(".svg") else path+".svg", self.image, self.annotation_entries(), self.project, self.annotation_leaders())
-                self.statusBar().showMessage("SVG 已导出，原图内嵌，文字和引线可编辑。")
+                self.statusBar().showMessage("SVG 已导出")
             except Exception as exc:
                 self.error(str(exc))
 
@@ -1528,7 +1537,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.search_features(self.feature_search.text())
             self.search_crater_features(self.crater_search.text())
             self.refresh_annotations()
-            self.statusBar().showMessage("已更新官方地名目录。")
+            self.statusBar().showMessage("地名目录已更新")
         self.run_background("下载 USGS / IAU 官方地名目录…", lambda: refresh_catalog(CACHE), success)
 
     def open_example(self):
@@ -1536,20 +1545,17 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def help_dialog(self):
         QMessageBox.information(self, "使用 MoonLabeler",
-            "1. 打开照片，选择拍摄日期。默认 UTC 15:00；展开“具体时间”可精确到秒。收起设置或更换日期不会重置时间，旧工程保留原时间。北京时间请换算为 UTC，注意日期跨天。准确校准建议填写拍摄地点。\n\n"
-            "2. 点击“自动识别并标注”：检测坑缘、搜索月面地名目录并用其他坑验证，成功后直接生成标签。无需先计算几何或输入地名。失败时核对日期，或改用地形点校准。\n\n"
-            "手动校准：参考点就是“已知地名 + 照片中的位置”。在“已知地名取点”中搜索并选中一个你认得的坑，点“在照片中标记”，再点照片中同一个坑的坑缘中心。重复添加 3–6 处分散、不共线的点，再点“完成校准并生成标注”；月面几何会自动计算。取点时 Esc 取消，双击参考点表格可重选中心。\n\n"
-            "“校准 → 疑似坑”可先检测候选中心；调节原图像素半径和灵敏度，或只检测当前视野。选中候选、搜索并确认地名后加入参考点。它不会自动识别名称。\n\n"
-            "配准后表格显示每点偏差。橙色行提示核对；取消勾选可停用，再次配准。双击该行可重选中心。参考点至少五个时，才提示明显可疑的单点。\n\n"
-            "3. “DEM 模拟”可导入本地 LOLA 的 LBL/IMG 数据，或下载一次基础数据。搜索区域、选择视野，生成当前时刻的局部模拟图，可保存为参考工程或尝试辅助匹配。\n\n"
-            "基础 DEM 约 1.9 km/采样点；高倍细节需更高分辨率数据。模拟暂用球面投影与坡度光照，未加入反照率纹理，不适用于月缘。\n\n"
-            "4. 在“标注”页调整设置，点击“重新生成标注”统一应用；字号为照片短边的百分比。"
-            "大坑显示投影坑缘轮廓，小坑使用短引线。拖动标签、双击改名后可保存工程并导出 PNG / SVG。原照片不会被覆盖。\n\n"
-            "拟合残差只反映一致性。DEM 自动匹配仍需已知地形复核；NASA 下载失败不影响离线流程。")
+            "自动：打开照片，设置拍摄日期，点击“自动识别并标注”。时间默认 UTC 15:00，展开可修改；北京时间请换算为 UTC。首次需下载参考数据。\n\n"
+            "手动：搜索已知地名，点击取点按钮，再点照片中同一个坑的完整坑缘中心。不要点亮斑或阴影中心。取 3–6 个分散、不共线的点，再完成校准。\n"
+            "Esc 取消取点；双击参考点行重选，取消勾选停用。橙色行需核对。\n\n"
+            "辅助找坑：检测中心，选候选，在底部确认地名后加入参考点。它只找中心，地名需人工确认。\n\n"
+            "标注：改设置后点击“重新生成标注”。拖动标签调整位置，双击编辑文字。字号按照片短边计算。可保存工程或导出 PNG / SVG。\n\n"
+            "DEM：导入或下载高程数据，选择区域生成光照参考。基础采样约 1.9 km；不适用于近月缘区域。\n\n"
+            "坑缘圈是目录投影参考，可能偏离实际坑缘。拟合残差只表示一致性；模型和数据来源详见 README。")
 
     def closeEvent(self, event):
         if self.busy:
-            self.statusBar().showMessage("后台操作仍在进行，请稍候再关闭。")
+            self.statusBar().showMessage("处理完成后可关闭")
             event.ignore()
         elif self.confirm_discard():
             self.clear_terrain_preview()

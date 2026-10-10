@@ -125,7 +125,7 @@ def test_one_click_recognizes_real_north_polar_limb_photo(monkeypatch, tmp_path)
             item = next(item for item in window.annotation_items if item.feature['name'] == name)
             left, right, top, bottom = bounds
             assert left < item.anchor.x() < right and top < item.anchor.y() < bottom
-        assert '参考轮廓' in window.identification_status.text()
+        assert '参考轮廓' in window.identification_status.toolTip()
         saved = tmp_path/'refined.moonlabel'
         window.project.save(saved)
         restored = Project.load(saved)
