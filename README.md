@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.4.7** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.4.8** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -104,7 +104,7 @@ For manual calibration, open **校准 → 已知地名取点** (Calibration → 
 2. Click **在照片中标记** (Mark in photo), then click the geometric center of that same crater's rim. Avoid using the bright patch or shadow center. Zoom if needed; Esc cancels picking.
 3. Repeat for 3–6 well-separated, non-collinear craters, then click **完成校准并生成标注** (Calibrate and generate annotations). Geometry is computed automatically and the annotation page opens. Collected points survive an ephemeris-download failure.
 
-The **辅助找坑** (Find candidate centers) tab only assists point placement; you still confirm each name. Its footer links back to the confirmed reference points. Double-click a reference-point table row to replace its position, or uncheck it to exclude it before recalibrating.
+The **辅助找坑** (Find candidate centers) tab only assists point placement; you still confirm each name. In its fixed footer, search for a crater name, click a search-result row (or press Enter in the search field to choose the first hit), then click **确认地名，加入参考点** (Confirm name and add reference point). Results appear directly in a list, including single matches such as Hadley C; entering a query does not assign a name automatically. This search lists craters only; rilles, mountains and other formations remain available in **已知地名取点**. The footer links back to the confirmed reference points. Double-click a reference-point table row to replace its position, or uncheck it to exclude it before recalibrating.
 
 The bundled example is explicitly synthetic and demonstrates calibration and editing. It is not a real-image recognition benchmark. Optional FITS support requires `astropy`.
 

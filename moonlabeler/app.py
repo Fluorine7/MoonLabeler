@@ -491,13 +491,15 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.crater_remove.setEnabled(selected)
         self.crater_repick.setEnabled(selected)
         self.crater_export.setEnabled(bool(self.crater_candidates))
-        self.crater_anchor_button.setEnabled(selected and self.crater_feature.currentData() is not None)
-        fid = self.crater_feature.currentData()
+        name_item = self.crater_feature.currentItem()
+        fid = name_item.data(Qt.ItemDataRole.UserRole) if name_item is not None else None
+        self.crater_anchor_button.setEnabled(selected and fid is not None)
         self.crater_anchor_button.setText("确认地名，更新参考点" if any(a["id"] == fid for a in self.project.anchors) else "确认地名，加入参考点")
 
     def search_crater_features(self, text):
         normalized = lambda value: "".join(c for c in unicodedata.normalize("NFKD", value.casefold()) if not unicodedata.combining(c))
         query = normalized(text.strip())
+        blocked = self.crater_feature.blockSignals(True)
         self.crater_feature.clear()
         # Require a deliberate name search, rather than defaulting to the
         # largest unrelated formation and encouraging an accidental assignment.
@@ -505,12 +507,18 @@ class MainWindow(WindowUiMixin, QMainWindow):
             matches = [f for f in self.catalog if f["kind"] in ("Crater, craters", "Satellite Feature") and query in normalized(feature_search_text(f))]
             matches.sort(key=lambda f: (normalized(f["name"]) != query, -f["diameter"]))
             for feature in matches[:100]:
-                self.crater_feature.addItem(self.project.label_text(feature), feature["id"])
+                item = QListWidgetItem(self.project.label_text(feature))
+                item.setData(Qt.ItemDataRole.UserRole, feature["id"])
+                item.setToolTip(item.text())
+                self.crater_feature.addItem(item)
+        self.crater_feature.setCurrentRow(-1)
+        self.crater_feature.blockSignals(blocked)
         self.update_crater_buttons()
 
     def use_crater_candidate(self):
         index = self.crater_list.currentRow()
-        fid = self.crater_feature.currentData()
+        name_item = self.crater_feature.currentItem()
+        fid = name_item.data(Qt.ItemDataRole.UserRole) if name_item is not None else None
         if not 0 <= index < len(self.crater_candidates) or fid is None:
             return
         feature = self.catalog_by_id[fid]
@@ -1564,7 +1572,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             "自动：打开照片，设置拍摄日期，点击“自动识别并标注”。时间默认 UTC 15:00，展开可修改；北京时间请换算为 UTC。首次需下载参考数据。\n\n"
             "手动：搜索已知地名，点击取点按钮，再点照片中同一个坑的完整坑缘中心。不要点亮斑或阴影中心。取 3–6 个分散、不共线的点，再完成校准。\n"
             "Esc 取消取点；双击参考点行重选，取消勾选停用。橙色行需核对。\n\n"
-            "辅助找坑：检测中心，选候选，在底部确认地名后加入参考点。它只找中心，地名需人工确认。\n\n"
+            "辅助找坑：检测中心，选候选，在底部搜索并点击环形山名称，再确认加入参考点。按 Enter 可选首条地名。月溪、山脉等在“已知地名取点”中选择。\n\n"
             "标注：改设置后点击“重新生成标注”。拖动标签调整位置，双击编辑文字。字号按照片短边计算。可保存工程或导出 PNG / SVG。\n\n"
             "DEM：导入或下载高程数据，选择区域生成光照参考。基础采样约 1.9 km；不适用于近月缘区域。\n\n"
             "坑缘圈是目录投影参考，可能偏离实际坑缘。拟合残差只表示一致性；模型和数据来源详见 README。")

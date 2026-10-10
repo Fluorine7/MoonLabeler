@@ -164,7 +164,7 @@ def test_enter_prefills_first_search_hit_and_escape_leaves_pick_mode():
         window.search_crater_features("Aristarchus")
         assert window.crater_feature.count() > 0
         window.ui_select_first_crater_match()
-        assert window.crater_feature.currentData() is not None
+        assert window.crater_feature.currentItem().data(Qt.ItemDataRole.UserRole) is not None
         window.search_terrain_features("哥白尼")
         window.ui_select_first_terrain_match()
         assert window.terrain_center.currentIndex() == 0

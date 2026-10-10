@@ -9,6 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import numpy as np
 from PIL import Image
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
 
 from moonlabeler.app import MainWindow
 from moonlabeler.project import Project, export_svg
@@ -105,7 +106,8 @@ def test_previous_chinese_names_remain_searchable():
     window.search_features("阿里斯塔克斯")
     assert window.feature_list.count() and "Aristarchus" in window.feature_list.item(0).text()
     window.search_crater_features("阿里斯塔克斯")
-    assert window.crater_feature.findData(feature["id"]) >= 0
+    assert feature["id"] in [window.crater_feature.item(row).data(Qt.ItemDataRole.UserRole)
+                             for row in range(window.crater_feature.count())]
     window.search_terrain_features("阿里斯塔克斯")
     assert window.terrain_center.findData(feature["id"]) >= 0
     window.dirty = False

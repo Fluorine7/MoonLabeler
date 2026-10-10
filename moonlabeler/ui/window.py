@@ -17,6 +17,8 @@ Layout contract notes:
 - The manual calibration section (manual_section_toggle / manual_section_block)
   is collapsed by default; ui_set_manual_section_expanded() is the hook for
   app.py to open it on manual picks or identification failures.
+- crater_feature is a QListWidget of explicit name choices; each item's
+  UserRole holds the catalog feature ID. Searching clears the current choice.
 Do not import app.py here (it imports this mixin).
 """
 from pathlib import Path
@@ -133,7 +135,7 @@ class WindowUiMixin:
         sync(expanded)
         return toggle, block, layout
 
-    # Pure-UI conveniences: preselect the first search hit on Enter, and let
+    # Pure-UI conveniences: select the first search hit on Enter, and let
     # Escape leave the canvas pick mode. They only change selection state and
     # reuse the existing business entry points.
     def ui_select_first_feature(self):
@@ -142,7 +144,7 @@ class WindowUiMixin:
 
     def ui_select_first_crater_match(self):
         if self.crater_feature.count():
-            self.crater_feature.setCurrentIndex(0)
+            self.crater_feature.setCurrentRow(0)
 
     def ui_select_first_terrain_match(self):
         if self.terrain_center.count():
@@ -728,14 +730,18 @@ class WindowUiMixin:
         row.addWidget(self.crater_export)
         box.addLayout(row)
         self.crater_search = QLineEdit()
-        self.crater_search.setPlaceholderText("确认地名：Aristarchus / 阿里斯塔克斯")
+        self.crater_search.setPlaceholderText("搜索环形山：Hadley C / 哥白尼")
         self.crater_search.textChanged.connect(self.search_crater_features)
         self.crater_search.returnPressed.connect(self.ui_select_first_crater_match)
         box.addWidget(self.crater_search)
-        self.crater_feature = self.ui_combo()
-        self.crater_feature.setMinimumContentsLength(12)
-        self.crater_feature.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.crater_feature.currentIndexChanged.connect(self.update_crater_buttons)
+        # Show search hits directly, including a single result. A combo box
+        # silently preselects that result and opens a popup over confirmation.
+        self.crater_feature = QListWidget()
+        self.crater_feature.setMinimumHeight(60)
+        self.crater_feature.setMaximumHeight(100)
+        self.crater_feature.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.crater_feature.setToolTip("点击地名后确认。这里只列环形山；月溪、山脉等在“已知地名取点”中选择。")
+        self.crater_feature.currentItemChanged.connect(self.update_crater_buttons)
         box.addWidget(self.crater_feature)
         self.crater_anchor_button = QPushButton("确认地名，加入参考点")
         self.crater_anchor_button.clicked.connect(self.use_crater_candidate)
