@@ -1,0 +1,5459 @@
+{
+  "source": "国家天文科学数据中心 · 天文学名词（中国天文学会天文学名词审定委员会）",
+  "retrieved": "2026-10-10",
+  "source_urls": [
+    "https://nadc.china-vo.org/astrodict/dictbrowseresult?tag=%E6%9C%88%E7%90%83",
+    "https://nadc.china-vo.org/astrodict/dictbrowseresult?tag=%E8%A1%8C%E6%98%9F%E5%9C%B0%E8%B2%8C"
+  ],
+  "matching": "Exact USGS names after case/accent normalization. Remove crater/环形山 for compact captions. Broader planetary category contributes only crater terms labelled 环形山. Satellite names are parent translation plus unchanged official letter; not independently published translations. Unmatched names remain English.",
+  "names": {
+    "Abbe": {
+      "zh": "阿贝",
+      "term": "Abbe crater",
+      "term_zh": "阿贝环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20082"
+    },
+    "Abel": {
+      "zh": "阿贝尔",
+      "term": "Abel crater",
+      "term_zh": "阿贝尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20083"
+    },
+    "Abulfeda": {
+      "zh": "艾布·菲达",
+      "term": "Abulfeda crater",
+      "term_zh": "艾布·菲达环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20507"
+    },
+    "Adams": {
+      "zh": "亚当斯",
+      "term": "Adams crater",
+      "term_zh": "亚当斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20423"
+    },
+    "Aitken": {
+      "zh": "艾特肯",
+      "term": "Aitken crater",
+      "term_zh": "艾特肯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=108"
+    },
+    "Al-Biruni": {
+      "zh": "比鲁尼",
+      "term": "Al-Biruni crater",
+      "term_zh": "比鲁尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20125"
+    },
+    "Albategnius": {
+      "zh": "巴塔尼",
+      "term": "Albategnius crater",
+      "term_zh": "巴塔尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20115"
+    },
+    "Alden": {
+      "zh": "奥尔登",
+      "term": "Alden crater",
+      "term_zh": "奥尔登环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20104"
+    },
+    "Alder": {
+      "zh": "阿尔德",
+      "term": "Alder crater",
+      "term_zh": "阿尔德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20085"
+    },
+    "Aldrin": {
+      "zh": "奥尔德林",
+      "term": "Aldrin crater",
+      "term_zh": "奥尔德林环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20103"
+    },
+    "Alekhin": {
+      "zh": "阿廖欣",
+      "term": "Alekhin crater",
+      "term_zh": "阿廖欣环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20088"
+    },
+    "Alexander": {
+      "zh": "亚历山大",
+      "term": "Alexander crater",
+      "term_zh": "亚历山大环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20425"
+    },
+    "Alphonsus": {
+      "zh": "阿方索",
+      "term": "Alphonsus crater",
+      "term_zh": "阿方索环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=195"
+    },
+    "Amici": {
+      "zh": "阿米奇",
+      "term": "Amici crater",
+      "term_zh": "阿米奇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20496"
+    },
+    "Amundsen": {
+      "zh": "阿蒙森",
+      "term": "Amundsen crater",
+      "term_zh": "阿蒙森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20089"
+    },
+    "Anaximander": {
+      "zh": "阿那克西曼德",
+      "term": "Anaximander crater",
+      "term_zh": "阿那克西曼德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20497"
+    },
+    "Anaximenes": {
+      "zh": "阿那克西米尼",
+      "term": "Anaximenes crater",
+      "term_zh": "阿那克西米尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20091"
+    },
+    "Anderson": {
+      "zh": "安德森",
+      "term": "Anderson crater",
+      "term_zh": "安德森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20100"
+    },
+    "Ansgarius": {
+      "zh": "安斯加尔",
+      "term": "Ansgarius crater",
+      "term_zh": "安斯加尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20101"
+    },
+    "Antoniadi": {
+      "zh": "安东尼亚迪",
+      "term": "Antoniadi crater",
+      "term_zh": "安东尼亚迪环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20509"
+    },
+    "Anuchin": {
+      "zh": "阿努钦",
+      "term": "Anuchin crater",
+      "term_zh": "阿努钦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20498"
+    },
+    "Apollo": {
+      "zh": "阿波罗",
+      "term": "Apollo crater",
+      "term_zh": "阿波罗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20084"
+    },
+    "Apollonius": {
+      "zh": "阿波罗尼奥斯",
+      "term": "Apollonius crater",
+      "term_zh": "阿波罗尼奥斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20493"
+    },
+    "Appleton": {
+      "zh": "阿普顿",
+      "term": "Appleton crater",
+      "term_zh": "阿普顿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20500"
+    },
+    "Archimedes": {
+      "zh": "阿基米德",
+      "term": "Archimedes crater",
+      "term_zh": "阿基米德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20087"
+    },
+    "Aristarchus": {
+      "zh": "阿利斯塔克",
+      "term": "Aristarchus crater",
+      "term_zh": "阿利斯塔克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=305"
+    },
+    "Aristoteles": {
+      "zh": "亚里士多德",
+      "term": "Aristoteles crater",
+      "term_zh": "亚里士多德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20424"
+    },
+    "Armstrong": {
+      "zh": "阿姆斯特朗",
+      "term": "Armstrong crater",
+      "term_zh": "阿姆斯特朗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20090"
+    },
+    "Arnold": {
+      "zh": "阿诺尔德",
+      "term": "Arnold crater",
+      "term_zh": "阿诺尔德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20499"
+    },
+    "Artamonov": {
+      "zh": "阿尔塔莫诺夫",
+      "term": "Artamonov crater",
+      "term_zh": "阿尔塔莫诺夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20494"
+    },
+    "Arzachel": {
+      "zh": "阿尔扎赫尔",
+      "term": "Arzachel crater",
+      "term_zh": "阿尔扎赫尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20495"
+    },
+    "Ashbrook": {
+      "zh": "阿什布鲁克",
+      "term": "Ashbrook crater",
+      "term_zh": "阿什布鲁克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20092"
+    },
+    "Atlas": {
+      "zh": "阿特拉斯",
+      "term": "Atlas crater",
+      "term_zh": "阿特拉斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20093"
+    },
+    "Avicenna": {
+      "zh": "阿维森纳",
+      "term": "Avicenna crater",
+      "term_zh": "阿维森纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20501"
+    },
+    "Avogadro": {
+      "zh": "阿伏伽德罗",
+      "term": "Avogadro crater",
+      "term_zh": "阿伏伽德罗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20086"
+    },
+    "Baade": {
+      "zh": "巴德",
+      "term": "Baade crater",
+      "term_zh": "巴德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20517"
+    },
+    "Babbage": {
+      "zh": "巴贝奇",
+      "term": "Babbage crater",
+      "term_zh": "巴贝奇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20108"
+    },
+    "Babcock": {
+      "zh": "巴布科克",
+      "term": "Babcock crater",
+      "term_zh": "巴布科克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20109"
+    },
+    "Backlund": {
+      "zh": "巴克伦德",
+      "term": "Backlund crater",
+      "term_zh": "巴克伦德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20521"
+    },
+    "Baco": {
+      "zh": "培根",
+      "term": "Baco crater",
+      "term_zh": "培根环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20346"
+    },
+    "Baillaud": {
+      "zh": "巴约",
+      "term": "Baillaud crater",
+      "term_zh": "巴约环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20117"
+    },
+    "Bailly": {
+      "zh": "巴伊",
+      "term": "Bailly crater",
+      "term_zh": "巴伊环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20116"
+    },
+    "Balboa": {
+      "zh": "巴尔沃亚",
+      "term": "Balboa crater",
+      "term_zh": "巴尔沃亚环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20520"
+    },
+    "Baldet": {
+      "zh": "巴尔代",
+      "term": "Baldet crater",
+      "term_zh": "巴尔代环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20519"
+    },
+    "Balmer": {
+      "zh": "巴尔末",
+      "term": "Balmer crater",
+      "term_zh": "巴尔末环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20110"
+    },
+    "Banachiewicz": {
+      "zh": "巴纳赫维奇",
+      "term": "Banachiewicz crater",
+      "term_zh": "巴纳赫维奇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20522"
+    },
+    "Bancroft": {
+      "zh": "班克罗夫特",
+      "term": "Bancroft crater",
+      "term_zh": "班克罗夫特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26390"
+    },
+    "Banting": {
+      "zh": "班廷",
+      "term": "Banting crater",
+      "term_zh": "班廷环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20120"
+    },
+    "Barbier": {
+      "zh": "巴尔比耶",
+      "term": "Barbier crater",
+      "term_zh": "巴尔比耶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20518"
+    },
+    "Barnard": {
+      "zh": "巴纳德",
+      "term": "Barnard crater",
+      "term_zh": "巴纳德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20113"
+    },
+    "Barrow": {
+      "zh": "巴罗",
+      "term": "Barrow crater",
+      "term_zh": "巴罗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20112"
+    },
+    "Bartels": {
+      "zh": "巴特尔斯",
+      "term": "Bartels crater",
+      "term_zh": "巴特尔斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20523"
+    },
+    "Beaumont": {
+      "zh": "博蒙",
+      "term": "Beaumont crater",
+      "term_zh": "博蒙环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20546"
+    },
+    "Behaim": {
+      "zh": "贝海姆",
+      "term": "Behaim crater",
+      "term_zh": "贝海姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20123"
+    },
+    "Beijerinck": {
+      "zh": "拜耶林克",
+      "term": "Beijerinck crater",
+      "term_zh": "拜耶林克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20524"
+    },
+    "Bel'kovich": {
+      "zh": "别利科维奇",
+      "term": "Bel'kovich crater",
+      "term_zh": "别利科维奇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20127"
+    },
+    "Bell": {
+      "zh": "贝尔",
+      "term": "Bell crater",
+      "term_zh": "贝尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20122"
+    },
+    "Belopol'skiy": {
+      "zh": "别洛波利斯基",
+      "term": "Belopol'skiy crater",
+      "term_zh": "别洛波利斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20536"
+    },
+    "Belyaev": {
+      "zh": "别利亚耶夫",
+      "term": "Belyaev crater",
+      "term_zh": "别利亚耶夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20534"
+    },
+    "Berkner": {
+      "zh": "伯克纳",
+      "term": "Berkner crater",
+      "term_zh": "伯克纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20133"
+    },
+    "Berlage": {
+      "zh": "伯尔拉赫",
+      "term": "Berlage crater",
+      "term_zh": "伯尔拉赫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20542"
+    },
+    "Berosus": {
+      "zh": "贝罗索斯",
+      "term": "Berosus crater",
+      "term_zh": "贝罗索斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20527"
+    },
+    "Berzelius": {
+      "zh": "贝尔塞柳斯",
+      "term": "Berzelius crater",
+      "term_zh": "贝尔塞柳斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20526"
+    },
+    "Bessel": {
+      "zh": "贝塞尔",
+      "term": "Bessel crater",
+      "term_zh": "贝塞尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=494"
+    },
+    "Bečvář": {
+      "zh": "贝奇瓦日",
+      "term": "Bečvář crater",
+      "term_zh": "贝奇瓦日环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20528"
+    },
+    "Bhabha": {
+      "zh": "巴巴",
+      "term": "Bhabha crater",
+      "term_zh": "巴巴环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20516"
+    },
+    "Bi Sheng": {
+      "zh": "毕昇",
+      "term": "Bi Sheng crater",
+      "term_zh": "毕昇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26583"
+    },
+    "Biela": {
+      "zh": "比拉",
+      "term": "Biela crater",
+      "term_zh": "比拉环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20124"
+    },
+    "Birkeland": {
+      "zh": "伯克兰",
+      "term": "Birkeland crater",
+      "term_zh": "伯克兰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20543"
+    },
+    "Birkhoff": {
+      "zh": "伯克霍夫",
+      "term": "Birkhoff crater",
+      "term_zh": "伯克霍夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20132"
+    },
+    "Birmingham": {
+      "zh": "伯明翰",
+      "term": "Birmingham crater",
+      "term_zh": "伯明翰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20134"
+    },
+    "Blackett": {
+      "zh": "布莱克特",
+      "term": "Blackett crater",
+      "term_zh": "布莱克特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20138"
+    },
+    "Blazhko": {
+      "zh": "布拉日科",
+      "term": "Blazhko crater",
+      "term_zh": "布拉日科环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20550"
+    },
+    "Boguslawsky": {
+      "zh": "博古斯瓦夫斯基",
+      "term": "Boguslawsky crater",
+      "term_zh": "博古斯瓦夫斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20545"
+    },
+    "Bohr": {
+      "zh": "玻尔",
+      "term": "Bohr crater",
+      "term_zh": "玻尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20129"
+    },
+    "Boltzmann": {
+      "zh": "玻尔兹曼",
+      "term": "Boltzmann crater",
+      "term_zh": "玻尔兹曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20130"
+    },
+    "Bolyai": {
+      "zh": "鲍耶",
+      "term": "Bolyai crater",
+      "term_zh": "鲍耶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20121"
+    },
+    "Bonpland": {
+      "zh": "邦普朗",
+      "term": "Bonpland crater",
+      "term_zh": "邦普朗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20525"
+    },
+    "Boole": {
+      "zh": "布尔",
+      "term": "Boole crater",
+      "term_zh": "布尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20547"
+    },
+    "Borman": {
+      "zh": "博尔曼",
+      "term": "Borman crater",
+      "term_zh": "博尔曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20544"
+    },
+    "Bose": {
+      "zh": "博斯",
+      "term": "Bose crater",
+      "term_zh": "博斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20135"
+    },
+    "Boussingault": {
+      "zh": "布森戈",
+      "term": "Boussingault crater",
+      "term_zh": "布森戈环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20142"
+    },
+    "Boyle": {
+      "zh": "玻意耳",
+      "term": "Boyle crater",
+      "term_zh": "玻意耳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20541"
+    },
+    "Bragg": {
+      "zh": "布喇格",
+      "term": "Bragg crater",
+      "term_zh": "布喇格环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20137"
+    },
+    "Brashear": {
+      "zh": "布拉希尔",
+      "term": "Brashear crater",
+      "term_zh": "布拉希尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20551"
+    },
+    "Bredikhin": {
+      "zh": "布列季欣",
+      "term": "Bredikhin crater",
+      "term_zh": "布列季欣环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20553"
+    },
+    "Brianchon": {
+      "zh": "布利安生",
+      "term": "Brianchon crater",
+      "term_zh": "布利安生环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20141"
+    },
+    "Bridgman": {
+      "zh": "布里奇曼",
+      "term": "Bridgman crater",
+      "term_zh": "布里奇曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20140"
+    },
+    "Bronk": {
+      "zh": "布朗克",
+      "term": "Bronk crater",
+      "term_zh": "布朗克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20552"
+    },
+    "Brouwer": {
+      "zh": "布劳威尔",
+      "term": "Brouwer crater",
+      "term_zh": "布劳威尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20139"
+    },
+    "Brunner": {
+      "zh": "布隆内尔",
+      "term": "Brunner crater",
+      "term_zh": "布隆内尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20554"
+    },
+    "Buch": {
+      "zh": "布赫",
+      "term": "Buch crater",
+      "term_zh": "布赫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20549"
+    },
+    "Buffon": {
+      "zh": "布丰",
+      "term": "Buffon crater",
+      "term_zh": "布丰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20136"
+    },
+    "Buisson": {
+      "zh": "比松",
+      "term": "Buisson crater",
+      "term_zh": "比松环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20530"
+    },
+    "Bunsen": {
+      "zh": "本生",
+      "term": "Bunsen crater",
+      "term_zh": "本生环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20529"
+    },
+    "Burckhardt": {
+      "zh": "布尔克哈特",
+      "term": "Burckhardt crater",
+      "term_zh": "布尔克哈特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20548"
+    },
+    "Buys-Ballot": {
+      "zh": "白贝罗",
+      "term": "Buys-Ballot crater",
+      "term_zh": "白贝罗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20118"
+    },
+    "Byrd": {
+      "zh": "伯德",
+      "term": "Byrd crater",
+      "term_zh": "伯德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20131"
+    },
+    "Büsching": {
+      "zh": "比兴",
+      "term": "Büsching crater",
+      "term_zh": "比兴环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20531"
+    },
+    "Cabannes": {
+      "zh": "卡巴纳",
+      "term": "Cabannes crater",
+      "term_zh": "卡巴纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20235"
+    },
+    "Cai Lun": {
+      "zh": "蔡伦",
+      "term": "Cai Lun crater",
+      "term_zh": "蔡伦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26584"
+    },
+    "Cailleux": {
+      "zh": "卡耶",
+      "term": "Cailleux crater",
+      "term_zh": "卡耶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20620"
+    },
+    "Cajori": {
+      "zh": "卡约里",
+      "term": "Cajori crater",
+      "term_zh": "卡约里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20621"
+    },
+    "Campbell": {
+      "zh": "坎贝尔",
+      "term": "Campbell crater",
+      "term_zh": "坎贝尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20239"
+    },
+    "Cannizzaro": {
+      "zh": "坎尼扎罗",
+      "term": "Cannizzaro crater",
+      "term_zh": "坎尼扎罗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20626"
+    },
+    "Cannon": {
+      "zh": "坎农",
+      "term": "Cannon crater",
+      "term_zh": "坎农环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20627"
+    },
+    "Cantor": {
+      "zh": "康托尔",
+      "term": "Cantor crater",
+      "term_zh": "康托尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20242"
+    },
+    "Carlini": {
+      "zh": "卡利尼",
+      "term": "Carlini crater",
+      "term_zh": "卡利尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26386"
+    },
+    "Carnot": {
+      "zh": "卡诺",
+      "term": "Carnot crater",
+      "term_zh": "卡诺环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20237"
+    },
+    "Carpenter": {
+      "zh": "卡彭特",
+      "term": "Carpenter crater",
+      "term_zh": "卡彭特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20616"
+    },
+    "Carver": {
+      "zh": "卡弗",
+      "term": "Carver crater",
+      "term_zh": "卡弗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20614"
+    },
+    "Cassegrain": {
+      "zh": "卡塞格林",
+      "term": "Cassegrain crater",
+      "term_zh": "卡塞格林环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20617"
+    },
+    "Cassini": {
+      "zh": "卡西尼",
+      "term": "Cassini crater",
+      "term_zh": "卡西尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20619"
+    },
+    "Catena Abulfeda": {
+      "zh": "艾布·菲达坑链",
+      "term": "Catena Abulfeda",
+      "term_zh": "艾布·菲达坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20818"
+    },
+    "Catena Artamonov": {
+      "zh": "阿尔塔莫诺夫坑链",
+      "term": "Catena Artamonov",
+      "term_zh": "阿尔塔莫诺夫坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20817"
+    },
+    "Catena Davy": {
+      "zh": "戴维坑链",
+      "term": "Catena Davy",
+      "term_zh": "戴维坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20819"
+    },
+    "Catena Dziewulski": {
+      "zh": "杰武尔斯基坑链",
+      "term": "Catena Dziewulski",
+      "term_zh": "杰武尔斯基坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20821"
+    },
+    "Catena Humboldt": {
+      "zh": "洪堡坑链",
+      "term": "Catena Humboldt",
+      "term_zh": "洪堡坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20820"
+    },
+    "Catena Krafft": {
+      "zh": "克拉夫特坑链",
+      "term": "Catena Krafft",
+      "term_zh": "克拉夫特坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20822"
+    },
+    "Catena Kurchatov": {
+      "zh": "库尔恰托夫坑链",
+      "term": "Catena Kurchatov",
+      "term_zh": "库尔恰托夫坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20823"
+    },
+    "Catena Mendeleev": {
+      "zh": "门捷列夫坑链",
+      "term": "Catena Mendeleev",
+      "term_zh": "门捷列夫坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20825"
+    },
+    "Catena Sumner": {
+      "zh": "萨姆纳坑链",
+      "term": "Catena Sumner",
+      "term_zh": "萨姆纳坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20826"
+    },
+    "Catena Sylvester": {
+      "zh": "西尔维斯特坑链",
+      "term": "Catena Sylvester",
+      "term_zh": "西尔维斯特坑链",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20827"
+    },
+    "Cauchy": {
+      "zh": "柯西",
+      "term": "Cauchy crater",
+      "term_zh": "柯西环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20244"
+    },
+    "Cavendish": {
+      "zh": "卡文迪什",
+      "term": "Cavendish crater",
+      "term_zh": "卡文迪什环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20618"
+    },
+    "Chacornac": {
+      "zh": "沙科纳克",
+      "term": "Chacornac crater",
+      "term_zh": "沙科纳克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20731"
+    },
+    "Challis": {
+      "zh": "查理士",
+      "term": "Challis crater",
+      "term_zh": "查理士环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20556"
+    },
+    "Chamberlin": {
+      "zh": "钱柏林",
+      "term": "Chamberlin crater",
+      "term_zh": "钱柏林环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20360"
+    },
+    "Champollion": {
+      "zh": "商博良",
+      "term": "Champollion crater",
+      "term_zh": "商博良环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20737"
+    },
+    "Chandler": {
+      "zh": "钱德勒",
+      "term": "Chandler crater",
+      "term_zh": "钱德勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20361"
+    },
+    "Chang Heng": {
+      "zh": "张衡",
+      "term": "Chang Heng crater",
+      "term_zh": "张衡环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=4489"
+    },
+    "Chang-Ngo": {
+      "zh": "嫦娥",
+      "term": "Chang-Ngo crater",
+      "term_zh": "嫦娥环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26586"
+    },
+    "Chaplygin": {
+      "zh": "恰普雷金",
+      "term": "Chaplygin crater",
+      "term_zh": "恰普雷金环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20359"
+    },
+    "Chapman": {
+      "zh": "查普曼",
+      "term": "Chapman crater",
+      "term_zh": "查普曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20145"
+    },
+    "Chappe": {
+      "zh": "沙佩",
+      "term": "Chappe crater",
+      "term_zh": "沙佩环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20734"
+    },
+    "Chappell": {
+      "zh": "查普尔",
+      "term": "Chappell crater",
+      "term_zh": "查普尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20144"
+    },
+    "Charlier": {
+      "zh": "沙利叶",
+      "term": "Charlier crater",
+      "term_zh": "沙利叶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20732"
+    },
+    "Chauvenet": {
+      "zh": "肖夫内",
+      "term": "Chauvenet crater",
+      "term_zh": "肖夫内环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20772"
+    },
+    "Chebyshev": {
+      "zh": "切比雪夫",
+      "term": "Chebyshev crater",
+      "term_zh": "切比雪夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20362"
+    },
+    "Chernyshev": {
+      "zh": "切尔内绍夫",
+      "term": "Chernyshev crater",
+      "term_zh": "切尔内绍夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20724"
+    },
+    "Chevallier": {
+      "zh": "谢瓦利尔",
+      "term": "Chevallier crater",
+      "term_zh": "谢瓦利尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20776"
+    },
+    "Ching-Te": {
+      "zh": "景德",
+      "term": "Ching-Te crater",
+      "term_zh": "景德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26587"
+    },
+    "Chrétien": {
+      "zh": "克雷蒂安",
+      "term": "Chrétien crater",
+      "term_zh": "克雷蒂安环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20251"
+    },
+    "Clavius": {
+      "zh": "克拉维乌斯",
+      "term": "Clavius crater",
+      "term_zh": "克拉维乌斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=23984"
+    },
+    "Cleomedes": {
+      "zh": "克莱奥迈季斯",
+      "term": "Cleomedes crater",
+      "term_zh": "克莱奥迈季斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20250"
+    },
+    "Cockcroft": {
+      "zh": "考克饶夫",
+      "term": "Cockcroft crater",
+      "term_zh": "考克饶夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20629"
+    },
+    "Colombo": {
+      "zh": "哥伦布",
+      "term": "Colombo crater",
+      "term_zh": "哥伦布环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20188"
+    },
+    "Compton": {
+      "zh": "康普顿",
+      "term": "Compton crater",
+      "term_zh": "康普顿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20241"
+    },
+    "Comrie": {
+      "zh": "科姆里",
+      "term": "Comrie crater",
+      "term_zh": "科姆里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20633"
+    },
+    "Condorcet": {
+      "zh": "孔多塞",
+      "term": "Condorcet crater",
+      "term_zh": "孔多塞环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20642"
+    },
+    "Congreve": {
+      "zh": "康格里夫",
+      "term": "Congreve crater",
+      "term_zh": "康格里夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20628"
+    },
+    "Cook": {
+      "zh": "库克",
+      "term": "Cook crater",
+      "term_zh": "库克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20254"
+    },
+    "Copernicus": {
+      "zh": "哥白尼",
+      "term": "Copernicus crater",
+      "term_zh": "哥白尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=904"
+    },
+    "Cori": {
+      "zh": "科里",
+      "term": "Cori crater",
+      "term_zh": "科里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20632"
+    },
+    "Coriolis": {
+      "zh": "科里奥利",
+      "term": "Coriolis crater",
+      "term_zh": "科里奥利环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20246"
+    },
+    "Coulomb": {
+      "zh": "库仑",
+      "term": "Coulomb crater",
+      "term_zh": "库仑环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20255"
+    },
+    "Cremona": {
+      "zh": "克雷莫纳",
+      "term": "Cremona crater",
+      "term_zh": "克雷莫纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20637"
+    },
+    "Crocco": {
+      "zh": "克罗科",
+      "term": "Crocco crater",
+      "term_zh": "克罗科环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20639"
+    },
+    "Crommelin": {
+      "zh": "克罗姆林",
+      "term": "Crommelin crater",
+      "term_zh": "克罗姆林环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20640"
+    },
+    "Curie": {
+      "zh": "居里",
+      "term": "Curie crater",
+      "term_zh": "居里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20233"
+    },
+    "Curtius": {
+      "zh": "库尔提乌斯",
+      "term": "Curtius crater",
+      "term_zh": "库尔提乌斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20643"
+    },
+    "Cuvier": {
+      "zh": "居维叶",
+      "term": "Cuvier crater",
+      "term_zh": "居维叶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20234"
+    },
+    "Cyrano": {
+      "zh": "西哈诺",
+      "term": "Cyrano crater",
+      "term_zh": "西哈诺环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20410"
+    },
+    "Cyrillus": {
+      "zh": "西里尔",
+      "term": "Cyrillus crater",
+      "term_zh": "西里尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20412"
+    },
+    "Daedalus": {
+      "zh": "代达罗斯",
+      "term": "Daedalus crater",
+      "term_zh": "代达罗斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20558"
+    },
+    "Dalton": {
+      "zh": "道尔顿",
+      "term": "Dalton crater",
+      "term_zh": "道尔顿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20149"
+    },
+    "Danjon": {
+      "zh": "丹戎",
+      "term": "Danjon crater",
+      "term_zh": "丹戎环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20561"
+    },
+    "Dante": {
+      "zh": "但丁",
+      "term": "Dante crater",
+      "term_zh": "但丁环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20148"
+    },
+    "Darwin": {
+      "zh": "达尔文",
+      "term": "Darwin crater",
+      "term_zh": "达尔文环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20147"
+    },
+    "Davisson": {
+      "zh": "戴维孙",
+      "term": "Davisson crater",
+      "term_zh": "戴维孙环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20560"
+    },
+    "De Forest": {
+      "zh": "德福雷斯特",
+      "term": "De Forest crater",
+      "term_zh": "德福雷斯特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20564"
+    },
+    "De La Rue": {
+      "zh": "德拉鲁",
+      "term": "De la Rue crater",
+      "term_zh": "德拉鲁环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20151"
+    },
+    "De Vries": {
+      "zh": "德弗里斯",
+      "term": "De Vries crater",
+      "term_zh": "德弗里斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20563"
+    },
+    "Debye": {
+      "zh": "德拜",
+      "term": "Debye crater",
+      "term_zh": "德拜环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20150"
+    },
+    "Delambre": {
+      "zh": "德朗布尔",
+      "term": "Delambre crater",
+      "term_zh": "德朗布尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20566"
+    },
+    "Dellinger": {
+      "zh": "德林杰",
+      "term": "Dellinger crater",
+      "term_zh": "德林杰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20154"
+    },
+    "Demonax": {
+      "zh": "泽莫纳克斯",
+      "term": "Demonax crater",
+      "term_zh": "泽莫纳克斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20434"
+    },
+    "Desargues": {
+      "zh": "德扎尔格",
+      "term": "Desargues crater",
+      "term_zh": "德扎尔格环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20155"
+    },
+    "Descartes": {
+      "zh": "笛卡儿",
+      "term": "Descartes crater",
+      "term_zh": "笛卡儿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20156"
+    },
+    "Deslandres": {
+      "zh": "德朗达尔",
+      "term": "Deslandres crater",
+      "term_zh": "德朗达尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20152"
+    },
+    "Dewar": {
+      "zh": "杜瓦",
+      "term": "Dewar crater",
+      "term_zh": "杜瓦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20572"
+    },
+    "Diophantus": {
+      "zh": "丢番图",
+      "term": "Diophantus crater",
+      "term_zh": "丢番图环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20157"
+    },
+    "Doerfel": {
+      "zh": "德费尔",
+      "term": "Doerfel crater",
+      "term_zh": "德费尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20562"
+    },
+    "Donner": {
+      "zh": "唐纳",
+      "term": "Donner crater",
+      "term_zh": "唐纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20755"
+    },
+    "Doppelmayer": {
+      "zh": "多佩尔迈尔",
+      "term": "Doppelmayer crater",
+      "term_zh": "多佩尔迈尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20573"
+    },
+    "Doppler": {
+      "zh": "多普勒",
+      "term": "Doppler crater",
+      "term_zh": "多普勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20158"
+    },
+    "Dorsa Aldrovandi": {
+      "zh": "阿尔德罗万迪山脊",
+      "term": "Dorsa Aldrovandi",
+      "term_zh": "阿尔德罗万迪山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20790"
+    },
+    "Dorsa Andrusov": {
+      "zh": "安德鲁索夫山脊",
+      "term": "Dorsa Andrusov",
+      "term_zh": "安德鲁索夫山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20791"
+    },
+    "Dorsa Argand": {
+      "zh": "阿尔甘山脊",
+      "term": "Dorsa Argand",
+      "term_zh": "阿尔甘山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20440"
+    },
+    "Dorsa Barlow": {
+      "zh": "巴洛山脊",
+      "term": "Dorsa Barlow",
+      "term_zh": "巴洛山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20442"
+    },
+    "Dorsa Burnet": {
+      "zh": "伯内特山脊",
+      "term": "Dorsa Burnet",
+      "term_zh": "伯内特山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20792"
+    },
+    "Dorsa Cato": {
+      "zh": "加图山脊",
+      "term": "Dorsa Cato",
+      "term_zh": "加图山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20794"
+    },
+    "Dorsa Dana": {
+      "zh": "达纳山脊",
+      "term": "Dorsa Dana",
+      "term_zh": "达纳山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20443"
+    },
+    "Dorsa Ewing": {
+      "zh": "尤因山脊",
+      "term": "Dorsa Ewing",
+      "term_zh": "尤因山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20453"
+    },
+    "Dorsa Geikie": {
+      "zh": "盖基山脊",
+      "term": "Dorsa Geikie",
+      "term_zh": "盖基山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20444"
+    },
+    "Dorsa Harker": {
+      "zh": "哈克山脊",
+      "term": "Dorsa Harker",
+      "term_zh": "哈克山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20446"
+    },
+    "Dorsa Lister": {
+      "zh": "利斯特山脊",
+      "term": "Dorsa Lister",
+      "term_zh": "利斯特山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20795"
+    },
+    "Dorsa Mawson": {
+      "zh": "莫森山脊",
+      "term": "Dorsa Mawson",
+      "term_zh": "莫森山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20797"
+    },
+    "Dorsa Rubey": {
+      "zh": "鲁比山脊",
+      "term": "Dorsa Rubey",
+      "term_zh": "鲁比山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20796"
+    },
+    "Dorsa Smirnov": {
+      "zh": "斯米尔诺夫山脊",
+      "term": "Dorsa Smirnov",
+      "term_zh": "斯米尔诺夫山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20798"
+    },
+    "Dorsa Sorby": {
+      "zh": "索比山脊",
+      "term": "Dorsa Sorby",
+      "term_zh": "索比山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20451"
+    },
+    "Dorsa Stille": {
+      "zh": "施蒂勒山脊",
+      "term": "Dorsa Stille",
+      "term_zh": "施蒂勒山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20450"
+    },
+    "Dorsa Whiston": {
+      "zh": "惠斯顿山脊",
+      "term": "Dorsa Whiston",
+      "term_zh": "惠斯顿山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20793"
+    },
+    "Dorsum Arduino": {
+      "zh": "阿尔杜伊诺山脊",
+      "term": "Dorsum Arduino",
+      "term_zh": "阿尔杜伊诺山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20439"
+    },
+    "Dorsum Azara": {
+      "zh": "阿萨拉山脊",
+      "term": "Dorsum Azara",
+      "term_zh": "阿萨拉山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20799"
+    },
+    "Dorsum Bucher": {
+      "zh": "布赫山脊",
+      "term": "Dorsum Bucher",
+      "term_zh": "布赫山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20801"
+    },
+    "Dorsum Buckland": {
+      "zh": "巴克兰山脊",
+      "term": "Dorsum Buckland",
+      "term_zh": "巴克兰山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20800"
+    },
+    "Dorsum Cayeux": {
+      "zh": "卡耶山脊",
+      "term": "Dorsum Cayeux",
+      "term_zh": "卡耶山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20804"
+    },
+    "Dorsum Cloos": {
+      "zh": "克洛斯山脊",
+      "term": "Dorsum Cloos",
+      "term_zh": "克洛斯山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20805"
+    },
+    "Dorsum Cushman": {
+      "zh": "库什曼山脊",
+      "term": "Dorsum Cushman",
+      "term_zh": "库什曼山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20448"
+    },
+    "Dorsum Gast": {
+      "zh": "加斯特山脊",
+      "term": "Dorsum Gast",
+      "term_zh": "加斯特山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20803"
+    },
+    "Dorsum Grabau": {
+      "zh": "葛利普山脊",
+      "term": "Dorsum Grabau",
+      "term_zh": "葛利普山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20445"
+    },
+    "Dorsum Heim": {
+      "zh": "海姆山脊",
+      "term": "Dorsum Heim",
+      "term_zh": "海姆山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20447"
+    },
+    "Dorsum Higazy": {
+      "zh": "希加兹山脊",
+      "term": "Dorsum Higazy",
+      "term_zh": "希加兹山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26391"
+    },
+    "Dorsum Nicol": {
+      "zh": "尼科尔山脊",
+      "term": "Dorsum Nicol",
+      "term_zh": "尼科尔山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20807"
+    },
+    "Dorsum Niggli": {
+      "zh": "尼格利山脊",
+      "term": "Dorsum Niggli",
+      "term_zh": "尼格利山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20806"
+    },
+    "Dorsum Oppel": {
+      "zh": "奥佩尔山脊",
+      "term": "Dorsum Oppel",
+      "term_zh": "奥佩尔山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20441"
+    },
+    "Dorsum Owen": {
+      "zh": "欧文山脊",
+      "term": "Dorsum Owen",
+      "term_zh": "欧文山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20808"
+    },
+    "Dorsum Scilla": {
+      "zh": "希拉山脊",
+      "term": "Dorsum Scilla",
+      "term_zh": "希拉山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20809"
+    },
+    "Dorsum Termier": {
+      "zh": "泰尔米埃山脊",
+      "term": "Dorsum Termier",
+      "term_zh": "泰尔米埃山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20452"
+    },
+    "Dorsum Von Cotta": {
+      "zh": "冯·科塔山脊",
+      "term": "Dorsum Von Cotta",
+      "term_zh": "冯·科塔山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20802"
+    },
+    "Dorsum Zirkel": {
+      "zh": "齐克尔山脊",
+      "term": "Dorsum Zirkel",
+      "term_zh": "齐克尔山脊",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20449"
+    },
+    "Dryden": {
+      "zh": "德赖登",
+      "term": "Dryden crater",
+      "term_zh": "德赖登环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20565"
+    },
+    "Drygalski": {
+      "zh": "德里加尔斯基",
+      "term": "Drygalski crater",
+      "term_zh": "德里加尔斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20153"
+    },
+    "Dubyago": {
+      "zh": "杜比亚戈",
+      "term": "Dubyago crater",
+      "term_zh": "杜比亚戈环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20569"
+    },
+    "Dugan": {
+      "zh": "杜根",
+      "term": "Dugan crater",
+      "term_zh": "杜根环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20570"
+    },
+    "Dunér": {
+      "zh": "杜奈尔",
+      "term": "Dunér crater",
+      "term_zh": "杜奈尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20571"
+    },
+    "Dyson": {
+      "zh": "戴森",
+      "term": "Dyson crater",
+      "term_zh": "戴森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20559"
+    },
+    "Eddington": {
+      "zh": "爱丁顿",
+      "term": "Eddington crater",
+      "term_zh": "爱丁顿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20098"
+    },
+    "Edison": {
+      "zh": "爱迪生",
+      "term": "Edison crater",
+      "term_zh": "爱迪生环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20097"
+    },
+    "Eijkman": {
+      "zh": "艾克曼",
+      "term": "Eijkman crater",
+      "term_zh": "艾克曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20508"
+    },
+    "Einstein": {
+      "zh": "爱因斯坦",
+      "term": "Einstein crater",
+      "term_zh": "爱因斯坦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20099"
+    },
+    "Einthoven": {
+      "zh": "埃因托芬",
+      "term": "Einthoven crater",
+      "term_zh": "埃因托芬环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20506"
+    },
+    "Elvey": {
+      "zh": "埃尔维",
+      "term": "Elvey crater",
+      "term_zh": "埃尔维环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20502"
+    },
+    "Emden": {
+      "zh": "埃姆登",
+      "term": "Emden crater",
+      "term_zh": "埃姆登环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20095"
+    },
+    "Endymion": {
+      "zh": "恩底弥昂",
+      "term": "Endymion crater",
+      "term_zh": "恩底弥昂环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20160"
+    },
+    "Eratosthenes": {
+      "zh": "厄拉多塞",
+      "term": "Eratosthenes crater",
+      "term_zh": "厄拉多塞环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20574"
+    },
+    "Erro": {
+      "zh": "埃罗",
+      "term": "Erro crater",
+      "term_zh": "埃罗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20504"
+    },
+    "Esnault-Pelterie": {
+      "zh": "埃斯诺-佩尔蒂埃",
+      "term": "Esnault-Pelterie crater",
+      "term_zh": "埃斯诺-佩尔蒂埃环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20096"
+    },
+    "Euclides": {
+      "zh": "欧几里得",
+      "term": "Euclides crater",
+      "term_zh": "欧几里得环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20338"
+    },
+    "Eudoxus": {
+      "zh": "欧多克索斯",
+      "term": "Eudoxus crater",
+      "term_zh": "欧多克索斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20705"
+    },
+    "Euler": {
+      "zh": "欧拉",
+      "term": "Euler crater",
+      "term_zh": "欧拉环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=1226"
+    },
+    "Evans": {
+      "zh": "埃文斯",
+      "term": "Evans crater",
+      "term_zh": "埃文斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20505"
+    },
+    "Evdokimov": {
+      "zh": "叶夫多基莫夫",
+      "term": "Evdokimov crater",
+      "term_zh": "叶夫多基莫夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20780"
+    },
+    "Evershed": {
+      "zh": "埃弗谢德",
+      "term": "Evershed crater",
+      "term_zh": "埃弗谢德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20503"
+    },
+    "Eötvös": {
+      "zh": "厄缶",
+      "term": "Eötvös crater",
+      "term_zh": "厄缶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20159"
+    },
+    "Fabricius": {
+      "zh": "法布里休斯",
+      "term": "Fabricius crater",
+      "term_zh": "法布里休斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20162"
+    },
+    "Fabry": {
+      "zh": "法布里",
+      "term": "Fabry crater",
+      "term_zh": "法布里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20161"
+    },
+    "Faraday": {
+      "zh": "法拉第",
+      "term": "Faraday crater",
+      "term_zh": "法拉第环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=1303"
+    },
+    "Fechner": {
+      "zh": "费希纳",
+      "term": "Fechner crater",
+      "term_zh": "费希纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20170"
+    },
+    "Fermi": {
+      "zh": "费米",
+      "term": "Fermi crater",
+      "term_zh": "费米环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20168"
+    },
+    "Fersman": {
+      "zh": "费斯曼",
+      "term": "Fersman crater",
+      "term_zh": "费斯曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20169"
+    },
+    "Finsen": {
+      "zh": "芬森",
+      "term": "Finsen crater",
+      "term_zh": "芬森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20579"
+    },
+    "Firsov": {
+      "zh": "菲尔索夫",
+      "term": "Firsov crater",
+      "term_zh": "菲尔索夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20576"
+    },
+    "Fitzgerald": {
+      "zh": "菲茨杰拉德",
+      "term": "Fitzgerald crater",
+      "term_zh": "菲茨杰拉德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20575"
+    },
+    "Fizeau": {
+      "zh": "菲佐",
+      "term": "Fizeau crater",
+      "term_zh": "菲佐环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20167"
+    },
+    "Flammarion": {
+      "zh": "弗拉马里翁",
+      "term": "Flammarion crater",
+      "term_zh": "弗拉马里翁环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20177"
+    },
+    "Fleming": {
+      "zh": "弗莱明",
+      "term": "Fleming crater",
+      "term_zh": "弗莱明环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20178"
+    },
+    "Florey": {
+      "zh": "弗洛里",
+      "term": "Florey crater",
+      "term_zh": "弗洛里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20586"
+    },
+    "Fourier": {
+      "zh": "傅里叶",
+      "term": "Fourier crater",
+      "term_zh": "傅里叶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20184"
+    },
+    "Fowler": {
+      "zh": "福勒",
+      "term": "Fowler crater",
+      "term_zh": "福勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20183"
+    },
+    "Fra Mauro": {
+      "zh": "弗拉·毛罗",
+      "term": "Fra Mauro crater",
+      "term_zh": "弗拉·毛罗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20584"
+    },
+    "Fracastorius": {
+      "zh": "弗拉卡斯托罗",
+      "term": "Fracastorius crater",
+      "term_zh": "弗拉卡斯托罗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20175"
+    },
+    "Franklin": {
+      "zh": "富兰克林",
+      "term": "Franklin crater",
+      "term_zh": "富兰克林环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20185"
+    },
+    "Fraunhofer": {
+      "zh": "夫琅和费",
+      "term": "Fraunhofer crater",
+      "term_zh": "夫琅和费环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20583"
+    },
+    "Freud": {
+      "zh": "弗洛伊德",
+      "term": "Freud crater",
+      "term_zh": "弗洛伊德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20181"
+    },
+    "Freundlich": {
+      "zh": "弗罗因德利希",
+      "term": "Freundlich crater",
+      "term_zh": "弗罗因德利希环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20180"
+    },
+    "Froelich": {
+      "zh": "弗勒利希",
+      "term": "Froelich crater",
+      "term_zh": "弗勒利希环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20585"
+    },
+    "Gadomski": {
+      "zh": "加多姆斯基",
+      "term": "Gadomski crater",
+      "term_zh": "加多姆斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20609"
+    },
+    "Gagarin": {
+      "zh": "加加林",
+      "term": "Gagarin crater",
+      "term_zh": "加加林环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20222"
+    },
+    "Galilaei": {
+      "zh": "伽利略",
+      "term": "Galilaei crater",
+      "term_zh": "伽利略环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20224"
+    },
+    "Galois": {
+      "zh": "伽罗瓦",
+      "term": "Galois crater",
+      "term_zh": "伽罗瓦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20225"
+    },
+    "Galvani": {
+      "zh": "伽伐尼",
+      "term": "Galvani crater",
+      "term_zh": "伽伐尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20223"
+    },
+    "Gamow": {
+      "zh": "伽莫夫",
+      "term": "Gamow crater",
+      "term_zh": "伽莫夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20226"
+    },
+    "Ganswindt": {
+      "zh": "甘斯文特",
+      "term": "Ganswindt crater",
+      "term_zh": "甘斯文特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20587"
+    },
+    "Garavito": {
+      "zh": "加拉维托",
+      "term": "Garavito crater",
+      "term_zh": "加拉维托环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20611"
+    },
+    "Gassendi": {
+      "zh": "伽桑狄",
+      "term": "Gassendi crater",
+      "term_zh": "伽桑狄环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20227"
+    },
+    "Gauss": {
+      "zh": "高斯",
+      "term": "Gauss crater",
+      "term_zh": "高斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=1542"
+    },
+    "Gavrilov": {
+      "zh": "加夫里洛夫",
+      "term": "Gavrilov crater",
+      "term_zh": "加夫里洛夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20610"
+    },
+    "Gerard": {
+      "zh": "杰勒德",
+      "term": "Gerard crater",
+      "term_zh": "杰勒德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20231"
+    },
+    "Gerasimovich": {
+      "zh": "格拉西莫维奇",
+      "term": "Gerasimovich crater",
+      "term_zh": "格拉西莫维奇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20189"
+    },
+    "Gibbs": {
+      "zh": "吉布斯",
+      "term": "Gibbs crater",
+      "term_zh": "吉布斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20605"
+    },
+    "Gilbert": {
+      "zh": "吉尔伯特",
+      "term": "Gilbert crater",
+      "term_zh": "吉尔伯特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20219"
+    },
+    "Gill": {
+      "zh": "吉尔",
+      "term": "Gill crater",
+      "term_zh": "吉尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20606"
+    },
+    "Giordano Bruno": {
+      "zh": "焦尔达诺·布鲁诺",
+      "term": "Giordano Bruno crater",
+      "term_zh": "焦尔达诺·布鲁诺环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20228"
+    },
+    "Goddard": {
+      "zh": "戈达德",
+      "term": "Goddard crater",
+      "term_zh": "戈达德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20187"
+    },
+    "Goldschmidt": {
+      "zh": "戈尔德施米特",
+      "term": "Goldschmidt crater",
+      "term_zh": "戈尔德施米特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20588"
+    },
+    "Green": {
+      "zh": "格林",
+      "term": "Green crater",
+      "term_zh": "格林环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20590"
+    },
+    "Grimaldi": {
+      "zh": "格里马尔迪",
+      "term": "Grimaldi crater",
+      "term_zh": "格里马尔迪环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20190"
+    },
+    "Grissom": {
+      "zh": "格里索姆",
+      "term": "Grissom crater",
+      "term_zh": "格里索姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20589"
+    },
+    "Guericke": {
+      "zh": "居里克",
+      "term": "Guericke crater",
+      "term_zh": "居里克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20613"
+    },
+    "Guillaume": {
+      "zh": "纪尧姆",
+      "term": "Guillaume crater",
+      "term_zh": "纪尧姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20220"
+    },
+    "Gum": {
+      "zh": "古姆",
+      "term": "Gum crater",
+      "term_zh": "古姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20591"
+    },
+    "Gutenberg": {
+      "zh": "谷登堡",
+      "term": "Gutenberg crater",
+      "term_zh": "谷登堡环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20192"
+    },
+    "Guyot": {
+      "zh": "盖奥特",
+      "term": "Guyot crater",
+      "term_zh": "盖奥特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20186"
+    },
+    "Gärtner": {
+      "zh": "格特纳",
+      "term": "Gärtner crater",
+      "term_zh": "格特纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20191"
+    },
+    "H. G. Wells": {
+      "zh": "赫·乔·威尔斯",
+      "term": "H. G. Wells crater",
+      "term_zh": "赫·乔·威尔斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20204"
+    },
+    "Haber": {
+      "zh": "哈伯",
+      "term": "Haber crater",
+      "term_zh": "哈伯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20592"
+    },
+    "Hagen": {
+      "zh": "哈根",
+      "term": "Hagen crater",
+      "term_zh": "哈根环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20593"
+    },
+    "Hahn": {
+      "zh": "哈恩",
+      "term": "Hahn crater",
+      "term_zh": "哈恩环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20193"
+    },
+    "Hainzel": {
+      "zh": "海因泽尔",
+      "term": "Hainzel crater",
+      "term_zh": "海因泽尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20600"
+    },
+    "Hale": {
+      "zh": "海尔",
+      "term": "Hale crater",
+      "term_zh": "海尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20197"
+    },
+    "Halley": {
+      "zh": "哈雷",
+      "term": "Halley crater",
+      "term_zh": "哈雷环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=1717"
+    },
+    "Hanno": {
+      "zh": "汉诺",
+      "term": "Hanno crater",
+      "term_zh": "汉诺环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20202"
+    },
+    "Harlan": {
+      "zh": "哈伦",
+      "term": "Harlan crater",
+      "term_zh": "哈伦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20595"
+    },
+    "Harpalus": {
+      "zh": "哈帕洛斯",
+      "term": "Harpalus crater",
+      "term_zh": "哈帕洛斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26388"
+    },
+    "Harriot": {
+      "zh": "哈里奥特",
+      "term": "Harriot crater",
+      "term_zh": "哈里奥特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20594"
+    },
+    "Hartmann": {
+      "zh": "哈特曼",
+      "term": "Hartmann crater",
+      "term_zh": "哈特曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20596"
+    },
+    "Hartwig": {
+      "zh": "哈特维希",
+      "term": "Hartwig crater",
+      "term_zh": "哈特维希环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20195"
+    },
+    "Harvey": {
+      "zh": "哈维",
+      "term": "Harvey crater",
+      "term_zh": "哈维环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20597"
+    },
+    "Hase": {
+      "zh": "哈泽",
+      "term": "Hase crater",
+      "term_zh": "哈泽环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20196"
+    },
+    "Hausen": {
+      "zh": "豪森",
+      "term": "Hausen crater",
+      "term_zh": "豪森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20203"
+    },
+    "Hayn": {
+      "zh": "海因",
+      "term": "Hayn crater",
+      "term_zh": "海因环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20198"
+    },
+    "Heaviside": {
+      "zh": "亥维赛",
+      "term": "Heaviside crater",
+      "term_zh": "亥维赛环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20201"
+    },
+    "Hecataeus": {
+      "zh": "赫卡泰奥斯",
+      "term": "Hecataeus crater",
+      "term_zh": "赫卡泰奥斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20206"
+    },
+    "Hedin": {
+      "zh": "斯文赫定",
+      "term": "Hedin crater",
+      "term_zh": "斯文赫定环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20387"
+    },
+    "Hegu": {
+      "zh": "河鼓",
+      "term": "Hegu crater",
+      "term_zh": "河鼓环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26588"
+    },
+    "Heinsius": {
+      "zh": "海因修斯",
+      "term": "Heinsius crater",
+      "term_zh": "海因修斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20199"
+    },
+    "Helmholtz": {
+      "zh": "亥姆霍兹",
+      "term": "Helmholtz crater",
+      "term_zh": "亥姆霍兹环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20200"
+    },
+    "Heraclitus": {
+      "zh": "赫拉克利特",
+      "term": "Heraclitus crater",
+      "term_zh": "赫拉克利特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20207"
+    },
+    "Hermite": {
+      "zh": "埃尔米特",
+      "term": "Hermite crater",
+      "term_zh": "埃尔米特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20094"
+    },
+    "Herschel": {
+      "zh": "赫歇尔",
+      "term": "Herschel crater",
+      "term_zh": "赫歇尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=1838"
+    },
+    "Hertz": {
+      "zh": "赫兹",
+      "term": "Hertz crater",
+      "term_zh": "赫兹环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20211"
+    },
+    "Hertzsprung": {
+      "zh": "赫茨普龙",
+      "term": "Hertzsprung crater",
+      "term_zh": "赫茨普龙环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20205"
+    },
+    "Hess": {
+      "zh": "赫斯",
+      "term": "Hess crater",
+      "term_zh": "赫斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20208"
+    },
+    "Hevelius": {
+      "zh": "赫维留",
+      "term": "Hevelius crater",
+      "term_zh": "赫维留环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20209"
+    },
+    "Heymans": {
+      "zh": "海曼斯",
+      "term": "Heymans crater",
+      "term_zh": "海曼斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20599"
+    },
+    "Hilbert": {
+      "zh": "希尔伯特",
+      "term": "Hilbert crater",
+      "term_zh": "希尔伯特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20413"
+    },
+    "Hipparchus": {
+      "zh": "依巴谷",
+      "term": "Hipparchus crater",
+      "term_zh": "依巴谷环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20429"
+    },
+    "Hippocrates": {
+      "zh": "希波克拉底",
+      "term": "Hippocrates crater",
+      "term_zh": "希波克拉底环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20770"
+    },
+    "Hirayama": {
+      "zh": "平山",
+      "term": "Hirayama crater",
+      "term_zh": "平山环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20350"
+    },
+    "Hommel": {
+      "zh": "霍梅尔",
+      "term": "Hommel crater",
+      "term_zh": "霍梅尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20216"
+    },
+    "Hooke": {
+      "zh": "胡克",
+      "term": "Hooke crater",
+      "term_zh": "胡克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20213"
+    },
+    "Hopmann": {
+      "zh": "霍普曼",
+      "term": "Hopmann crater",
+      "term_zh": "霍普曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20603"
+    },
+    "Houzeau": {
+      "zh": "乌佐",
+      "term": "Houzeau crater",
+      "term_zh": "乌佐环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20766"
+    },
+    "Hubble": {
+      "zh": "哈勃",
+      "term": "Hubble crater",
+      "term_zh": "哈勃环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=10722"
+    },
+    "Huggins": {
+      "zh": "哈金斯",
+      "term": "Huggins crater",
+      "term_zh": "哈金斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20194"
+    },
+    "Humboldt": {
+      "zh": "洪堡",
+      "term": "Humboldt crater",
+      "term_zh": "洪堡环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20212"
+    },
+    "Hume": {
+      "zh": "休姆",
+      "term": "Hume crater",
+      "term_zh": "休姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20419"
+    },
+    "Hutton": {
+      "zh": "赫顿",
+      "term": "Hutton crater",
+      "term_zh": "赫顿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20601"
+    },
+    "Huxley": {
+      "zh": "赫胥黎",
+      "term": "Huxley crater",
+      "term_zh": "赫胥黎环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20210"
+    },
+    "Hyginus": {
+      "zh": "希吉努斯",
+      "term": "Hyginus crater",
+      "term_zh": "希吉努斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20414"
+    },
+    "Hédervári": {
+      "zh": "海代尔瓦里",
+      "term": "Hédervári crater",
+      "term_zh": "海代尔瓦里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20598"
+    },
+    "Ibn Yunus": {
+      "zh": "伊本·尤努斯",
+      "term": "Ibn Yunus crater",
+      "term_zh": "伊本·尤努斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20781"
+    },
+    "Icarus": {
+      "zh": "伊卡洛斯",
+      "term": "Icarus crater",
+      "term_zh": "伊卡洛斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20427"
+    },
+    "Inghirami": {
+      "zh": "因吉拉米",
+      "term": "Inghirami crater",
+      "term_zh": "因吉拉米环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20430"
+    },
+    "Ioffe": {
+      "zh": "约费",
+      "term": "Ioffe crater",
+      "term_zh": "约费环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20432"
+    },
+    "Isaev": {
+      "zh": "伊萨耶夫",
+      "term": "Isaev crater",
+      "term_zh": "伊萨耶夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20428"
+    },
+    "J. Herschel": {
+      "zh": "约·赫歇尔",
+      "term": "J. Herschel crater",
+      "term_zh": "约·赫歇尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20431"
+    },
+    "Jackson": {
+      "zh": "杰克逊",
+      "term": "Jackson crater",
+      "term_zh": "杰克逊环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20230"
+    },
+    "Jacobi": {
+      "zh": "雅可比",
+      "term": "Jacobi crater",
+      "term_zh": "雅可比环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20422"
+    },
+    "Jansky": {
+      "zh": "央斯基",
+      "term": "Jansky crater",
+      "term_zh": "央斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20778"
+    },
+    "Janssen": {
+      "zh": "让桑",
+      "term": "Janssen crater",
+      "term_zh": "让桑环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20363"
+    },
+    "Jeans": {
+      "zh": "金斯",
+      "term": "Jeans crater",
+      "term_zh": "金斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20232"
+    },
+    "Jenner": {
+      "zh": "詹纳",
+      "term": "Jenner crater",
+      "term_zh": "詹纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20783"
+    },
+    "Joliot": {
+      "zh": "约里奥",
+      "term": "Joliot crater",
+      "term_zh": "约里奥环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20433"
+    },
+    "Joule": {
+      "zh": "焦耳",
+      "term": "Joule crater",
+      "term_zh": "焦耳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20229"
+    },
+    "Jules Verne": {
+      "zh": "儒勒·凡尔纳",
+      "term": "Jules Verne crater",
+      "term_zh": "儒勒·凡尔纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20365"
+    },
+    "Julius Caesar": {
+      "zh": "儒略·凯撒",
+      "term": "Julius Caesar crater",
+      "term_zh": "儒略·凯撒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20366"
+    },
+    "Kamerlingh Onnes": {
+      "zh": "开默林·昂内斯",
+      "term": "Kamerlingh Onnes crater",
+      "term_zh": "开默林·昂内斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20622"
+    },
+    "Kane": {
+      "zh": "凯恩",
+      "term": "Kane crater",
+      "term_zh": "凯恩环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20623"
+    },
+    "Kant": {
+      "zh": "康德",
+      "term": "Kant crater",
+      "term_zh": "康德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20240"
+    },
+    "Karpinskiy": {
+      "zh": "卡尔平斯基",
+      "term": "Karpinskiy crater",
+      "term_zh": "卡尔平斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20236"
+    },
+    "Karrer": {
+      "zh": "卡勒",
+      "term": "Karrer crater",
+      "term_zh": "卡勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20615"
+    },
+    "Keeler": {
+      "zh": "基勒",
+      "term": "Keeler crater",
+      "term_zh": "基勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20218"
+    },
+    "Kekulé": {
+      "zh": "凯库勒",
+      "term": "Kekulé crater",
+      "term_zh": "凯库勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20238"
+    },
+    "Kepler": {
+      "zh": "开普勒",
+      "term": "Kepler crater",
+      "term_zh": "开普勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2295"
+    },
+    "Khvol'son": {
+      "zh": "赫沃尔松",
+      "term": "Khvol'son crater",
+      "term_zh": "赫沃尔松环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20602"
+    },
+    "Kibal'chich": {
+      "zh": "基巴利契奇",
+      "term": "Kibal'chich crater",
+      "term_zh": "基巴利契奇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20217"
+    },
+    "Kidinnu": {
+      "zh": "西丹努斯",
+      "term": "Kidinnu crater",
+      "term_zh": "西丹努斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20767"
+    },
+    "Kiess": {
+      "zh": "基斯",
+      "term": "Kiess crater",
+      "term_zh": "基斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20625"
+    },
+    "King": {
+      "zh": "金",
+      "term": "King crater",
+      "term_zh": "金环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20612"
+    },
+    "Kircher": {
+      "zh": "基歇尔",
+      "term": "Kircher crater",
+      "term_zh": "基歇尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20604"
+    },
+    "Kirkwood": {
+      "zh": "柯克伍德",
+      "term": "Kirkwood crater",
+      "term_zh": "柯克伍德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20630"
+    },
+    "Klaproth": {
+      "zh": "克拉普罗特",
+      "term": "Klaproth crater",
+      "term_zh": "克拉普罗特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20249"
+    },
+    "Klute": {
+      "zh": "克卢特",
+      "term": "Klute crater",
+      "term_zh": "克卢特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20638"
+    },
+    "Koch": {
+      "zh": "科赫",
+      "term": "Koch crater",
+      "term_zh": "科赫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20245"
+    },
+    "Kohlschütter": {
+      "zh": "科尔许特",
+      "term": "Kohlschütter crater",
+      "term_zh": "科尔许特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20631"
+    },
+    "Komarov": {
+      "zh": "科马罗夫",
+      "term": "Komarov crater",
+      "term_zh": "科马罗夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20248"
+    },
+    "Kondratyuk": {
+      "zh": "孔德拉秋克",
+      "term": "Kondratyuk crater",
+      "term_zh": "孔德拉秋克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20641"
+    },
+    "Korolev": {
+      "zh": "科罗廖夫",
+      "term": "Korolev crater",
+      "term_zh": "科罗廖夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20247"
+    },
+    "Kostinskiy": {
+      "zh": "科斯京斯基",
+      "term": "Kostinskiy crater",
+      "term_zh": "科斯京斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20634"
+    },
+    "Kovalevskaya": {
+      "zh": "柯瓦列夫斯卡娅",
+      "term": "Kovalevskaya crater",
+      "term_zh": "柯瓦列夫斯卡娅环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20243"
+    },
+    "Krafft": {
+      "zh": "克拉夫特",
+      "term": "Krafft crater",
+      "term_zh": "克拉夫特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20635"
+    },
+    "Krasovskiy": {
+      "zh": "克拉索夫斯基",
+      "term": "Krasovskiy crater",
+      "term_zh": "克拉索夫斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20636"
+    },
+    "Kugler": {
+      "zh": "库格勒",
+      "term": "Kugler crater",
+      "term_zh": "库格勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20644"
+    },
+    "Kulik": {
+      "zh": "库利克",
+      "term": "Kulik crater",
+      "term_zh": "库利克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20645"
+    },
+    "Kuo Shou Ching": {
+      "zh": "郭守敬",
+      "term": "Kuo Shou Ching crater",
+      "term_zh": "郭守敬环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=1697"
+    },
+    "Kurchatov": {
+      "zh": "库尔恰托夫",
+      "term": "Kurchatov crater",
+      "term_zh": "库尔恰托夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20253"
+    },
+    "Kästner": {
+      "zh": "克斯特纳",
+      "term": "Kästner crater",
+      "term_zh": "克斯特纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20252"
+    },
+    "La Caille": {
+      "zh": "拉卡耶",
+      "term": "La Caille crater",
+      "term_zh": "拉卡耶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20648"
+    },
+    "La Pérouse": {
+      "zh": "拉彼鲁兹",
+      "term": "La Pérouse crater",
+      "term_zh": "拉彼鲁兹环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20257"
+    },
+    "Lacchini": {
+      "zh": "拉基尼",
+      "term": "Lacchini crater",
+      "term_zh": "拉基尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20647"
+    },
+    "Lacus Aestatis": {
+      "zh": "夏湖",
+      "term": "Lacus Aestatis",
+      "term_zh": "夏湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20476"
+    },
+    "Lacus Autumni": {
+      "zh": "秋湖",
+      "term": "Lacus Autumni",
+      "term_zh": "秋湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2415"
+    },
+    "Lacus Bonitatis": {
+      "zh": "仁慈湖",
+      "term": "Lacus Bonitatis",
+      "term_zh": "仁慈湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20472"
+    },
+    "Lacus Doloris": {
+      "zh": "忧伤湖",
+      "term": "Lacus Doloris",
+      "term_zh": "忧伤湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20479"
+    },
+    "Lacus Excellentiae": {
+      "zh": "秀丽湖",
+      "term": "Lacus Excellentiae",
+      "term_zh": "秀丽湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20478"
+    },
+    "Lacus Felicitatis": {
+      "zh": "幸福湖",
+      "term": "Lacus Felicitatis",
+      "term_zh": "幸福湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20477"
+    },
+    "Lacus Gaudii": {
+      "zh": "欢乐湖",
+      "term": "Lacus Gaudii",
+      "term_zh": "欢乐湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20470"
+    },
+    "Lacus Hiemalis": {
+      "zh": "冬湖",
+      "term": "Lacus Hiemalis",
+      "term_zh": "冬湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20828"
+    },
+    "Lacus Lenitatis": {
+      "zh": "温柔湖",
+      "term": "Lacus Lenitatis",
+      "term_zh": "温柔湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20474"
+    },
+    "Lacus Luxuriae": {
+      "zh": "华贵湖",
+      "term": "Lacus Luxuriae",
+      "term_zh": "华贵湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20829"
+    },
+    "Lacus Mortis": {
+      "zh": "死湖",
+      "term": "Lacus Mortis",
+      "term_zh": "死湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2416"
+    },
+    "Lacus Oblivionis": {
+      "zh": "忘湖",
+      "term": "Lacus Oblivionis",
+      "term_zh": "忘湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26382"
+    },
+    "Lacus Odii": {
+      "zh": "怨恨湖",
+      "term": "Lacus Odii",
+      "term_zh": "怨恨湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20480"
+    },
+    "Lacus Perseverantiae": {
+      "zh": "长存湖",
+      "term": "Lacus Perseverantiae",
+      "term_zh": "长存湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20468"
+    },
+    "Lacus Solitudinis": {
+      "zh": "孤独湖",
+      "term": "Lacus Solitudinis",
+      "term_zh": "孤独湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20469"
+    },
+    "Lacus Somniorum": {
+      "zh": "梦湖",
+      "term": "Lacus Somniorum",
+      "term_zh": "梦湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2417"
+    },
+    "Lacus Spei": {
+      "zh": "希望湖",
+      "term": "Lacus Spei",
+      "term_zh": "希望湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20475"
+    },
+    "Lacus Temporis": {
+      "zh": "时令湖",
+      "term": "Lacus Temporis",
+      "term_zh": "时令湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20473"
+    },
+    "Lacus Timoris": {
+      "zh": "恐怖湖",
+      "term": "Lacus Timoris",
+      "term_zh": "恐怖湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20471"
+    },
+    "Lacus Veris": {
+      "zh": "春湖",
+      "term": "Lacus Veris",
+      "term_zh": "春湖",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2418"
+    },
+    "Lade": {
+      "zh": "拉德",
+      "term": "Lade crater",
+      "term_zh": "拉德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20646"
+    },
+    "Lagalla": {
+      "zh": "拉加拉",
+      "term": "Lagalla crater",
+      "term_zh": "拉加拉环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20258"
+    },
+    "Lagrange": {
+      "zh": "拉格朗日",
+      "term": "Lagrange crater",
+      "term_zh": "拉格朗日环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2421"
+    },
+    "Lamarck": {
+      "zh": "拉马克",
+      "term": "Lamarck crater",
+      "term_zh": "拉马克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20259"
+    },
+    "Lamb": {
+      "zh": "兰姆",
+      "term": "Lamb crater",
+      "term_zh": "兰姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20266"
+    },
+    "Lamont": {
+      "zh": "拉蒙特",
+      "term": "Lamont crater",
+      "term_zh": "拉蒙特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20261"
+    },
+    "Lamé": {
+      "zh": "拉梅",
+      "term": "Lamé crater",
+      "term_zh": "拉梅环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20260"
+    },
+    "Landau": {
+      "zh": "朗道",
+      "term": "Landau crater",
+      "term_zh": "朗道环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20267"
+    },
+    "Lane": {
+      "zh": "莱恩",
+      "term": "Lane crater",
+      "term_zh": "莱恩环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20651"
+    },
+    "Langemak": {
+      "zh": "朗格马克",
+      "term": "Langemak crater",
+      "term_zh": "朗格马克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20268"
+    },
+    "Langevin": {
+      "zh": "朗之万",
+      "term": "Langevin crater",
+      "term_zh": "朗之万环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20656"
+    },
+    "Langley": {
+      "zh": "兰利",
+      "term": "Langley crater",
+      "term_zh": "兰利环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20655"
+    },
+    "Langmuir": {
+      "zh": "朗缪尔",
+      "term": "Langmuir crater",
+      "term_zh": "朗缪尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20269"
+    },
+    "Langrenus": {
+      "zh": "朗格伦",
+      "term": "Langrenus crater",
+      "term_zh": "朗格伦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2456"
+    },
+    "Larmor": {
+      "zh": "拉莫尔",
+      "term": "Larmor crater",
+      "term_zh": "拉莫尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20262"
+    },
+    "Laue": {
+      "zh": "劳厄",
+      "term": "Laue crater",
+      "term_zh": "劳厄环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20270"
+    },
+    "Lauritsen": {
+      "zh": "劳里森",
+      "term": "Lauritsen crater",
+      "term_zh": "劳里森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20657"
+    },
+    "Lavoisier": {
+      "zh": "拉瓦锡",
+      "term": "Lavoisier crater",
+      "term_zh": "拉瓦锡环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20264"
+    },
+    "Le Gentil": {
+      "zh": "勒让蒂",
+      "term": "Le Gentil crater",
+      "term_zh": "勒让蒂环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20274"
+    },
+    "Le Monnier": {
+      "zh": "勒莫尼耶",
+      "term": "Le Monnier crater",
+      "term_zh": "勒莫尼耶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20659"
+    },
+    "Lebedev": {
+      "zh": "列别捷夫",
+      "term": "Lebedev crater",
+      "term_zh": "列别捷夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20284"
+    },
+    "Lebedinskiy": {
+      "zh": "列别金斯基",
+      "term": "Lebedinskiy crater",
+      "term_zh": "列别金斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20667"
+    },
+    "Leeuwenhoek": {
+      "zh": "列文虎克",
+      "term": "Leeuwenhoek crater",
+      "term_zh": "列文虎克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20286"
+    },
+    "Legendre": {
+      "zh": "勒让德",
+      "term": "Legendre crater",
+      "term_zh": "勒让德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20273"
+    },
+    "Lehmann": {
+      "zh": "勒曼",
+      "term": "Lehmann crater",
+      "term_zh": "勒曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20658"
+    },
+    "Leibnitz": {
+      "zh": "莱布尼兹",
+      "term": "Leibnitz crater",
+      "term_zh": "莱布尼兹环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20265"
+    },
+    "Lemaître": {
+      "zh": "勒梅特",
+      "term": "Lemaître crater",
+      "term_zh": "勒梅特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20272"
+    },
+    "Letronne": {
+      "zh": "勒特罗纳",
+      "term": "Letronne crater",
+      "term_zh": "勒特罗纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20660"
+    },
+    "Leucippus": {
+      "zh": "留基伯",
+      "term": "Leucippus crater",
+      "term_zh": "留基伯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20670"
+    },
+    "Levi-Civita": {
+      "zh": "列维-齐维塔",
+      "term": "Levi-Civita crater",
+      "term_zh": "列维-齐维塔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20285"
+    },
+    "Lexell": {
+      "zh": "莱克塞尔",
+      "term": "Lexell crater",
+      "term_zh": "莱克塞尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20652"
+    },
+    "Ley": {
+      "zh": "莱伊",
+      "term": "Ley crater",
+      "term_zh": "莱伊环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20654"
+    },
+    "Liebig": {
+      "zh": "李比希",
+      "term": "Liebig crater",
+      "term_zh": "李比希环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20279"
+    },
+    "Lindblad": {
+      "zh": "林德布拉德",
+      "term": "Lindblad crater",
+      "term_zh": "林德布拉德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20668"
+    },
+    "Lindenau": {
+      "zh": "林德瑙",
+      "term": "Lindenau crater",
+      "term_zh": "林德瑙环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20669"
+    },
+    "Lippmann": {
+      "zh": "李普曼",
+      "term": "Lippmann crater",
+      "term_zh": "李普曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20280"
+    },
+    "Lipskiy": {
+      "zh": "利普斯基",
+      "term": "Lipskiy crater",
+      "term_zh": "利普斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20283"
+    },
+    "Lobachevskiy": {
+      "zh": "罗巴切夫斯基",
+      "term": "Lobachevskiy crater",
+      "term_zh": "罗巴切夫斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20292"
+    },
+    "Lodygin": {
+      "zh": "洛德金",
+      "term": "Lodygin crater",
+      "term_zh": "洛德金环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20673"
+    },
+    "Lomonosov": {
+      "zh": "罗蒙诺索夫",
+      "term": "Lomonosov crater",
+      "term_zh": "罗蒙诺索夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2590"
+    },
+    "Longomontanus": {
+      "zh": "隆哥蒙塔努斯",
+      "term": "Longomontanus crater",
+      "term_zh": "隆哥蒙塔努斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20287"
+    },
+    "Lorentz": {
+      "zh": "洛伦兹",
+      "term": "Lorentz crater",
+      "term_zh": "洛伦兹环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20300"
+    },
+    "Love": {
+      "zh": "勒夫",
+      "term": "Love crater",
+      "term_zh": "勒夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20271"
+    },
+    "Lovelace": {
+      "zh": "洛夫莱斯",
+      "term": "Lovelace crater",
+      "term_zh": "洛夫莱斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20674"
+    },
+    "Lowell": {
+      "zh": "洛厄尔",
+      "term": "Lowell crater",
+      "term_zh": "洛厄尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20675"
+    },
+    "Lucretius": {
+      "zh": "卢克莱修",
+      "term": "Lucretius crater",
+      "term_zh": "卢克莱修环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20288"
+    },
+    "Lundmark": {
+      "zh": "伦德马克",
+      "term": "Lundmark crater",
+      "term_zh": "伦德马克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20290"
+    },
+    "Lyman": {
+      "zh": "莱曼",
+      "term": "Lyman crater",
+      "term_zh": "莱曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20653"
+    },
+    "Lyot": {
+      "zh": "李奥",
+      "term": "Lyot crater",
+      "term_zh": "李奥环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20278"
+    },
+    "Mach": {
+      "zh": "马赫",
+      "term": "Mach crater",
+      "term_zh": "马赫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20302"
+    },
+    "Maclaurin": {
+      "zh": "麦克劳林",
+      "term": "MacLaurin crater",
+      "term_zh": "麦克劳林环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20683"
+    },
+    "Macrobius": {
+      "zh": "马克罗比乌斯",
+      "term": "Macrobius crater",
+      "term_zh": "马克罗比乌斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20677"
+    },
+    "Magelhaens": {
+      "zh": "麦哲伦",
+      "term": "Magelhaens crater",
+      "term_zh": "麦哲伦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20311"
+    },
+    "Maksutov": {
+      "zh": "马克苏托夫",
+      "term": "Maksutov crater",
+      "term_zh": "马克苏托夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20304"
+    },
+    "Mallet": {
+      "zh": "马利特",
+      "term": "Mallet crater",
+      "term_zh": "马利特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20679"
+    },
+    "Mandel'shtam": {
+      "zh": "曼德尔施塔姆",
+      "term": "Mandel'shtam crater",
+      "term_zh": "曼德尔施塔姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20312"
+    },
+    "Marco Polo": {
+      "zh": "马可·波罗",
+      "term": "Marco Polo crater",
+      "term_zh": "马可·波罗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20303"
+    },
+    "Marconi": {
+      "zh": "马可尼",
+      "term": "Marconi crater",
+      "term_zh": "马可尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20676"
+    },
+    "Mare Anguis": {
+      "zh": "蛇海",
+      "term": "Mare Anguis",
+      "term_zh": "蛇海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2721"
+    },
+    "Mare Australe": {
+      "zh": "南海",
+      "term": "Mare Australe",
+      "term_zh": "南海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2722"
+    },
+    "Mare Cognitum": {
+      "zh": "知海",
+      "term": "Mare Cognitum",
+      "term_zh": "知海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2723"
+    },
+    "Mare Crisium": {
+      "zh": "危海",
+      "term": "Mare Crisium",
+      "term_zh": "危海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2724"
+    },
+    "Mare Fecunditatis": {
+      "zh": "丰富海",
+      "term": "Mare Fecunditatis",
+      "term_zh": "丰富海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2726"
+    },
+    "Mare Frigoris": {
+      "zh": "冷海",
+      "term": "Mare Frigoris",
+      "term_zh": "冷海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2727"
+    },
+    "Mare Humboldtianum": {
+      "zh": "洪堡海",
+      "term": "Mare Humboldtianum",
+      "term_zh": "洪堡海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2728"
+    },
+    "Mare Humorum": {
+      "zh": "湿海",
+      "term": "Mare Humorum",
+      "term_zh": "湿海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2729"
+    },
+    "Mare Imbrium": {
+      "zh": "雨海",
+      "term": "Mare Imbrium",
+      "term_zh": "雨海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2730"
+    },
+    "Mare Ingenii": {
+      "zh": "智海",
+      "term": "Mare Ingenii",
+      "term_zh": "智海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2731"
+    },
+    "Mare Insularum": {
+      "zh": "岛海",
+      "term": "Mare Insularum",
+      "term_zh": "岛海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=19987"
+    },
+    "Mare Marginis": {
+      "zh": "界海",
+      "term": "Mare Marginis",
+      "term_zh": "界海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2732"
+    },
+    "Mare Moscoviense": {
+      "zh": "莫斯科海",
+      "term": "Mare Moscoviense",
+      "term_zh": "莫斯科海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2733"
+    },
+    "Mare Nectaris": {
+      "zh": "酒海",
+      "term": "Mare Nectaris",
+      "term_zh": "酒海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2734"
+    },
+    "Mare Nubium": {
+      "zh": "云海",
+      "term": "Mare Nubium",
+      "term_zh": "云海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2735"
+    },
+    "Mare Orientale": {
+      "zh": "东海",
+      "term": "Mare Orientale",
+      "term_zh": "东海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2736"
+    },
+    "Mare Serenitatis": {
+      "zh": "澄海",
+      "term": "Mare Serenitatis",
+      "term_zh": "澄海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2737"
+    },
+    "Mare Smythii": {
+      "zh": "史密斯海",
+      "term": "Mare Smythii",
+      "term_zh": "史密斯海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2738"
+    },
+    "Mare Spumans": {
+      "zh": "泡沫海",
+      "term": "Mare Spumans",
+      "term_zh": "泡沫海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20467"
+    },
+    "Mare Tranquillitatis": {
+      "zh": "静海",
+      "term": "Mare Tranquillitatis",
+      "term_zh": "静海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2740"
+    },
+    "Mare Undarum": {
+      "zh": "浪海",
+      "term": "Mare Undarum",
+      "term_zh": "浪海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2741"
+    },
+    "Mare Vaporum": {
+      "zh": "汽海",
+      "term": "Mare Vaporum",
+      "term_zh": "汽海",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2742"
+    },
+    "Marinus": {
+      "zh": "马里纳斯",
+      "term": "Marinus crater",
+      "term_zh": "马里纳斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20678"
+    },
+    "Mariotte": {
+      "zh": "马略特",
+      "term": "Mariotte crater",
+      "term_zh": "马略特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20680"
+    },
+    "Maunder": {
+      "zh": "蒙德",
+      "term": "Maunder crater",
+      "term_zh": "蒙德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20688"
+    },
+    "Maxwell": {
+      "zh": "麦克斯韦",
+      "term": "Maxwell crater",
+      "term_zh": "麦克斯韦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20309"
+    },
+    "McDonald": {
+      "zh": "麦克唐纳",
+      "term": "McDonald crater",
+      "term_zh": "麦克唐纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20310"
+    },
+    "McKellar": {
+      "zh": "麦凯勒",
+      "term": "McKellar crater",
+      "term_zh": "麦凯勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20682"
+    },
+    "McLaughlin": {
+      "zh": "麦克劳林",
+      "term": "McLaughlin crater",
+      "term_zh": "麦克劳林环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20307"
+    },
+    "McMath": {
+      "zh": "麦克马思",
+      "term": "McMath crater",
+      "term_zh": "麦克马思环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20308"
+    },
+    "Mee": {
+      "zh": "米",
+      "term": "Mee crater",
+      "term_zh": "米环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20319"
+    },
+    "Mees": {
+      "zh": "米斯",
+      "term": "Mees crater",
+      "term_zh": "米斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20691"
+    },
+    "Meggers": {
+      "zh": "梅格斯",
+      "term": "Meggers crater",
+      "term_zh": "梅格斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20685"
+    },
+    "Meitner": {
+      "zh": "迈特纳",
+      "term": "Meitner crater",
+      "term_zh": "迈特纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20306"
+    },
+    "Mendel": {
+      "zh": "孟德尔",
+      "term": "Mendel crater",
+      "term_zh": "孟德尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20318"
+    },
+    "Mendeleev": {
+      "zh": "门捷列夫",
+      "term": "Mendeleev crater",
+      "term_zh": "门捷列夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20316"
+    },
+    "Mercator": {
+      "zh": "墨卡托",
+      "term": "Mercator crater",
+      "term_zh": "墨卡托环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20329"
+    },
+    "Mercurius": {
+      "zh": "墨丘利",
+      "term": "Mercurius crater",
+      "term_zh": "墨丘利环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20330"
+    },
+    "Merrill": {
+      "zh": "梅里尔",
+      "term": "Merrill crater",
+      "term_zh": "梅里尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20686"
+    },
+    "Mersenius": {
+      "zh": "梅森",
+      "term": "Mersenius crater",
+      "term_zh": "梅森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20314"
+    },
+    "Meshcherskiy": {
+      "zh": "梅谢尔斯基",
+      "term": "Meshcherskiy crater",
+      "term_zh": "梅谢尔斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20687"
+    },
+    "Messier": {
+      "zh": "梅西叶",
+      "term": "Messier crater",
+      "term_zh": "梅西叶环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2848"
+    },
+    "Metius": {
+      "zh": "梅修斯",
+      "term": "Metius crater",
+      "term_zh": "梅修斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20315"
+    },
+    "Mezentsev": {
+      "zh": "梅津采夫",
+      "term": "Mezentsev crater",
+      "term_zh": "梅津采夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20313"
+    },
+    "Michelson": {
+      "zh": "迈克耳孙",
+      "term": "Michelson crater",
+      "term_zh": "迈克耳孙环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20305"
+    },
+    "Milanković": {
+      "zh": "米兰科维奇",
+      "term": "Milankovič crater",
+      "term_zh": "米兰科维奇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20321"
+    },
+    "Miller": {
+      "zh": "米勒",
+      "term": "Miller crater",
+      "term_zh": "米勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20322"
+    },
+    "Millikan": {
+      "zh": "密立根",
+      "term": "Millikan crater",
+      "term_zh": "密立根环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20325"
+    },
+    "Milne": {
+      "zh": "米尔恩",
+      "term": "Milne crater",
+      "term_zh": "米尔恩环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20320"
+    },
+    "Mineur": {
+      "zh": "米纳尔",
+      "term": "Mineur crater",
+      "term_zh": "米纳尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20690"
+    },
+    "Minkowski": {
+      "zh": "闵可夫斯基",
+      "term": "Minkowski crater",
+      "term_zh": "闵可夫斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20326"
+    },
+    "Minnaert": {
+      "zh": "米奈尔",
+      "term": "Minnaert crater",
+      "term_zh": "米奈尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20323"
+    },
+    "Mitra": {
+      "zh": "米特拉",
+      "term": "Mitra crater",
+      "term_zh": "米特拉环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20324"
+    },
+    "Mohorovičić": {
+      "zh": "莫霍洛维奇",
+      "term": "Mohorovičić crater",
+      "term_zh": "莫霍洛维奇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20692"
+    },
+    "Moiseev": {
+      "zh": "莫伊谢耶夫",
+      "term": "Moiseev crater",
+      "term_zh": "莫伊谢耶夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20694"
+    },
+    "Mons Ampère": {
+      "zh": "安培山",
+      "term": "Mons Ampère",
+      "term_zh": "安培山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20454"
+    },
+    "Mons Argaeus": {
+      "zh": "阿尔加山",
+      "term": "Mons Argaeus",
+      "term_zh": "阿尔加山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20810"
+    },
+    "Mons Huygens": {
+      "zh": "惠更斯山",
+      "term": "Mons Huygens",
+      "term_zh": "惠更斯山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20455"
+    },
+    "Mons La Hire": {
+      "zh": "拉希尔山",
+      "term": "Mons La Hire",
+      "term_zh": "拉希尔山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2932"
+    },
+    "Mons Latreille": {
+      "zh": "拉特雷耶山",
+      "term": "Mons Latreille",
+      "term_zh": "拉特雷耶山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26575"
+    },
+    "Mons Pico": {
+      "zh": "皮科山",
+      "term": "Mons Pico",
+      "term_zh": "皮科山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20457"
+    },
+    "Mons Piton": {
+      "zh": "皮通山",
+      "term": "Mons Piton",
+      "term_zh": "皮通山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20458"
+    },
+    "Mons Rümker": {
+      "zh": "吕姆克山",
+      "term": "Mons Rümker",
+      "term_zh": "吕姆克山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20456"
+    },
+    "Mons Tai": {
+      "zh": "泰山",
+      "term": "Mons Tai",
+      "term_zh": "泰山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26589"
+    },
+    "Mons Vinogradov": {
+      "zh": "维诺格拉多夫山",
+      "term": "Mons Vinogradov",
+      "term_zh": "维诺格拉多夫山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26387"
+    },
+    "Mont Blanc": {
+      "zh": "勃朗峰",
+      "term": "Mont Blanc",
+      "term_zh": "勃朗峰",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20459"
+    },
+    "Montanari": {
+      "zh": "蒙塔纳里",
+      "term": "Montanari crater",
+      "term_zh": "蒙塔纳里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20689"
+    },
+    "Montes Agricola": {
+      "zh": "阿格里科拉山脉",
+      "term": "Montes Agricola",
+      "term_zh": "阿格里科拉山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20460"
+    },
+    "Montes Alpes": {
+      "zh": "阿尔卑斯山脉",
+      "term": "Montes Alpes",
+      "term_zh": "阿尔卑斯山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2937"
+    },
+    "Montes Apenninus": {
+      "zh": "亚平宁山脉",
+      "term": "Montes Apenninus",
+      "term_zh": "亚平宁山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2939"
+    },
+    "Montes Archimedes": {
+      "zh": "阿基米德山脉",
+      "term": "Montes Archimedes",
+      "term_zh": "阿基米德山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=19986"
+    },
+    "Montes Carpatus": {
+      "zh": "喀尔巴阡山脉",
+      "term": "Montes Carpatus",
+      "term_zh": "喀尔巴阡山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2940"
+    },
+    "Montes Caucasus": {
+      "zh": "高加索山脉",
+      "term": "Montes Caucasus",
+      "term_zh": "高加索山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2941"
+    },
+    "Montes Cordillera": {
+      "zh": "科迪勒拉山脉",
+      "term": "Montes Cordillera",
+      "term_zh": "科迪勒拉山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2942"
+    },
+    "Montes Haemus": {
+      "zh": "海玛斯山脉",
+      "term": "Montes Haemus",
+      "term_zh": "海玛斯山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2943"
+    },
+    "Montes Harbinger": {
+      "zh": "前锋山脉",
+      "term": "Montes Harbinger",
+      "term_zh": "前锋山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=22753"
+    },
+    "Montes Jura": {
+      "zh": "侏罗山脉",
+      "term": "Montes Jura",
+      "term_zh": "侏罗山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20464"
+    },
+    "Montes Pyrenaeus": {
+      "zh": "比利牛斯山脉",
+      "term": "Montes Pyrenaeus",
+      "term_zh": "比利牛斯山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2945"
+    },
+    "Montes Recti": {
+      "zh": "直列山脉",
+      "term": "Montes Recti",
+      "term_zh": "直列山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20463"
+    },
+    "Montes Riphaeus": {
+      "zh": "里菲山脉",
+      "term": "Montes Riphaeus",
+      "term_zh": "里菲山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2946"
+    },
+    "Montes Rook": {
+      "zh": "鲁克山脉",
+      "term": "Montes Rook",
+      "term_zh": "鲁克山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2947"
+    },
+    "Montes Secchi": {
+      "zh": "塞奇山脉",
+      "term": "Montes Secchi",
+      "term_zh": "塞奇山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20811"
+    },
+    "Montes Spitzbergen": {
+      "zh": "施皮茨贝尔根山脉",
+      "term": "Montes Spitzbergen",
+      "term_zh": "施皮茨贝尔根山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20461"
+    },
+    "Montes Taurus": {
+      "zh": "金牛山脉",
+      "term": "Montes Taurus",
+      "term_zh": "金牛山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=2948"
+    },
+    "Montes Teneriffe": {
+      "zh": "特内里费山脉",
+      "term": "Montes Teneriffe",
+      "term_zh": "特内里费山脉",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20462"
+    },
+    "Montgolfier": {
+      "zh": "蒙戈尔费埃",
+      "term": "Montgolfier crater",
+      "term_zh": "蒙戈尔费埃环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20317"
+    },
+    "Moore": {
+      "zh": "穆尔",
+      "term": "Moore crater",
+      "term_zh": "穆尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20695"
+    },
+    "Moretus": {
+      "zh": "莫雷",
+      "term": "Moretus crater",
+      "term_zh": "莫雷环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20693"
+    },
+    "Morse": {
+      "zh": "莫尔斯",
+      "term": "Morse crater",
+      "term_zh": "莫尔斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20327"
+    },
+    "Moseley": {
+      "zh": "莫塞莱",
+      "term": "Moseley crater",
+      "term_zh": "莫塞莱环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20328"
+    },
+    "Mouchez": {
+      "zh": "穆谢",
+      "term": "Mouchez crater",
+      "term_zh": "穆谢环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20332"
+    },
+    "Murchison": {
+      "zh": "默奇森",
+      "term": "Murchison crater",
+      "term_zh": "默奇森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20684"
+    },
+    "Mutus": {
+      "zh": "穆图什",
+      "term": "Mutus crater",
+      "term_zh": "穆图什环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20331"
+    },
+    "Möbius": {
+      "zh": "麦比乌斯",
+      "term": "Möbius crater",
+      "term_zh": "麦比乌斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20681"
+    },
+    "Nansen": {
+      "zh": "南森",
+      "term": "Nansen crater",
+      "term_zh": "南森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20333"
+    },
+    "Nasmyth": {
+      "zh": "内史密斯",
+      "term": "Nasmyth crater",
+      "term_zh": "内史密斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20697"
+    },
+    "Nassau": {
+      "zh": "纳索",
+      "term": "Nassau crater",
+      "term_zh": "纳索环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20698"
+    },
+    "Neander": {
+      "zh": "内安德",
+      "term": "Neander crater",
+      "term_zh": "内安德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20696"
+    },
+    "Nearch": {
+      "zh": "奈阿尔科",
+      "term": "Nearch crater",
+      "term_zh": "奈阿尔科环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20699"
+    },
+    "Nernst": {
+      "zh": "能斯特",
+      "term": "Nernst crater",
+      "term_zh": "能斯特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20334"
+    },
+    "Neumayer": {
+      "zh": "诺伊迈尔",
+      "term": "Neumayer crater",
+      "term_zh": "诺伊迈尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20704"
+    },
+    "Newton": {
+      "zh": "牛顿",
+      "term": "Newton crater",
+      "term_zh": "牛顿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20335"
+    },
+    "Niepce": {
+      "zh": "尼埃普斯",
+      "term": "Niépce crater",
+      "term_zh": "尼埃普斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20700"
+    },
+    "Nishina": {
+      "zh": "仁科芳雄",
+      "term": "Nishina crater",
+      "term_zh": "仁科芳雄环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20725"
+    },
+    "Nobel": {
+      "zh": "诺贝尔",
+      "term": "Nobel crater",
+      "term_zh": "诺贝尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20337"
+    },
+    "Nobile": {
+      "zh": "诺毕尔",
+      "term": "Nobile crater",
+      "term_zh": "诺毕尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20703"
+    },
+    "Nonius": {
+      "zh": "努内斯",
+      "term": "Nonius crater",
+      "term_zh": "努内斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20701"
+    },
+    "Numerov": {
+      "zh": "努梅罗夫",
+      "term": "Numerov crater",
+      "term_zh": "努梅罗夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20336"
+    },
+    "Nušl": {
+      "zh": "努斯尔",
+      "term": "Nüsl crater",
+      "term_zh": "努斯尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20702"
+    },
+    "O'Day": {
+      "zh": "奥戴",
+      "term": "O'Day crater",
+      "term_zh": "奥戴环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20513"
+    },
+    "Oberth": {
+      "zh": "奥伯特",
+      "term": "Oberth crater",
+      "term_zh": "奥伯特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20511"
+    },
+    "Obruchev": {
+      "zh": "奥布鲁切夫",
+      "term": "Obruchev crater",
+      "term_zh": "奥布鲁切夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20512"
+    },
+    "Oceanus Procellarum": {
+      "zh": "风暴洋",
+      "term": "Oceanus Procellarum",
+      "term_zh": "风暴洋",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3144"
+    },
+    "Ohm": {
+      "zh": "欧姆",
+      "term": "Ohm crater",
+      "term_zh": "欧姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20339"
+    },
+    "Oken": {
+      "zh": "奥肯",
+      "term": "Oken crater",
+      "term_zh": "奥肯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20514"
+    },
+    "Olbers": {
+      "zh": "奥伯斯",
+      "term": "Olbers crater",
+      "term_zh": "奥伯斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20510"
+    },
+    "Olcott": {
+      "zh": "奥尔科特",
+      "term": "Olcott crater",
+      "term_zh": "奥尔科特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20105"
+    },
+    "Omar Khayyam": {
+      "zh": "欧玛尔·海亚姆",
+      "term": "Omar Khayyam crater",
+      "term_zh": "欧玛尔·海亚姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20706"
+    },
+    "Oppenheimer": {
+      "zh": "奥本海默",
+      "term": "Oppenheimer crater",
+      "term_zh": "奥本海默环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20102"
+    },
+    "Oresme": {
+      "zh": "奥雷姆",
+      "term": "Oresme crater",
+      "term_zh": "奥雷姆环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20515"
+    },
+    "Orlov": {
+      "zh": "奥尔洛夫",
+      "term": "Orlov crater",
+      "term_zh": "奥尔洛夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20106"
+    },
+    "Ostwald": {
+      "zh": "奥斯特瓦尔德",
+      "term": "Ostwald crater",
+      "term_zh": "奥斯特瓦尔德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20107"
+    },
+    "Palus Epidemiarum": {
+      "zh": "疫沼",
+      "term": "Palus Epidemiarum",
+      "term_zh": "疫沼",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3248"
+    },
+    "Palus Putredinis": {
+      "zh": "腐沼",
+      "term": "Palus Putredinis",
+      "term_zh": "腐沼",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20487"
+    },
+    "Palus Somni": {
+      "zh": "梦沼",
+      "term": "Palus Somni",
+      "term_zh": "梦沼",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3251"
+    },
+    "Paneth": {
+      "zh": "帕内特",
+      "term": "Paneth crater",
+      "term_zh": "帕内特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20708"
+    },
+    "Papaleksi": {
+      "zh": "帕帕列克西",
+      "term": "Papaleksi crater",
+      "term_zh": "帕帕列克西环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20341"
+    },
+    "Parkhurst": {
+      "zh": "帕克赫斯特",
+      "term": "Parkhurst crater",
+      "term_zh": "帕克赫斯特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20340"
+    },
+    "Parrot": {
+      "zh": "帕罗特",
+      "term": "Parrot crater",
+      "term_zh": "帕罗特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20707"
+    },
+    "Pascal": {
+      "zh": "帕斯卡",
+      "term": "Pascal crater",
+      "term_zh": "帕斯卡环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20343"
+    },
+    "Paschen": {
+      "zh": "帕邢",
+      "term": "Paschen crater",
+      "term_zh": "帕邢环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20342"
+    },
+    "Pasteur": {
+      "zh": "巴斯德",
+      "term": "Pasteur crater",
+      "term_zh": "巴斯德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20114"
+    },
+    "Pauli": {
+      "zh": "泡利",
+      "term": "Pauli crater",
+      "term_zh": "泡利环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20345"
+    },
+    "Pavlov": {
+      "zh": "巴甫洛夫",
+      "term": "Pavlov crater",
+      "term_zh": "巴甫洛夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20111"
+    },
+    "Pawsey": {
+      "zh": "波西",
+      "term": "Pawsey crater",
+      "term_zh": "波西环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20540"
+    },
+    "Peary": {
+      "zh": "皮里",
+      "term": "Peary crater",
+      "term_zh": "皮里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20717"
+    },
+    "Pentland": {
+      "zh": "彭特兰",
+      "term": "Pentland crater",
+      "term_zh": "彭特兰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20712"
+    },
+    "Perepelkin": {
+      "zh": "佩列佩尔金",
+      "term": "Perepelkin crater",
+      "term_zh": "佩列佩尔金环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20710"
+    },
+    "Perkin": {
+      "zh": "珀金",
+      "term": "Perkin crater",
+      "term_zh": "珀金环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20718"
+    },
+    "Perrine": {
+      "zh": "珀赖因",
+      "term": "Perrine crater",
+      "term_zh": "珀赖因环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20352"
+    },
+    "Petermann": {
+      "zh": "彼得曼",
+      "term": "Petermann crater",
+      "term_zh": "彼得曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20533"
+    },
+    "Petropavlovskiy": {
+      "zh": "彼得罗帕夫洛夫斯基",
+      "term": "Petropavlovskiy crater",
+      "term_zh": "彼得罗帕夫洛夫斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20532"
+    },
+    "Phillips": {
+      "zh": "菲利普斯",
+      "term": "Phillips crater",
+      "term_zh": "菲利普斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20166"
+    },
+    "Philolaus": {
+      "zh": "菲洛劳斯",
+      "term": "Philolaus crater",
+      "term_zh": "菲洛劳斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3619"
+    },
+    "Piazzi": {
+      "zh": "皮亚齐",
+      "term": "Piazzi crater",
+      "term_zh": "皮亚齐环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20349"
+    },
+    "Piazzi Smyth": {
+      "zh": "皮亚齐·史密斯",
+      "term": "Piazzi Smyth crater",
+      "term_zh": "皮亚齐·史密斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26389"
+    },
+    "Piccolomini": {
+      "zh": "皮科洛米尼",
+      "term": "Piccolomini crater",
+      "term_zh": "皮科洛米尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20348"
+    },
+    "Pictet": {
+      "zh": "皮克泰",
+      "term": "Pictet crater",
+      "term_zh": "皮克泰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20715"
+    },
+    "Pilâtre": {
+      "zh": "皮拉特尔",
+      "term": "Pilâtre crater",
+      "term_zh": "皮拉特尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20716"
+    },
+    "Pingré": {
+      "zh": "潘格雷",
+      "term": "Pingré crater",
+      "term_zh": "潘格雷环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20344"
+    },
+    "Pirquet": {
+      "zh": "皮尔凯",
+      "term": "Pirquet crater",
+      "term_zh": "皮尔凯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20714"
+    },
+    "Planck": {
+      "zh": "普朗克",
+      "term": "Planck crater",
+      "term_zh": "普朗克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20355"
+    },
+    "Planitia Descensus": {
+      "zh": "德森萨斯平原",
+      "term": "Planitia Descensus",
+      "term_zh": "德森萨斯平原",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20436"
+    },
+    "Plaskett": {
+      "zh": "普拉斯基特",
+      "term": "Plaskett crater",
+      "term_zh": "普拉斯基特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20354"
+    },
+    "Plato": {
+      "zh": "柏拉图",
+      "term": "Plato crater",
+      "term_zh": "柏拉图环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20119"
+    },
+    "Plummer": {
+      "zh": "普卢默",
+      "term": "Plummer crater",
+      "term_zh": "普卢默环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20721"
+    },
+    "Plutarch": {
+      "zh": "普卢塔克",
+      "term": "Plutarch crater",
+      "term_zh": "普卢塔克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20722"
+    },
+    "Poczobutt": {
+      "zh": "波乔布特",
+      "term": "Poczobutt crater",
+      "term_zh": "波乔布特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20128"
+    },
+    "Poincaré": {
+      "zh": "庞加莱",
+      "term": "Poincaré crater",
+      "term_zh": "庞加莱环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20709"
+    },
+    "Polzunov": {
+      "zh": "波尔祖诺夫",
+      "term": "Polzunov crater",
+      "term_zh": "波尔祖诺夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20538"
+    },
+    "Poncelet": {
+      "zh": "彭赛列",
+      "term": "Poncelet crater",
+      "term_zh": "彭赛列环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20711"
+    },
+    "Pontanus": {
+      "zh": "蓬塔诺",
+      "term": "Pontanus crater",
+      "term_zh": "蓬塔诺环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20713"
+    },
+    "Pontécoulant": {
+      "zh": "蓬泰库朗",
+      "term": "Pontécoulant crater",
+      "term_zh": "蓬泰库朗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20347"
+    },
+    "Popov": {
+      "zh": "波波夫",
+      "term": "Popov crater",
+      "term_zh": "波波夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20537"
+    },
+    "Porter": {
+      "zh": "波特",
+      "term": "Porter crater",
+      "term_zh": "波特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20539"
+    },
+    "Poynting": {
+      "zh": "坡印廷",
+      "term": "Poynting crater",
+      "term_zh": "坡印廷环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20351"
+    },
+    "Prager": {
+      "zh": "普拉格",
+      "term": "Prager crater",
+      "term_zh": "普拉格环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20719"
+    },
+    "Prandtl": {
+      "zh": "普朗特",
+      "term": "Prandtl crater",
+      "term_zh": "普朗特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20356"
+    },
+    "Priestley": {
+      "zh": "普里斯特利",
+      "term": "Priestley crater",
+      "term_zh": "普里斯特利环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20720"
+    },
+    "Proctor": {
+      "zh": "普罗克特",
+      "term": "Proctor crater",
+      "term_zh": "普罗克特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20723"
+    },
+    "Promontorium Agarum": {
+      "zh": "阿格鲁姆海角",
+      "term": "Promontorium Agarum",
+      "term_zh": "阿格鲁姆海角",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20488"
+    },
+    "Promontorium Agassiz": {
+      "zh": "阿加西海角",
+      "term": "Promontorium Agassiz",
+      "term_zh": "阿加西海角",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=22809"
+    },
+    "Promontorium Archerusia": {
+      "zh": "阿切鲁西亚海角",
+      "term": "Promontorium Archerusia",
+      "term_zh": "阿切鲁西亚海角",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20489"
+    },
+    "Promontorium Deville": {
+      "zh": "德维尔海角",
+      "term": "Promontorium Deville",
+      "term_zh": "德维尔海角",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=22910"
+    },
+    "Promontorium Fresnel": {
+      "zh": "菲涅尔海角",
+      "term": "Promontorium Fresnel",
+      "term_zh": "菲涅尔海角",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20490"
+    },
+    "Promontorium Heraclides": {
+      "zh": "赫拉克利德海角",
+      "term": "Promontorium Heraclides",
+      "term_zh": "赫拉克利德海角",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20893"
+    },
+    "Promontorium Kelvin": {
+      "zh": "开尔文海角",
+      "term": "Promontorium Kelvin",
+      "term_zh": "开尔文海角",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20491"
+    },
+    "Promontorium Laplace": {
+      "zh": "拉普拉斯岬",
+      "term": "Promontorium Laplace",
+      "term_zh": "拉普拉斯岬",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3422"
+    },
+    "Promontorium Taenarium": {
+      "zh": "泰纳里厄姆海角",
+      "term": "Promontorium Taenarium",
+      "term_zh": "泰纳里厄姆海角",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20492"
+    },
+    "Ptolemaeus": {
+      "zh": "托勒玫",
+      "term": "Ptolemaeus crater",
+      "term_zh": "托勒玫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3431"
+    },
+    "Purbach": {
+      "zh": "普尔巴赫",
+      "term": "Purbach crater",
+      "term_zh": "普尔巴赫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20353"
+    },
+    "Pythagoras": {
+      "zh": "毕达哥拉斯",
+      "term": "Pythagoras crater",
+      "term_zh": "毕达哥拉斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20126"
+    },
+    "Quetelet": {
+      "zh": "凯特尔",
+      "term": "Quetelet crater",
+      "term_zh": "凯特尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20624"
+    },
+    "Rabbi Levi": {
+      "zh": "拉比列维",
+      "term": "Rabbi Levi crater",
+      "term_zh": "拉比列维环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20256"
+    },
+    "Raimond": {
+      "zh": "雷蒙",
+      "term": "Raimond crater",
+      "term_zh": "雷蒙环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20662"
+    },
+    "Ramsay": {
+      "zh": "拉姆齐",
+      "term": "Ramsay crater",
+      "term_zh": "拉姆齐环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20263"
+    },
+    "Rayleigh": {
+      "zh": "瑞利",
+      "term": "Rayleigh crater",
+      "term_zh": "瑞利环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20367"
+    },
+    "Razumov": {
+      "zh": "拉祖莫夫",
+      "term": "Razumov crater",
+      "term_zh": "拉祖莫夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20650"
+    },
+    "Regiomontanus": {
+      "zh": "雷乔蒙塔努斯",
+      "term": "Regiomontanus crater",
+      "term_zh": "雷乔蒙塔努斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20275"
+    },
+    "Reichenbach": {
+      "zh": "雷亨巴赫",
+      "term": "Reichenbach crater",
+      "term_zh": "雷亨巴赫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20661"
+    },
+    "Riccioli": {
+      "zh": "里乔利",
+      "term": "Riccioli crater",
+      "term_zh": "里乔利环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20281"
+    },
+    "Riccius": {
+      "zh": "利玛窦",
+      "term": "Riccius crater",
+      "term_zh": "利玛窦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20282"
+    },
+    "Ricco": {
+      "zh": "里科",
+      "term": "Ricco crater",
+      "term_zh": "里科环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20666"
+    },
+    "Richardson": {
+      "zh": "里查孙",
+      "term": "Richardson crater",
+      "term_zh": "里查孙环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20664"
+    },
+    "Riemann": {
+      "zh": "黎曼",
+      "term": "Riemann crater",
+      "term_zh": "黎曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20277"
+    },
+    "Rima Agatharchides": {
+      "zh": "阿格瑟奇德斯溪",
+      "term": "Rima Agatharchides",
+      "term_zh": "阿格瑟奇德斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20832"
+    },
+    "Rima Agricola": {
+      "zh": "阿格里科拉溪",
+      "term": "Rima Agricola",
+      "term_zh": "阿格里科拉溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20831"
+    },
+    "Rima Archytas": {
+      "zh": "阿契塔溪",
+      "term": "Rima Archytas",
+      "term_zh": "阿契塔溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20833"
+    },
+    "Rima Ariadaeus": {
+      "zh": "阿里亚代乌斯溪",
+      "term": "Rima Ariadaeus",
+      "term_zh": "阿里亚代乌斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3556"
+    },
+    "Rima Artsimovich": {
+      "zh": "阿尔齐莫维奇溪",
+      "term": "Rima Artsimovich",
+      "term_zh": "阿尔齐莫维奇溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20830"
+    },
+    "Rima Billy": {
+      "zh": "比伊溪",
+      "term": "Rima Billy",
+      "term_zh": "比伊溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20835"
+    },
+    "Rima Birt": {
+      "zh": "伯特溪",
+      "term": "Rima Birt",
+      "term_zh": "伯特溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20836"
+    },
+    "Rima Brayley": {
+      "zh": "布雷利溪",
+      "term": "Rima Brayley",
+      "term_zh": "布雷利溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20837"
+    },
+    "Rima Cauchy": {
+      "zh": "柯西溪",
+      "term": "Rima Cauchy",
+      "term_zh": "柯西溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20845"
+    },
+    "Rima Delisle": {
+      "zh": "德利尔溪",
+      "term": "Rima Delisle",
+      "term_zh": "德利尔溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20839"
+    },
+    "Rima Diophantus": {
+      "zh": "丢番图溪",
+      "term": "Rima Diophantus",
+      "term_zh": "丢番图溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20840"
+    },
+    "Rima Draper": {
+      "zh": "德雷伯溪",
+      "term": "Rima Draper",
+      "term_zh": "德雷伯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20838"
+    },
+    "Rima Euler": {
+      "zh": "欧拉溪",
+      "term": "Rima Euler",
+      "term_zh": "欧拉溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20848"
+    },
+    "Rima Flammarion": {
+      "zh": "弗拉马里翁溪",
+      "term": "Rima Flammarion",
+      "term_zh": "弗拉马里翁溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20841"
+    },
+    "Rima Galilaei": {
+      "zh": "伽利略溪",
+      "term": "Rima Galilaei",
+      "term_zh": "伽利略溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20842"
+    },
+    "Rima Hadley": {
+      "zh": "哈德利溪",
+      "term": "Rima Hadley",
+      "term_zh": "哈德利溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20843"
+    },
+    "Rima Hesiodus": {
+      "zh": "赫西奥德溪",
+      "term": "Rima Hesiodus",
+      "term_zh": "赫西奥德溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20844"
+    },
+    "Rima Hyginus": {
+      "zh": "希吉努斯溪",
+      "term": "Rima Hyginus",
+      "term_zh": "希吉努斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3557"
+    },
+    "Rima Marius": {
+      "zh": "马里乌斯溪",
+      "term": "Rima Marius",
+      "term_zh": "马里乌斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20846"
+    },
+    "Rima Messier": {
+      "zh": "梅西叶溪",
+      "term": "Rima Messier",
+      "term_zh": "梅西叶溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20847"
+    },
+    "Rima Oppolzer": {
+      "zh": "奥波尔策溪",
+      "term": "Rima Oppolzer",
+      "term_zh": "奥波尔策溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20834"
+    },
+    "Rima Sharp": {
+      "zh": "夏普溪",
+      "term": "Rima Sharp",
+      "term_zh": "夏普溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20852"
+    },
+    "Rima Sheepshanks": {
+      "zh": "希普尚克斯溪",
+      "term": "Rima Sheepshanks",
+      "term_zh": "希普尚克斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20851"
+    },
+    "Rima Suess": {
+      "zh": "休斯溪",
+      "term": "Rima Suess",
+      "term_zh": "休斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20853"
+    },
+    "Rima Sung-Mei": {
+      "zh": "宋梅月溪",
+      "term": "Rima Sung-Mei",
+      "term_zh": "宋梅月溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26590"
+    },
+    "Rima Wan-Yu": {
+      "zh": "万玉月溪",
+      "term": "Rima Wan-Yu",
+      "term_zh": "万玉月溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26591"
+    },
+    "Rimae Alphonsus": {
+      "zh": "阿方索溪",
+      "term": "Rimae Alphonsus",
+      "term_zh": "阿方索溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20856"
+    },
+    "Rimae Apollonius": {
+      "zh": "阿波罗尼奥斯溪",
+      "term": "Rimae Apollonius",
+      "term_zh": "阿波罗尼奥斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20854"
+    },
+    "Rimae Archimedes": {
+      "zh": "阿基米德溪",
+      "term": "Rimae Archimedes",
+      "term_zh": "阿基米德溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20857"
+    },
+    "Rimae Aristarchus": {
+      "zh": "阿利斯塔克溪",
+      "term": "Rimae Aristarchus",
+      "term_zh": "阿利斯塔克溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20858"
+    },
+    "Rimae Arzachel": {
+      "zh": "阿尔扎赫尔溪",
+      "term": "Rimae Arzachel",
+      "term_zh": "阿尔扎赫尔溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20855"
+    },
+    "Rimae Atlas": {
+      "zh": "阿特拉斯溪",
+      "term": "Rimae Atlas",
+      "term_zh": "阿特拉斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20859"
+    },
+    "Rimae Bode": {
+      "zh": "波得溪",
+      "term": "Rimae Bode",
+      "term_zh": "波得溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20862"
+    },
+    "Rimae Bürg": {
+      "zh": "比格溪",
+      "term": "Rimae Bürg",
+      "term_zh": "比格溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20861"
+    },
+    "Rimae Daniell": {
+      "zh": "丹聂耳溪",
+      "term": "Rimae Daniell",
+      "term_zh": "丹聂耳溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20865"
+    },
+    "Rimae Darwin": {
+      "zh": "达尔文溪",
+      "term": "Rimae Darwin",
+      "term_zh": "达尔文溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20864"
+    },
+    "Rimae Doppelmayer": {
+      "zh": "多佩尔迈尔溪",
+      "term": "Rimae Doppelmayer",
+      "term_zh": "多佩尔迈尔溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20866"
+    },
+    "Rimae Fresnel": {
+      "zh": "菲涅尔溪",
+      "term": "Rimae Fresnel",
+      "term_zh": "菲涅尔溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20867"
+    },
+    "Rimae Gassendi": {
+      "zh": "伽桑狄溪",
+      "term": "Rimae Gassendi",
+      "term_zh": "伽桑狄溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20868"
+    },
+    "Rimae Grimaldi": {
+      "zh": "格里马尔迪溪",
+      "term": "Rimae Grimaldi",
+      "term_zh": "格里马尔迪溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20869"
+    },
+    "Rimae Gutenberg": {
+      "zh": "谷登堡溪",
+      "term": "Rimae Gutenberg",
+      "term_zh": "谷登堡溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20870"
+    },
+    "Rimae Hase": {
+      "zh": "哈泽溪",
+      "term": "Rimae Hase",
+      "term_zh": "哈泽溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20871"
+    },
+    "Rimae Hevelius": {
+      "zh": "赫维留溪",
+      "term": "Rimae Hevelius",
+      "term_zh": "赫维留溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20872"
+    },
+    "Rimae Hypatia": {
+      "zh": "希帕蒂娅溪",
+      "term": "Rimae Hypatia",
+      "term_zh": "希帕蒂娅溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20891"
+    },
+    "Rimae Janssen": {
+      "zh": "让桑溪",
+      "term": "Rimae Janssen",
+      "term_zh": "让桑溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20888"
+    },
+    "Rimae Littrow": {
+      "zh": "利特罗夫溪",
+      "term": "Rimae Littrow",
+      "term_zh": "利特罗夫溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20877"
+    },
+    "Rimae Maclear": {
+      "zh": "麦克利尔溪",
+      "term": "Rimae Maclear",
+      "term_zh": "麦克利尔溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20879"
+    },
+    "Rimae Maestlin": {
+      "zh": "梅斯特林溪",
+      "term": "Rimae Maestlin",
+      "term_zh": "梅斯特林溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20881"
+    },
+    "Rimae Maupertuis": {
+      "zh": "莫佩尔蒂溪",
+      "term": "Rimae Maupertuis",
+      "term_zh": "莫佩尔蒂溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20883"
+    },
+    "Rimae Menelaus": {
+      "zh": "米尼劳斯溪",
+      "term": "Rimae Menelaus",
+      "term_zh": "米尼劳斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20882"
+    },
+    "Rimae Mersenius": {
+      "zh": "梅森溪",
+      "term": "Rimae Mersenius",
+      "term_zh": "梅森溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20880"
+    },
+    "Rimae Parry": {
+      "zh": "帕里溪",
+      "term": "Rimae Parry",
+      "term_zh": "帕里溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20884"
+    },
+    "Rimae Pettit": {
+      "zh": "佩蒂特溪",
+      "term": "Rimae Pettit",
+      "term_zh": "佩蒂特溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20885"
+    },
+    "Rimae Plato": {
+      "zh": "柏拉图溪",
+      "term": "Rimae Plato",
+      "term_zh": "柏拉图溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20860"
+    },
+    "Rimae Plinius": {
+      "zh": "普利纽斯溪",
+      "term": "Rimae Plinius",
+      "term_zh": "普利纽斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20886"
+    },
+    "Rimae Prinz": {
+      "zh": "普林茨溪",
+      "term": "Rimae Prinz",
+      "term_zh": "普林茨溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20887"
+    },
+    "Rimae Ramsden": {
+      "zh": "拉姆斯登溪",
+      "term": "Rimae Ramsden",
+      "term_zh": "拉姆斯登溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20874"
+    },
+    "Rimae Riccioli": {
+      "zh": "里乔利溪",
+      "term": "Rimae Riccioli",
+      "term_zh": "里乔利溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20875"
+    },
+    "Rimae Ritter": {
+      "zh": "里特尔溪",
+      "term": "Rimae Ritter",
+      "term_zh": "里特尔溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20876"
+    },
+    "Rimae Römer": {
+      "zh": "罗默溪",
+      "term": "Rimae Römer",
+      "term_zh": "罗默溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20878"
+    },
+    "Rimae Sosigenes": {
+      "zh": "索西琴尼溪",
+      "term": "Rimae Sosigenes",
+      "term_zh": "索西琴尼溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20889"
+    },
+    "Rimae Sulpicius Gallus": {
+      "zh": "加卢斯溪",
+      "term": "Rimae Sulpicius Gallus",
+      "term_zh": "加卢斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20873"
+    },
+    "Rimae Theaetetus": {
+      "zh": "特埃特图斯溪",
+      "term": "Rimae Theaetetus",
+      "term_zh": "特埃特图斯溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20890"
+    },
+    "Rimae Vasco da Gama": {
+      "zh": "达·伽马溪",
+      "term": "Rimae Vasco da Gama",
+      "term_zh": "达·伽马溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20863"
+    },
+    "Rimae Zupus": {
+      "zh": "祖皮溪",
+      "term": "Rimae Zupus",
+      "term_zh": "祖皮溪",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20892"
+    },
+    "Ritz": {
+      "zh": "里茨",
+      "term": "Ritz crater",
+      "term_zh": "里茨环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20665"
+    },
+    "Roberts": {
+      "zh": "罗伯茨",
+      "term": "Roberts crater",
+      "term_zh": "罗伯茨环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20293"
+    },
+    "Robertson": {
+      "zh": "罗伯逊",
+      "term": "Robertson crater",
+      "term_zh": "罗伯逊环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20294"
+    },
+    "Rocca": {
+      "zh": "罗卡",
+      "term": "Rocca crater",
+      "term_zh": "罗卡环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20295"
+    },
+    "Roche": {
+      "zh": "洛希",
+      "term": "Roche crater",
+      "term_zh": "洛希环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20301"
+    },
+    "Rosenberger": {
+      "zh": "罗森贝格尔",
+      "term": "Rosenberger crater",
+      "term_zh": "罗森贝格尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20298"
+    },
+    "Rosseland": {
+      "zh": "罗斯兰",
+      "term": "Rosseland crater",
+      "term_zh": "罗斯兰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20672"
+    },
+    "Rowland": {
+      "zh": "罗兰",
+      "term": "Rowland crater",
+      "term_zh": "罗兰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20296"
+    },
+    "Rozhdestvenskiy": {
+      "zh": "罗日杰斯特文斯基",
+      "term": "Rozhdestvenskiy crater",
+      "term_zh": "罗日杰斯特文斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20297"
+    },
+    "Rumford": {
+      "zh": "拉姆福德",
+      "term": "Rumford crater",
+      "term_zh": "拉姆福德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20649"
+    },
+    "Rupes Altai": {
+      "zh": "阿尔泰峭壁",
+      "term": "Rupes Altai",
+      "term_zh": "阿尔泰峭壁",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3618"
+    },
+    "Rupes Boris": {
+      "zh": "鲍里斯峭壁",
+      "term": "Rupes Boris",
+      "term_zh": "鲍里斯峭壁",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=22959"
+    },
+    "Rupes Cauchy": {
+      "zh": "柯西峭壁",
+      "term": "Rupes Cauchy",
+      "term_zh": "柯西峭壁",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20786"
+    },
+    "Rupes Kelvin": {
+      "zh": "开尔文峭壁",
+      "term": "Rupes Kelvin",
+      "term_zh": "开尔文峭壁",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20437"
+    },
+    "Rupes Liebig": {
+      "zh": "李比希峭壁",
+      "term": "Rupes Liebig",
+      "term_zh": "李比希峭壁",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20787"
+    },
+    "Rupes Mercator": {
+      "zh": "墨卡托峭壁",
+      "term": "Rupes Mercator",
+      "term_zh": "墨卡托峭壁",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20788"
+    },
+    "Rupes Recta": {
+      "zh": "直壁",
+      "term": "Rupes Recta",
+      "term_zh": "直壁",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20438"
+    },
+    "Rupes Toscanelli": {
+      "zh": "托斯卡内利峭壁",
+      "term": "Rupes Toscanelli",
+      "term_zh": "托斯卡内利峭壁",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20789"
+    },
+    "Russell": {
+      "zh": "罗素",
+      "term": "Russell crater",
+      "term_zh": "罗素环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20299"
+    },
+    "Rutherford": {
+      "zh": "卢瑟福",
+      "term": "Rutherford crater",
+      "term_zh": "卢瑟福环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20289"
+    },
+    "Rynin": {
+      "zh": "雷宁",
+      "term": "Rynin crater",
+      "term_zh": "雷宁环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20663"
+    },
+    "Röntgen": {
+      "zh": "伦琴",
+      "term": "Röntgen crater",
+      "term_zh": "伦琴环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20291"
+    },
+    "Sacrobosco": {
+      "zh": "萨克罗博斯科",
+      "term": "Sacrobosco crater",
+      "term_zh": "萨克罗博斯科环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20369"
+    },
+    "Saenger": {
+      "zh": "森格尔",
+      "term": "Saenger crater",
+      "term_zh": "森格尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20730"
+    },
+    "Saha": {
+      "zh": "萨哈",
+      "term": "Saha crater",
+      "term_zh": "萨哈环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20368"
+    },
+    "Sanford": {
+      "zh": "桑福德",
+      "term": "Sanford crater",
+      "term_zh": "桑福德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20729"
+    },
+    "Sarton": {
+      "zh": "萨尔顿",
+      "term": "Sarton crater",
+      "term_zh": "萨尔顿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20726"
+    },
+    "Saussure": {
+      "zh": "索绪尔",
+      "term": "Saussure crater",
+      "term_zh": "索绪尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20753"
+    },
+    "Scaliger": {
+      "zh": "斯卡利杰",
+      "term": "Scaliger crater",
+      "term_zh": "斯卡利杰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20741"
+    },
+    "Schaeberle": {
+      "zh": "舍贝勒",
+      "term": "Schaeberle crater",
+      "term_zh": "舍贝勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20738"
+    },
+    "Scheiner": {
+      "zh": "沙伊纳",
+      "term": "Scheiner crater",
+      "term_zh": "沙伊纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20735"
+    },
+    "Schiller": {
+      "zh": "席勒",
+      "term": "Schiller crater",
+      "term_zh": "席勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20416"
+    },
+    "Schlesinger": {
+      "zh": "施莱辛格",
+      "term": "Schlesinger crater",
+      "term_zh": "施莱辛格环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20374"
+    },
+    "Schliemann": {
+      "zh": "谢里曼",
+      "term": "Schliemann crater",
+      "term_zh": "谢里曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20417"
+    },
+    "Schlüter": {
+      "zh": "施吕特",
+      "term": "Schlüter crater",
+      "term_zh": "施吕特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20375"
+    },
+    "Schneller": {
+      "zh": "施内勒尔",
+      "term": "Schneller crater",
+      "term_zh": "施内勒尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20740"
+    },
+    "Schrödinger": {
+      "zh": "薛定谔",
+      "term": "Schrödinger crater",
+      "term_zh": "薛定谔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20420"
+    },
+    "Schubert": {
+      "zh": "舒伯特",
+      "term": "Schubert crater",
+      "term_zh": "舒伯特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20377"
+    },
+    "Schumacher": {
+      "zh": "舒马赫",
+      "term": "Schumacher crater",
+      "term_zh": "舒马赫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20378"
+    },
+    "Schuster": {
+      "zh": "舒斯特",
+      "term": "Schuster crater",
+      "term_zh": "舒斯特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20379"
+    },
+    "Schwarzschild": {
+      "zh": "施瓦西",
+      "term": "Schwarzschild crater",
+      "term_zh": "施瓦西环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20376"
+    },
+    "Scoresby": {
+      "zh": "斯科斯比",
+      "term": "Scoresby crater",
+      "term_zh": "斯科斯比环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20742"
+    },
+    "Scott": {
+      "zh": "斯科特",
+      "term": "Scott crater",
+      "term_zh": "斯科特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20380"
+    },
+    "Seares": {
+      "zh": "西尔斯",
+      "term": "Seares crater",
+      "term_zh": "西尔斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20409"
+    },
+    "Sechenov": {
+      "zh": "谢切诺夫",
+      "term": "Sechenov crater",
+      "term_zh": "谢切诺夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20775"
+    },
+    "Seidel": {
+      "zh": "赛德尔",
+      "term": "Seidel crater",
+      "term_zh": "赛德尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20728"
+    },
+    "Seyfert": {
+      "zh": "赛弗特",
+      "term": "Seyfert crater",
+      "term_zh": "赛弗特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20371"
+    },
+    "Sharonov": {
+      "zh": "沙罗诺夫",
+      "term": "Sharonov crater",
+      "term_zh": "沙罗诺夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20733"
+    },
+    "Shayn": {
+      "zh": "沙因",
+      "term": "Shayn crater",
+      "term_zh": "沙因环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20373"
+    },
+    "Sherrington": {
+      "zh": "谢灵顿",
+      "term": "Sherrington crater",
+      "term_zh": "谢灵顿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20418"
+    },
+    "Shi Shen": {
+      "zh": "石申",
+      "term": "Shi Shen crater",
+      "term_zh": "石申环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3809"
+    },
+    "Shirakatsi": {
+      "zh": "希拉卡齐",
+      "term": "Shirakatsi crater",
+      "term_zh": "希拉卡齐环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20771"
+    },
+    "Shoemaker": {
+      "zh": "舒梅克",
+      "term": "Shoemaker crater",
+      "term_zh": "舒梅克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20777"
+    },
+    "Short": {
+      "zh": "肖特",
+      "term": "Short crater",
+      "term_zh": "肖特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20773"
+    },
+    "Siedentopf": {
+      "zh": "西登托普夫",
+      "term": "Siedentopf crater",
+      "term_zh": "西登托普夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20768"
+    },
+    "Sierpinski": {
+      "zh": "谢尔平斯基",
+      "term": "Sierpinski crater",
+      "term_zh": "谢尔平斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20774"
+    },
+    "Sikorsky": {
+      "zh": "西科尔斯基",
+      "term": "Sikorsky crater",
+      "term_zh": "西科尔斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20411"
+    },
+    "Sinus Aestuum": {
+      "zh": "浪湾",
+      "term": "Sinus Aestuum",
+      "term_zh": "浪湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3822"
+    },
+    "Sinus Amoris": {
+      "zh": "爱湾",
+      "term": "Sinus Amoris",
+      "term_zh": "爱湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3823"
+    },
+    "Sinus Asperitatis": {
+      "zh": "狂暴湾",
+      "term": "Sinus Asperitatis",
+      "term_zh": "狂暴湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20483"
+    },
+    "Sinus Concordiae": {
+      "zh": "和谐湾",
+      "term": "Sinus Concordiae",
+      "term_zh": "和谐湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20482"
+    },
+    "Sinus Fidei": {
+      "zh": "信赖湾",
+      "term": "Sinus Fidei",
+      "term_zh": "信赖湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20486"
+    },
+    "Sinus Honoris": {
+      "zh": "荣誉湾",
+      "term": "Sinus Honoris",
+      "term_zh": "荣誉湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20485"
+    },
+    "Sinus Iridum": {
+      "zh": "虹湾",
+      "term": "Sinus Iridum",
+      "term_zh": "虹湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3824"
+    },
+    "Sinus Lunicus": {
+      "zh": "眉月湾",
+      "term": "Sinus Lunicus",
+      "term_zh": "眉月湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20484"
+    },
+    "Sinus Medii": {
+      "zh": "中央湾",
+      "term": "Sinus Medii",
+      "term_zh": "中央湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3825"
+    },
+    "Sinus Roris": {
+      "zh": "露湾",
+      "term": "Sinus Roris",
+      "term_zh": "露湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=3826"
+    },
+    "Sinus Successus": {
+      "zh": "成功湾",
+      "term": "Sinus Successus",
+      "term_zh": "成功湾",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20481"
+    },
+    "Sklodowska": {
+      "zh": "斯克洛多夫斯卡",
+      "term": "Sklodowska crater",
+      "term_zh": "斯克洛多夫斯卡环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20381"
+    },
+    "Slipher": {
+      "zh": "斯里弗",
+      "term": "Slipher crater",
+      "term_zh": "斯里弗环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20743"
+    },
+    "Smoluchowski": {
+      "zh": "斯莫卢霍夫斯基",
+      "term": "Smoluchowski crater",
+      "term_zh": "斯莫卢霍夫斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20744"
+    },
+    "Snellius": {
+      "zh": "斯涅尔",
+      "term": "Snellius crater",
+      "term_zh": "斯涅尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20382"
+    },
+    "Sommerfeld": {
+      "zh": "索末菲",
+      "term": "Sommerfeld crater",
+      "term_zh": "索末菲环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20388"
+    },
+    "South": {
+      "zh": "索思",
+      "term": "South crater",
+      "term_zh": "索思环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20389"
+    },
+    "Spencer Jones": {
+      "zh": "斯潘塞·琼斯",
+      "term": "Spencer Jones crater",
+      "term_zh": "斯潘塞·琼斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20383"
+    },
+    "St. John": {
+      "zh": "圣约翰",
+      "term": "St. John crater",
+      "term_zh": "圣约翰环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20739"
+    },
+    "Stadius": {
+      "zh": "斯塔迪乌斯",
+      "term": "Stadius crater",
+      "term_zh": "斯塔迪乌斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20745"
+    },
+    "Stebbins": {
+      "zh": "斯特宾斯",
+      "term": "Stebbins crater",
+      "term_zh": "斯特宾斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20384"
+    },
+    "Stefan": {
+      "zh": "斯特藩",
+      "term": "Stefan crater",
+      "term_zh": "斯特藩环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20385"
+    },
+    "Stetson": {
+      "zh": "斯特森",
+      "term": "Stetson crater",
+      "term_zh": "斯特森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20750"
+    },
+    "Stokes": {
+      "zh": "斯托克斯",
+      "term": "Stokes crater",
+      "term_zh": "斯托克斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20751"
+    },
+    "Strabo": {
+      "zh": "斯特拉博",
+      "term": "Strabo crater",
+      "term_zh": "斯特拉博环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20746"
+    },
+    "Stratton": {
+      "zh": "斯特拉顿",
+      "term": "Stratton crater",
+      "term_zh": "斯特拉顿环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20747"
+    },
+    "Street": {
+      "zh": "斯特里特",
+      "term": "Street crater",
+      "term_zh": "斯特里特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20748"
+    },
+    "Struve": {
+      "zh": "斯特鲁维",
+      "term": "Struve crater",
+      "term_zh": "斯特鲁维环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20386"
+    },
+    "Strömgren": {
+      "zh": "斯特龙根",
+      "term": "Strömgren crater",
+      "term_zh": "斯特龙根环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20749"
+    },
+    "Subbotin": {
+      "zh": "苏博京",
+      "term": "Subbotin crater",
+      "term_zh": "苏博京环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20752"
+    },
+    "Sumner": {
+      "zh": "萨姆纳",
+      "term": "Sumner crater",
+      "term_zh": "萨姆纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20727"
+    },
+    "Sylvester": {
+      "zh": "西尔维斯特",
+      "term": "Sylvester crater",
+      "term_zh": "西尔维斯特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20769"
+    },
+    "Szilard": {
+      "zh": "齐拉特",
+      "term": "Szilard crater",
+      "term_zh": "齐拉特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20358"
+    },
+    "Tai Wei": {
+      "zh": "太微",
+      "term": "Tai Wei crater",
+      "term_zh": "太微环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26592"
+    },
+    "Teisserenc": {
+      "zh": "泰塞朗·德博尔",
+      "term": "Teisserenc crater",
+      "term_zh": "泰塞朗·德博尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20754"
+    },
+    "Theophilus": {
+      "zh": "西奥菲勒斯",
+      "term": "Theophilus crater",
+      "term_zh": "西奥菲勒斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20408"
+    },
+    "Thiessen": {
+      "zh": "蒂森",
+      "term": "Thiessen crater",
+      "term_zh": "蒂森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20568"
+    },
+    "Thomson": {
+      "zh": "汤姆孙",
+      "term": "Thomson crater",
+      "term_zh": "汤姆孙环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20390"
+    },
+    "Tian Shi": {
+      "zh": "天市",
+      "term": "Tian Shi crater",
+      "term_zh": "天市环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26593"
+    },
+    "Tianjin": {
+      "zh": "天津",
+      "term": "Tianjin crater",
+      "term_zh": "天津环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26594"
+    },
+    "Tikhomirov": {
+      "zh": "季霍米罗夫",
+      "term": "Tikhomirov crater",
+      "term_zh": "季霍米罗夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20607"
+    },
+    "Tikhov": {
+      "zh": "季霍夫",
+      "term": "Tikhov crater",
+      "term_zh": "季霍夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20221"
+    },
+    "Timiryazev": {
+      "zh": "季米里亚泽夫",
+      "term": "Timiryazev crater",
+      "term_zh": "季米里亚泽夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20608"
+    },
+    "Tiselius": {
+      "zh": "蒂塞利乌斯",
+      "term": "Tiselius crater",
+      "term_zh": "蒂塞利乌斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20567"
+    },
+    "Titius": {
+      "zh": "提丢斯",
+      "term": "Titius crater",
+      "term_zh": "提丢斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20392"
+    },
+    "Trumpler": {
+      "zh": "特朗普勒",
+      "term": "Trumpler crater",
+      "term_zh": "特朗普勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20391"
+    },
+    "Tsiolkovskiy": {
+      "zh": "齐奥尔科夫斯基",
+      "term": "Tsiolkovskiy crater",
+      "term_zh": "齐奥尔科夫斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20357"
+    },
+    "Tycho": {
+      "zh": "第谷",
+      "term": "Tycho crater",
+      "term_zh": "第谷环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=4125"
+    },
+    "Vallis Alpes": {
+      "zh": "阿尔卑斯大峡谷",
+      "term": "Vallis Alpes",
+      "term_zh": "阿尔卑斯大峡谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20465"
+    },
+    "Vallis Baade": {
+      "zh": "巴德谷",
+      "term": "Vallis Baade",
+      "term_zh": "巴德谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20812"
+    },
+    "Vallis Bohr": {
+      "zh": "玻尔谷",
+      "term": "Vallis Bohr",
+      "term_zh": "玻尔谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=22972"
+    },
+    "Vallis Bouvard": {
+      "zh": "布瓦尔谷",
+      "term": "Vallis Bouvard",
+      "term_zh": "布瓦尔谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20466"
+    },
+    "Vallis Capella": {
+      "zh": "卡佩拉谷",
+      "term": "Vallis Capella",
+      "term_zh": "卡佩拉谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=23524"
+    },
+    "Vallis Christel": {
+      "zh": "克里斯特尔谷",
+      "term": "Vallis Christel",
+      "term_zh": "克里斯特尔谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=23532"
+    },
+    "Vallis Inghirami": {
+      "zh": "因吉拉米谷",
+      "term": "Vallis Inghirami",
+      "term_zh": "因吉拉米谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20816"
+    },
+    "Vallis Krishna": {
+      "zh": "克里希纳谷",
+      "term": "Vallis Krishna",
+      "term_zh": "克里希纳谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=23540"
+    },
+    "Vallis Palitzsch": {
+      "zh": "帕利奇谷",
+      "term": "Vallis Palitzsch",
+      "term_zh": "帕利奇谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=23541"
+    },
+    "Vallis Planck": {
+      "zh": "普朗克谷",
+      "term": "Vallis Planck",
+      "term_zh": "普朗克谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20813"
+    },
+    "Vallis Rheita": {
+      "zh": "里伊塔月谷",
+      "term": "Vallis Rheita",
+      "term_zh": "里伊塔月谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=4196"
+    },
+    "Vallis Schrödinger": {
+      "zh": "薛定谔谷",
+      "term": "Vallis Schrödinger",
+      "term_zh": "薛定谔谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20815"
+    },
+    "Vallis Schröteri": {
+      "zh": "施洛特月谷",
+      "term": "Vallis Schröteri",
+      "term_zh": "施洛特月谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=4197"
+    },
+    "Vallis Snellius": {
+      "zh": "斯涅尔谷",
+      "term": "Vallis Snellius",
+      "term_zh": "斯涅尔谷",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20814"
+    },
+    "Van de Graaff": {
+      "zh": "范德格拉夫",
+      "term": "van de Graaff crater",
+      "term_zh": "范德格拉夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20163"
+    },
+    "Van der Waals": {
+      "zh": "范德瓦耳斯",
+      "term": "van der Waals crater",
+      "term_zh": "范德瓦耳斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20164"
+    },
+    "Vasco da Gama": {
+      "zh": "瓦斯科·达·伽马",
+      "term": "Vasco da Gama crater",
+      "term_zh": "瓦斯科·达·伽马环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20394"
+    },
+    "Vavilov": {
+      "zh": "瓦维洛夫",
+      "term": "Vavilov crater",
+      "term_zh": "瓦维洛夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20396"
+    },
+    "Vega": {
+      "zh": "韦加",
+      "term": "Vega crater",
+      "term_zh": "韦加环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20757"
+    },
+    "Vening Meinesz": {
+      "zh": "芬宁·梅因纳斯",
+      "term": "Vening Meinesz crater",
+      "term_zh": "芬宁·梅因纳斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20578"
+    },
+    "Ventris": {
+      "zh": "文特里斯",
+      "term": "Ventris crater",
+      "term_zh": "文特里斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20406"
+    },
+    "Vernadskiy": {
+      "zh": "韦尔纳茨基",
+      "term": "Vernadskiy crater",
+      "term_zh": "韦尔纳茨基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20403"
+    },
+    "Vesalius": {
+      "zh": "维萨里",
+      "term": "Vesalius crater",
+      "term_zh": "维萨里环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20761"
+    },
+    "Vetchinkin": {
+      "zh": "韦钦金",
+      "term": "Vetchinkin crater",
+      "term_zh": "韦钦金环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20759"
+    },
+    "Vieta": {
+      "zh": "韦达",
+      "term": "Vieta crater",
+      "term_zh": "韦达环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20402"
+    },
+    "Vlacq": {
+      "zh": "弗拉克",
+      "term": "Vlacq crater",
+      "term_zh": "弗拉克环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20176"
+    },
+    "Volta": {
+      "zh": "伏打",
+      "term": "Volta crater",
+      "term_zh": "伏打环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20182"
+    },
+    "Volterra": {
+      "zh": "沃尔泰拉",
+      "term": "Volterra crater",
+      "term_zh": "沃尔泰拉环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20763"
+    },
+    "Von Kármán": {
+      "zh": "冯·卡门",
+      "term": "Von Kármán crater",
+      "term_zh": "冯·卡门环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20173"
+    },
+    "Von Neumann": {
+      "zh": "冯·诺伊曼",
+      "term": "Von Neumann crater",
+      "term_zh": "冯·诺伊曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20174"
+    },
+    "Von Zeipel": {
+      "zh": "冯·蔡佩尔",
+      "term": "Von Zeipel crater",
+      "term_zh": "冯·蔡佩尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20581"
+    },
+    "Von der Pahlen": {
+      "zh": "冯·德·帕伦",
+      "term": "Von der Pahlen crater",
+      "term_zh": "冯·德·帕伦环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20582"
+    },
+    "W. Bond": {
+      "zh": "威·邦德",
+      "term": "W. Bond crater",
+      "term_zh": "威·邦德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20398"
+    },
+    "Wallace": {
+      "zh": "华莱士",
+      "term": "Wallace crater",
+      "term_zh": "华莱士环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20214"
+    },
+    "Walther": {
+      "zh": "瓦尔特",
+      "term": "Walther crater",
+      "term_zh": "瓦尔特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20393"
+    },
+    "Waterman": {
+      "zh": "沃特曼",
+      "term": "Waterman crater",
+      "term_zh": "沃特曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20765"
+    },
+    "Watson": {
+      "zh": "沃森",
+      "term": "Watson crater",
+      "term_zh": "沃森环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20764"
+    },
+    "Watt": {
+      "zh": "瓦特",
+      "term": "Watt crater",
+      "term_zh": "瓦特环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20395"
+    },
+    "Weber": {
+      "zh": "韦伯",
+      "term": "Weber crater",
+      "term_zh": "韦伯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20401"
+    },
+    "Wegener": {
+      "zh": "魏格纳",
+      "term": "Wegener crater",
+      "term_zh": "魏格纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20404"
+    },
+    "Weiss": {
+      "zh": "魏斯",
+      "term": "Weiss crater",
+      "term_zh": "魏斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20762"
+    },
+    "Werner": {
+      "zh": "维尔纳",
+      "term": "Werner crater",
+      "term_zh": "维尔纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20760"
+    },
+    "Wexler": {
+      "zh": "韦克斯勒",
+      "term": "Wexler crater",
+      "term_zh": "韦克斯勒环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20758"
+    },
+    "Weyl": {
+      "zh": "外尔",
+      "term": "Weyl crater",
+      "term_zh": "外尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20397"
+    },
+    "Wiener": {
+      "zh": "维纳",
+      "term": "Wiener crater",
+      "term_zh": "维纳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20405"
+    },
+    "Wilhelm": {
+      "zh": "威廉",
+      "term": "Wilhelm crater",
+      "term_zh": "威廉环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20400"
+    },
+    "Wilkins": {
+      "zh": "威尔金斯",
+      "term": "Wilkins crater",
+      "term_zh": "威尔金斯环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20756"
+    },
+    "Wilson": {
+      "zh": "威尔逊",
+      "term": "Wilson crater",
+      "term_zh": "威尔逊环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20399"
+    },
+    "Wood": {
+      "zh": "伍德",
+      "term": "Wood crater",
+      "term_zh": "伍德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20407"
+    },
+    "Wrottesley": {
+      "zh": "罗茨利",
+      "term": "Wrottesley crater",
+      "term_zh": "罗茨利环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20671"
+    },
+    "Wyld": {
+      "zh": "怀尔德",
+      "term": "Wyld crater",
+      "term_zh": "怀尔德环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20215"
+    },
+    "Xenophanes": {
+      "zh": "色诺芬尼",
+      "term": "Xenophanes crater",
+      "term_zh": "色诺芬尼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20372"
+    },
+    "Yablochkov": {
+      "zh": "雅勃洛奇科夫",
+      "term": "Yablochkov crater",
+      "term_zh": "雅勃洛奇科夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20421"
+    },
+    "Yamamoto": {
+      "zh": "山本一清",
+      "term": "Yamamoto crater",
+      "term_zh": "山本一清环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20736"
+    },
+    "Yangel'": {
+      "zh": "扬格利",
+      "term": "Yangel' crater",
+      "term_zh": "扬格利环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20426"
+    },
+    "Young": {
+      "zh": "杨",
+      "term": "Young crater",
+      "term_zh": "杨环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20779"
+    },
+    "Zach": {
+      "zh": "扎赫",
+      "term": "Zach crater",
+      "term_zh": "扎赫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20782"
+    },
+    "Zeeman": {
+      "zh": "塞曼",
+      "term": "Zeeman crater",
+      "term_zh": "塞曼环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20370"
+    },
+    "Zeno": {
+      "zh": "芝诺",
+      "term": "Zeno crater",
+      "term_zh": "芝诺环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20784"
+    },
+    "Zhang Yuzhe": {
+      "zh": "张钰哲",
+      "term": "Zhang Yuzhe crater",
+      "term_zh": "张钰哲环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26596"
+    },
+    "Zhinyu": {
+      "zh": "织女",
+      "term": "Zhinyu crater",
+      "term_zh": "织女环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26597"
+    },
+    "Zhukovskiy": {
+      "zh": "茹科夫斯基",
+      "term": "Zhukovskiy crater",
+      "term_zh": "茹科夫斯基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20364"
+    },
+    "Zi Wei": {
+      "zh": "紫微",
+      "term": "Zi Wei crater",
+      "term_zh": "紫微环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=26598"
+    },
+    "Zsigmondy": {
+      "zh": "席格蒙迪",
+      "term": "Zsigmondy crater",
+      "term_zh": "席格蒙迪环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20415"
+    },
+    "Zucchius": {
+      "zh": "祖基",
+      "term": "Zucchius crater",
+      "term_zh": "祖基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20785"
+    },
+    "Zwicky": {
+      "zh": "兹威基",
+      "term": "Zwicky crater",
+      "term_zh": "兹威基环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20435"
+    },
+    "d'Alembert": {
+      "zh": "达朗贝尔",
+      "term": "d'Alembert crater",
+      "term_zh": "达朗贝尔环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20557"
+    },
+    "da Vinci": {
+      "zh": "达·芬奇",
+      "term": "da Vinci crater",
+      "term_zh": "达·芬奇环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20146"
+    },
+    "van't Hoff": {
+      "zh": "范托夫",
+      "term": "van't Hoff crater",
+      "term_zh": "范托夫环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20165"
+    },
+    "von Baeyer": {
+      "zh": "冯·拜耳",
+      "term": "Von Baeyer crater",
+      "term_zh": "冯·拜耳环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20171"
+    },
+    "von Braun": {
+      "zh": "冯·布劳恩",
+      "term": "Von Braun crater",
+      "term_zh": "冯·布劳恩环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20580"
+    },
+    "von Békésy": {
+      "zh": "冯·贝凯西",
+      "term": "Von Békésy crater",
+      "term_zh": "冯·贝凯西环形山",
+      "url": "https://nadc.china-vo.org/astrodict/termdetails?id=20172"
+    }
+  }
+}

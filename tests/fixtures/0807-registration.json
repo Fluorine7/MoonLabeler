@@ -1,0 +1,58 @@
+{
+  "geometry": {
+    "observer": [
+      0.9913619566761709,
+      -0.05815949530083547,
+      -0.11755400444708591
+    ],
+    "right": [
+      0.0797934668822607,
+      0.978794980874556,
+      0.18866210021540414
+    ],
+    "north": [
+      0.10408877700358937,
+      -0.1964124703809047,
+      0.9749808551867913
+    ],
+    "sun": [
+      -0.39699715523152834,
+      -0.9177936444624512,
+      0.006934329268625639
+    ],
+    "distance_km": 368111.5272356069,
+    "utc": "2026-08-07T15:00:00+00:00"
+  },
+  "matrix": [
+    [
+      14304.793778586505,
+      1348.990680409548,
+      5323.131930650035
+    ],
+    [
+      -1348.990680409548,
+      14304.793778586505,
+      6791.416837900184
+    ]
+  ],
+  "matches": [
+    "Reinhold",
+    "Reinhold N",
+    "Draper A",
+    "Reinhold B",
+    "Hortensius E",
+    "Gambart",
+    "T. Mayer C",
+    "T. Mayer G",
+    "Gambart A",
+    "Draper C",
+    "Reinhold C",
+    "Reinhold F",
+    "Fauth",
+    "Draper",
+    "T. Mayer D",
+    "Gay-Lussac A"
+  ],
+  "rms": 5.461040942061471,
+  "note": "Captured from an actual catalogue match of 0807.jpg; supplied UTC is test input, not recovered EXIF. Used to regress label filtering without rerunning unchanged recognition."
+}
