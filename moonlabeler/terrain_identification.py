@@ -15,7 +15,7 @@ import numpy as np
 
 from .geometry import surface_vectors
 from .identification import IdentificationError, IdentificationResult
-from .registration import auto_register, transform_points
+from .registration import auto_register, transform_points, prepare_registration_photo
 from .terrain import ElevationMap, download_basic_dem, terrain_shadow
 
 
@@ -103,6 +103,29 @@ def terrain_consensus(light, detail, inliers, coverage):
     return light >= .59 and detail >= .30 and inliers >= 32 and coverage >= .15
 
 
+def refinement_consensus(light, detail, evidence):
+    """Certify a fresh local render, including a tightly checked tonal mismatch.
+
+    Absolute brightness can differ even after a valid physical view correction.
+    That exception needs strong dense detail plus independently held-out spatial
+    geometry; it is never available to a coarse SIFT retrieval on its own.
+    """
+    points, coverage = evidence.get('points', 0), evidence.get('coverage', 0.)
+    if light >= .6 and terrain_consensus(light, detail, points, coverage):
+        return True
+    before = evidence.get('validation_before_px', float('nan'))
+    after = evidence.get('validation_after_px', float('nan'))
+    if (not np.isfinite([light, detail, coverage, before, after]).all() or
+            light < .5 or detail < .5 or points < 80 or coverage < .25 or
+            after > 1.5 or after > before*.75 or before-after < .5):
+        return False
+    folds = evidence.get('validation_folds', [])
+    return (len({fold['cell'] for fold in folds}) >= 4 and
+            sum(fold['count'] for fold in folds) >= 80 and
+            all(np.isfinite(fold['after_px']) and fold['after_px'] <= 2.5 for fold in folds) and
+            sum(fold['after_px'] < fold['before_px'] for fold in folds) >= .75*len(folds))
+
+
 def _pose_difference(first, second, shape):
     h, w = shape[:2]
     probes = np.array([[w/2, h/2], [w*.75, h/2], [w/2, h*.75]])
@@ -137,6 +160,10 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
     factor = min(1., 880/max(h, w))
     photograph = cv2.resize(image, (round(w*factor), round(h*factor)), interpolation=cv2.INTER_AREA)
     gray = cv2.cvtColor(photograph, cv2.COLOR_RGB2GRAY) if photograph.ndim == 3 else photograph
+    try:
+        prepared_photo = prepare_registration_photo(photograph, contrast_threshold=.01)
+    except ValueError as exc:
+        raise IdentificationError(str(exc)) from exc
     sample = cv2.resize(gray[:round(gray.shape[0]*.93)], (60, 54), interpolation=cv2.INTER_AREA)
     yy, xx = np.nonzero(sample > 30)
     foreground = np.column_stack(((xx+.5)*w/60, (yy+.5)*round(h*.93)/54))
@@ -157,16 +184,20 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
                 # retrieval. Stronger count, coverage and dense checks follow;
                 # the normal albedo/manual matching defaults are unchanged.
                 match = auto_register(tile, photograph, ratio_threshold=.8,
-                                      contrast_threshold=.01, min_inlier_fraction=.25)
+                                      contrast_threshold=.01, min_inlier_fraction=.25,
+                                      prepared_photo=prepared_photo)
             except ValueError:
                 continue
-            if match.inliers < 18 or match.coverage < .06:
+            if match.inliers < 12 or match.coverage < .06:
                 continue
             offset = np.array([[1., 0., -x], [0., 1., -y], [0., 0., 1.]])
             reference_to_photo = (np.vstack((match.matrix, [0., 0., 1.])) @ offset)[:2]
             try:
                 light, detail = terrain_agreement(reference, photograph, reference_to_photo, require_match=False)
             except IdentificationError:
+                continue
+            sparse_seed = match.inliers < 18
+            if sparse_seed and not (refine and match.coverage >= .15 and light >= .6 and detail >= .35):
                 continue
             matrix = (np.vstack((reference_to_photo, [0., 0., 1.])) @ np.vstack((projection, [0., 0., 1.])))[:2]
             matrix = np.diag([1/sx, 1/sy]) @ matrix
@@ -176,14 +207,14 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
             result = IdentificationResult(matrix, [], match.rms_px/min(sx, sy), float(score), 0,
                                           "LOLA slope + cast-shadow tiles / symmetric SIFT / JPL projection",
                                           match.inliers, match.coverage, 0, light)
-            if terrain_consensus(light, detail, match.inliers, match.coverage):
+            if not sparse_seed and terrain_consensus(light, detail, match.inliers, match.coverage):
                 solutions.append(result)
             elif refine and match.coverage >= .08 and light >= .25 and detail >= .04:
                 # A coarse sphere can retrieve the correct oblique region but
                 # displace its relief/shadows. This only nominates a candidate:
                 # fresh relief rendering and held-out validation must certify it.
                 # Sparse retrieval is useful for blurred polar photographs,
-                # but cannot pass the unchanged final consensus by itself.
+                # but cannot certify the final result by itself.
                 pending.append(result)
     if pending:
         from .terrain_refinement import refine_terrain_pose
@@ -210,8 +241,7 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
                         continue
                     light = refined.details['light_before_after'][1]
                     detail = refined.details['detail_before_after'][1]
-                    if (light < .6 or detail < .25 or
-                            not terrain_consensus(light, detail, refined.details['points'], refined.details['coverage']) or
+                    if (not refinement_consensus(light, detail, refined.details) or
                             not _foreground_inside(refined.matrix, foreground)):
                         continue
                     _adopt_refinement(candidate, refined)

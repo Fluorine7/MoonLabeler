@@ -107,19 +107,41 @@ class MatchResult:
     target_points: np.ndarray | None = None
 
 
+@dataclass
+class RegistrationPhoto:
+    """Request-scoped features of an unchanged photograph, never a global cache."""
+    image: np.ndarray
+    gray: np.ndarray
+    scale: float
+    contrast_threshold: float
+    keypoints: tuple
+    descriptors: np.ndarray
+
+
+def prepare_registration_photo(photograph, *, contrast_threshold=.02):
+    photo, scale = _gray(photograph)
+    sift = cv2.SIFT_create(nfeatures=10000, contrastThreshold=contrast_threshold)
+    points, descriptors = sift.detectAndCompute(photo, None)
+    if descriptors is None or len(points) < 12:
+        raise ValueError("照片细节不足，自动配准失败。请使用手动地形参考点。")
+    return RegistrationPhoto(photograph, photo, scale, contrast_threshold, points, descriptors)
+
+
 def registration_candidates(reference, photograph, *, ratio_threshold=.75,
-                            contrast_threshold=.02, min_inlier_fraction=.35):
+                            contrast_threshold=.02, min_inlier_fraction=.35,
+                            prepared_photo=None):
     """Map reference pixels to photograph pixels. No assumed crop/rotation.
 
     Reflections are tested explicitly. RANSAC uses a similarity rather than an
     arbitrary homography that could bend a wrong match into apparent agreement.
     """
     ref, rs = _gray(reference)
-    photo, ps = _gray(photograph)
+    prepared = prepared_photo or prepare_registration_photo(photograph, contrast_threshold=contrast_threshold)
+    if prepared.image is not photograph or prepared.contrast_threshold != contrast_threshold:
+        raise ValueError("预提取的照片特征与当前图像或检测参数不一致。")
+    photo, ps = prepared.gray, prepared.scale
     sift = cv2.SIFT_create(nfeatures=10000, contrastThreshold=contrast_threshold)
-    pk, pd = sift.detectAndCompute(photo, None)
-    if pd is None or len(pk) < 12:
-        raise ValueError("照片细节不足，自动配准失败。请使用手动地形参考点。")
+    pk, pd = prepared.keypoints, prepared.descriptors
     candidates = []
     for mirrored in (False, True):
         current = cv2.flip(ref, 1) if mirrored else ref
@@ -172,10 +194,12 @@ def registration_candidates(reference, photograph, *, ratio_threshold=.75,
 
 
 def auto_register(reference, photograph, *, ratio_threshold=.75,
-                  contrast_threshold=.02, min_inlier_fraction=.35):
+                  contrast_threshold=.02, min_inlier_fraction=.35,
+                  prepared_photo=None):
     """Return the strongest image pose, testing both camera handednesses."""
     candidates = registration_candidates(reference, photograph,
                                          ratio_threshold=ratio_threshold,
                                          contrast_threshold=contrast_threshold,
-                                         min_inlier_fraction=min_inlier_fraction)
+                                         min_inlier_fraction=min_inlier_fraction,
+                                         prepared_photo=prepared_photo)
     return max(candidates, key=lambda candidate: (candidate.inliers, candidate.coverage))

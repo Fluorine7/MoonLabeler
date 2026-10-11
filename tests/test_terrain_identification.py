@@ -84,6 +84,62 @@ def test_borderline_light_needs_stronger_detail_count_and_distribution():
     assert not terrain_consensus(np.nan, .5, 60, .5)
 
 
+@pytest.mark.parametrize('defect', [None, 'few_points', 'poor_coverage', 'weak_detail',
+                                  'no_holdouts', 'poor_holdout', 'no_improvement'])
+def test_low_contrast_refinement_needs_strong_independent_geometry(defect):
+    from moonlabeler.terrain_identification import refinement_consensus
+    details = {'points': 150, 'coverage': .4,
+               'validation_before_px': 2.4, 'validation_after_px': .8,
+               'validation_folds': [{'cell': i, 'count': 20, 'before_px': 2.4,
+                                     'after_px': .8} for i in range(5)]}
+    light, detail = .54, .62
+    if defect == 'few_points':
+        details['points'] = 60
+    elif defect == 'poor_coverage':
+        details['coverage'] = .1
+    elif defect == 'weak_detail':
+        detail = .3
+    elif defect == 'no_holdouts':
+        details.pop('validation_folds')
+    elif defect == 'poor_holdout':
+        details['validation_folds'][2]['after_px'] = 4.
+    elif defect == 'no_improvement':
+        details['validation_before_px'] = .85
+    assert refinement_consensus(light, detail, details) == (defect is None)
+
+
+@pytest.mark.parametrize('coarse_light,refined_points,accepted', [(.65, 60, True),
+                                                               (.4, 60, False),
+                                                               (.65, 14, False)])
+def test_small_coarse_seed_requires_dense_match_and_fresh_refinement(monkeypatch, tmp_path,
+                                                                   coarse_light, refined_points, accepted):
+    from dataclasses import replace
+    import moonlabeler.terrain_identification as terrain
+    import moonlabeler.terrain_refinement as refinement
+    rng = np.random.default_rng(18)
+    reference = cv2.GaussianBlur(rng.integers(0, 256, (400, 400), dtype=np.uint8), (0, 0), .8)
+    photograph = reference[80:320, 80:320].copy()
+    projection = np.array([[188., 0., 199.5], [0., 188., 199.5]])
+    monkeypatch.setattr(terrain, 'download_basic_dem', lambda cache: tmp_path/'test.lbl')
+    monkeypatch.setattr(terrain.ElevationMap, 'load', lambda path: SimpleNamespace(close=lambda: None))
+    monkeypatch.setattr(terrain, 'render_terrain_atlas', lambda *args: (reference, projection))
+    register = terrain.auto_register
+    monkeypatch.setattr(terrain, 'auto_register', lambda *a, **kw: replace(register(*a, **kw), inliers=14))
+    monkeypatch.setattr(terrain, 'terrain_agreement', lambda *a, **kw: (coarse_light, .42))
+    monkeypatch.setattr(refinement, 'refine_terrain_pose', lambda *a, **kw:
+                        SimpleNamespace(matrix=a[2], geometry=object(), rms_px=1.,
+                                        details={'points': refined_points, 'coverage': .4,
+                                                 'light_before_after': [coarse_light, .72],
+                                                 'detail_before_after': [.42, .52]}))
+    if accepted:
+        result = identify_from_terrain(photograph, None, tmp_path, atlas_size=400, tile_size=400)
+        assert result.image_inliers == refined_points
+        assert result.refinement is not None
+    else:
+        with pytest.raises(IdentificationError):
+            identify_from_terrain(photograph, None, tmp_path, atlas_size=400, tile_size=400)
+
+
 @pytest.mark.parametrize('fresh_light,points,accepted', [(.72, 100, True), (.58, 100, False), (.72, 18, False)])
 def test_sparse_oblique_retrieval_requires_fresh_strong_refinement(monkeypatch, tmp_path, fresh_light, points, accepted):
     """A blurred polar crop can supply a weak seed, never a final map pose."""
@@ -187,7 +243,7 @@ def test_pending_competing_region_is_not_hidden_by_one_coarse_accepted_pose(monk
     rng = np.random.default_rng(12)
     reference = rng.integers(0, 255, (800, 800), np.uint8)
     projection = np.array([[376., 0., 399.5], [0., 376., 399.5]])
-    photograph = np.full((100, 100), 50, np.uint8)
+    photograph = cv2.GaussianBlur(rng.integers(30, 255, (100, 100), np.uint8), (3, 3), .6)
     monkeypatch.setattr(terrain, 'download_basic_dem', lambda cache: tmp_path/'test.lbl')
     monkeypatch.setattr(terrain.ElevationMap, 'load', lambda path: SimpleNamespace(close=lambda: None))
     monkeypatch.setattr(terrain, 'render_terrain_atlas', lambda *args: (reference, projection))

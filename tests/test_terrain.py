@@ -102,6 +102,20 @@ def test_terrain_casts_shadow_at_low_sun_and_clears_at_high_sun():
     assert not terrain_shadow(dem, radial, np.array([0.]), high, steps=96, maximum_km=40)[0]
 
 
+def test_outward_sun_rays_above_dem_bound_need_no_further_samples():
+    from types import SimpleNamespace
+    sampled = []
+    def sample(lat, lon):
+        sampled.append(len(lat))
+        return np.zeros_like(lat)
+    dem = SimpleNamespace(sample=sample, maximum_height_km=0., resolution_km=1.)
+    assert not terrain_shadow(dem, np.array([[1., 0., 0.]]), np.array([0.]), np.array([1., 0., 0.]))[0]
+    assert not sampled
+    # A ray above the same bound but heading inward can still hit terrain.
+    assert terrain_shadow(dem, np.array([[1., 0., 0.]]), np.array([5.]), np.array([-1., 0., 0.]))[0]
+    assert sum(sampled) < 32
+
+
 def test_renderer_rejects_missing_coverage_and_near_limb():
     dem = ElevationMap(np.zeros((512, 512)), 2, -2, 128)
     with pytest.raises(ValueError, match="不覆盖"):

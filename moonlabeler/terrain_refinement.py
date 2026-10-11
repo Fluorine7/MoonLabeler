@@ -72,7 +72,7 @@ def local_correspondences(reference, photograph):
 
 def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False, relief_aware=False):
     """Retain initial registration unless spatial and fresh-render checks pass."""
-    from .terrain_identification import terrain_agreement
+    from .terrain_identification import terrain_agreement, refinement_consensus
     from .identification import IdentificationError
     from .geometry import Geometry
     from .terrain_view import TerrainView
@@ -109,8 +109,10 @@ def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False, 
     updated = render_local_reference(dem, result.geometry, result.matrix, photograph.shape)
     try:
         before = terrain_agreement(reference, photograph, identity, require_match=False)
-        after = terrain_agreement(updated, photograph, identity)
+        after = terrain_agreement(updated, photograph, identity, require_match=False)
     except IdentificationError:
+        return None
+    if not refinement_consensus(after[0], after[1], result.details):
         return None
     # A small point residual alone cannot certify an improved projection.
     if after[0] < before[0] or after[1] < before[1] + .02:

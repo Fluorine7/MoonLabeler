@@ -7,6 +7,7 @@ renderer. Cast shadows are sampled at finite steps and limited to 80 km.
 It uses no LTVT code. See ACKNOWLEDGEMENTS.md for algorithm/data references.
 """
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 import re
 
@@ -41,6 +42,14 @@ class ElevationMap:
     @property
     def resolution_km(self):
         return np.pi*MOON_RADIUS_KM/(180*self.ppd)
+
+    @cached_property
+    def maximum_height_km(self):
+        """Exact ceiling for small read-only maps; avoid scanning large DEMs."""
+        if self.data.nbytes > 64*1024*1024:
+            return float('inf')
+        maximum = float(np.max(np.asarray(self.data))) * self.scale
+        return maximum if np.isfinite(maximum) else float('inf')
 
     @classmethod
     def load(cls, path):
@@ -137,13 +146,27 @@ def terrain_shadow(dem, radial, height, sun, steps=32, maximum_km=80.):
     """Sample terrain along the Sun ray. Unknown terrain does not invent shadows."""
     position = radial*(MOON_RADIUS_KM+height)[:, None]
     shadow = np.zeros(len(position), bool)
+    active = np.arange(len(position))
+    ceiling = MOON_RADIUS_KM + getattr(dem, 'maximum_height_km', float('inf'))
+    along_sun = position @ sun
+    sun_squared = float(np.dot(sun, sun))
     for distance in np.geomspace(max(.01, dem.resolution_km*.75), maximum_km, steps):
-        ray = position + distance*sun
+        if not len(active):
+            break
+        ray = position[active] + distance*sun
         radius = np.linalg.norm(ray, axis=1)
+        # Once above every DEM height and moving outward, the rest of this
+        # ray cannot hit terrain. Already-shadowed rays also need no work.
+        keep = ~((radius >= ceiling) & (along_sun[active] + distance*sun_squared >= 0))
+        active, ray, radius = active[keep], ray[keep], radius[keep]
+        if not len(active):
+            break
         latitude = np.degrees(np.arcsin(ray[:, 2]/radius))
         longitude = np.degrees(np.arctan2(ray[:, 1], ray[:, 0]))
         terrain_radius = MOON_RADIUS_KM+dem.sample(latitude, longitude)
-        shadow |= radius < terrain_radius-1e-4
+        blocked = radius < terrain_radius-1e-4
+        shadow[active[blocked]] = True
+        active = active[~blocked]
     return shadow
 
 

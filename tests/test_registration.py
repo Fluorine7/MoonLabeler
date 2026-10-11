@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import pytest
 
-from moonlabeler.registration import auto_register, fit_similarity, transform_points, calibration_report
+from moonlabeler.registration import auto_register, fit_similarity, transform_points, calibration_report, prepare_registration_photo
 from moonlabeler.sources import read_image, detect_reference_disk
 
 
@@ -89,6 +89,25 @@ def test_auto_rejects_blank_image():
     image = np.zeros((400,400,3),dtype=np.uint8)
     with pytest.raises(ValueError):
         auto_register(image,image)
+
+
+def test_prepared_photo_reuses_features_across_tiles_without_changing_pose():
+    rng = np.random.default_rng(7)
+    reference = cv2.GaussianBlur(rng.integers(0, 256, (480, 640), dtype=np.uint8), (5, 5), 1.)
+    photograph = reference[80:400, 120:540].copy()
+    prepared = prepare_registration_photo(photograph)
+    for x in (0, 80):
+        tile = reference[:, x:x+550]
+        fresh = auto_register(tile, photograph)
+        reused = auto_register(tile, photograph, prepared_photo=prepared)
+        assert np.allclose(reused.matrix, fresh.matrix)
+        assert reused.inliers == fresh.inliers
+        expected = np.array([[1., 0., x-120], [0., 1., -80]])
+        assert np.allclose(reused.matrix, expected, atol=.1)
+    with pytest.raises(ValueError, match='不一致'):
+        auto_register(reference, photograph.copy(), prepared_photo=prepared)
+    with pytest.raises(ValueError, match='不一致'):
+        auto_register(reference, photograph, contrast_threshold=.01, prepared_photo=prepared)
 
 
 @pytest.mark.parametrize('mirror', [1, -1])
