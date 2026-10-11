@@ -165,32 +165,40 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
                 # displace its relief/shadows. This only nominates a candidate:
                 # fresh relief rendering and held-out validation must certify it.
                 pending.append(result)
-    if not solutions and pending:
+    if pending:
         from .terrain_refinement import refine_terrain_pose
         pending.sort(key=lambda result: -result.score)
         distinct = []
+        best = max(solutions, key=lambda result: result.score) if solutions else None
         for candidate in pending:
+            # A coarse accepted pose must not hide a stronger candidate in a
+            # different region. Avoid spending refinement on weak alternatives
+            # or duplicate retrievals of an already accepted map pose.
+            if best is not None and (candidate.score <= best.score*.8 or
+                    _pose_difference(best.matrix, candidate.matrix, image.shape) <= max(w, h)*.08):
+                continue
             if all(_pose_difference(other.matrix, candidate.matrix, image.shape) > max(w, h)*.08 for other in distinct):
                 distinct.append(candidate)
         # Overlapping tiles often retrieve the same pose. Refine it once, and
         # at most one competing region; preserve a bounded fallback cost.
-        dem = ElevationMap.load(download_basic_dem(cache))
-        try:
-            for candidate in distinct[:2]:
-                refined = refine_terrain_pose(image, geometry, candidate.matrix, dem, relief_aware=True)
-                if refined is None:
-                    continue
-                light = refined.details['light_before_after'][1]
-                detail = refined.details['detail_before_after'][1]
-                if (light < .6 or detail < .25 or
-                        not terrain_consensus(light, detail, refined.details['points'], refined.details['coverage']) or
-                        not _foreground_inside(refined.matrix, foreground)):
-                    continue
-                _adopt_refinement(candidate, refined)
-                candidate.method += ' / relief-aware refinement'
-                solutions.append(candidate)
-        finally:
-            dem.close()
+        if distinct:
+            dem = ElevationMap.load(download_basic_dem(cache))
+            try:
+                for candidate in distinct[:2]:
+                    refined = refine_terrain_pose(image, geometry, candidate.matrix, dem, relief_aware=True)
+                    if refined is None:
+                        continue
+                    light = refined.details['light_before_after'][1]
+                    detail = refined.details['detail_before_after'][1]
+                    if (light < .6 or detail < .25 or
+                            not terrain_consensus(light, detail, refined.details['points'], refined.details['coverage']) or
+                            not _foreground_inside(refined.matrix, foreground)):
+                        continue
+                    _adopt_refinement(candidate, refined)
+                    candidate.method += ' / relief-aware refinement'
+                    solutions.append(candidate)
+            finally:
+                dem.close()
     if not solutions:
         raise IdentificationError("高程阴影参考也未找到通过纹理与分布验证的月面区域。")
     solutions.sort(key=lambda result: -result.score)

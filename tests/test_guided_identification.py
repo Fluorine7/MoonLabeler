@@ -138,7 +138,8 @@ def test_two_points_guide_a_pose_with_real_image_evidence(monkeypatch, tmp_path,
     assert max(result.reference_points['reference_errors_px']) < 2
 
 
-def test_one_point_cannot_resolve_two_equally_supported_mirror_poses(monkeypatch, tmp_path):
+@pytest.mark.parametrize('coarse', [False, True])
+def test_one_point_cannot_resolve_two_equally_supported_mirror_poses(monkeypatch, tmp_path, coarse):
     import moonlabeler.guided_identification as guided
     from moonlabeler.identification import AmbiguousIdentificationError
     from moonlabeler.registration import MatchResult
@@ -150,11 +151,23 @@ def test_one_point_cannot_resolve_two_equally_supported_mirror_poses(monkeypatch
     monkeypatch.setattr(guided, 'registration_candidates', lambda *args, **kwargs:
                         [MatchResult(np.array([[1., 0., -80.], [0., 1., -80.]]), 80, 90, 1., .6, False),
                          MatchResult(np.array([[-1., 0., 319.], [0., 1., -80.]]), 79, 90, 1., .6, True)])
-    monkeypatch.setattr(guided, 'terrain_agreement', lambda *args, **kwargs: (.95, .95))
+    monkeypatch.setattr(guided, 'terrain_agreement', lambda *args, **kwargs: (.53, .35) if coarse else (.95, .95))
+    if coarse:
+        monkeypatch.setattr(guided, '_field_widths', lambda *args: [160.])
+        calls = []
+        def correct(image, view, matrix, dem, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(matrix=matrix, geometry=geometry, rms_px=1.,
+                                   details={'points': 100, 'coverage': .4, 'relief_aware': True,
+                                            'light_before_after': [.53, .72],
+                                            'detail_before_after': [.35, .5]})
+        monkeypatch.setattr(guided, 'refine_terrain_pose', correct)
     with pytest.raises(AmbiguousIdentificationError, match='再确认'):
         guided.identify_from_reference_points(np.full((240, 240), 40, np.uint8), geometry, tmp_path,
                                               [dict(id='known', pixel=[120, 120])], [feature],
-                                              reference_size=400, refine=False)
+                                              reference_size=400, refine=coarse)
+    if coarse:
+        assert len(calls) == 2
 
 
 def test_confirmed_points_do_not_certify_a_featureless_photo(monkeypatch, tmp_path):
@@ -168,6 +181,42 @@ def test_confirmed_points_do_not_certify_a_featureless_photo(monkeypatch, tmp_pa
         guided.identify_from_reference_points(np.full((240, 240), 40, np.uint8), geometry, tmp_path,
                                               [dict(id='known', pixel=[120, 120])], [feature],
                                               reference_size=400, refine=False)
+
+
+@pytest.mark.parametrize('fresh_light,consistent,accepted', [(.72, True, True), (.58, True, False), (.72, False, False)])
+def test_guided_coarse_pose_requires_fresh_relief_and_every_reference_point(monkeypatch, tmp_path, fresh_light, consistent, accepted):
+    import moonlabeler.guided_identification as guided
+    rng = np.random.default_rng(18)
+    reference = cv2.GaussianBlur(rng.integers(0, 256, (400, 400), np.uint8), (0, 0), .8)
+    photograph = reference[80:320, 80:320].copy()
+    geometry = Geometry(np.array([1., 0., 0.]), np.array([0., 1., 0.]),
+                        np.array([0., 0., 1.]), np.array([1., 0., 0.]), 400000., '')
+    feature = dict(id='known', name='Known crater', kind='Crater, craters', lat=0., lon=0., diameter=10.)
+    anchor = dict(id='known', pixel=[120, 120])
+    calls = []
+    monkeypatch.setattr(guided, 'download_basic_dem', lambda cache: tmp_path/'test.lbl')
+    monkeypatch.setattr(guided.ElevationMap, 'load', lambda path: SimpleNamespace(close=lambda: None))
+    monkeypatch.setattr(guided, '_field_widths', lambda *args: [160.])
+    monkeypatch.setattr(guided, 'render_local_reference', lambda *args: reference)
+    monkeypatch.setattr(guided, 'terrain_agreement', lambda *args, **kwargs: (.53, .35))
+    def correct(image, view, matrix, dem, **kwargs):
+        calls.append(kwargs)
+        corrected = matrix.copy()
+        if not consistent:
+            corrected[0, 2] += 50
+        return SimpleNamespace(matrix=corrected, geometry=geometry, rms_px=1.,
+                               details={'points': 100, 'coverage': .4, 'relief_aware': True,
+                                        'light_before_after': [.53, fresh_light],
+                                        'detail_before_after': [.35, .5]})
+    monkeypatch.setattr(guided, 'refine_terrain_pose', correct)
+    if accepted:
+        result = guided.identify_from_reference_points(photograph, geometry, tmp_path, [anchor], [feature], reference_size=400)
+        assert result.refinement['relief_aware']
+        assert max(result.reference_points['reference_errors_px']) < 1
+    else:
+        with pytest.raises(IdentificationError):
+            guided.identify_from_reference_points(photograph, geometry, tmp_path, [anchor], [feature], reference_size=400)
+    assert 1 <= len(calls) <= 2 and all(call.get('relief_aware') for call in calls)
 
 
 def test_guided_failure_keeps_confirmed_points_and_existing_registration(monkeypatch):

@@ -3,16 +3,29 @@
 # Copyright (c) 2026 Fluorine Zhu
 set -e
 cd "$(dirname "$0")"
+python_is_supported() {
+    "$1" -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' >/dev/null 2>&1
+}
+if [[ -d .venv ]]; then
+    if [[ ! -x .venv/bin/python ]] || ! python_is_supported .venv/bin/python; then
+        print "当前 .venv 的 Python 无法运行，或版本低于 3.11。"
+        print "请用 Python 3.11 或更高版本手动重建 .venv 后再启动；当前环境未改动。"
+        exit 1
+    fi
+fi
 if [[ ! -x .venv/bin/python ]]; then
     task_python=""
     for candidate in /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3.11 /opt/homebrew/bin/python3 /usr/local/bin/python3.12 /usr/local/bin/python3; do
-        if [[ -x "$candidate" ]]; then
+        if [[ -x "$candidate" ]] && python_is_supported "$candidate"; then
             task_python="$candidate"
             break
         fi
     done
     if [[ -z "$task_python" ]]; then
-        task_python="$(command -v python3 || true)"
+        path_python="$(command -v python3 || true)"
+        if [[ -n "$path_python" ]] && python_is_supported "$path_python"; then
+            task_python="$path_python"
+        fi
     fi
     if [[ -z "$task_python" ]]; then
         print "请先安装 Python 3.11 或更高版本。"

@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.2** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.3** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -65,6 +65,8 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 高程后备搜索中，若粗略球面参考已有充分、分散的图像对应点，但明暗验证未通过，会先用含地形高度的投影精修，再执行原有的明暗、细节与分区验证。重叠分块的同一结果只精修一次，最多检查两个不同区域；没有降低最终接受门槛。2023-01-03 的南极实拍已通过无参考点配准回归。
 
+参考点辅助搜索也使用上述高程精修，并在精修后再次检查全部已确认点。已有候选通过粗检查时，其他区域中有竞争力的候选仍参与验证；不能区分的结果继续拒绝。导入工程会先检查参数与坐标，非法工程不会替换当前编辑内容。透明图片以黑底合成；16 位彩色 TIFF 保留原精度后作显示拉伸。
+
 坑缘圈仅用于直径至少 35 km 且在照片中足够大的坑，小坑保留短引线。“标注 → 排版选项 → 轮廓形状”默认选择平滑 **椭圆**，也可选 **坑缘轮廓（手绘风）**；点击“重新生成标注”应用。局部坑群路径和含高程投影的后备精修路径优先沿 DEM 中连续的坑缘高地取点，考虑地形高度投影，再拟合椭圆；坑缘轮廓选项保留这些点的不规则形状。数据不足或其他识别路径使用目录参考圈。形状设置与高程坑缘保存在工程中，并用于 PNG / SVG。这些轮廓受 DEM 约 1.9 km 网格、遮挡与配准残差限制，并非逐像素测得的真实坑壁。小拟合残差不等于绝对定位精度。
 
 本仓库包含源码、公开数据来源记录及可公开示例。用户提供的摄影师实拍、相关导出图、运行缓存和虚拟环境不随源码分发。
@@ -125,6 +127,8 @@ The wide-limb fallback requires at least a 120° outer arc, clear phase agreemen
 After crater-pattern identification, local refinement uses the same small LOLA DEM, with terrain height included consistently in reference rendering and pose fitting. A small camera correction is followed by retrieval of further independent terrain points and a bounded two-axis view fit. The terrain fallback also attempts view refinement. Changes are accepted only with spatially held-out improvement and a fresh dense-render check. The estimated direction is an image-derived projection correction, not a recovered observing location or a libration measurement. The original ephemeris geometry and validation record are retained in the project.
 
 When a coarse spherical terrain reference has strong, distributed image correspondences but fails the lighting check, the fallback now attempts relief-aware refinement before final validation. Duplicate tile poses are refined once, with at most two distinct regions attempted; the final lighting, detail and held-out checks are unchanged. A local south-polar photograph from 2023-01-03 now passes registration without supplied reference points.
+
+Reference-guided searches also use this relief-aware refinement and recheck every confirmed point afterwards. Competitive candidates in other regions are still validated when a coarse pose has already passed; ambiguous results remain rejected. Project fields and coordinates are checked before replacing the current document. Transparent images are composited against black; 16-bit colour TIFFs retain their source precision before display stretching.
 
 Outlines are shown for craters at least 35 km across that are also large enough in the photograph; smaller craters use short leaders. Under 标注 → 排版选项 → 轮廓形状, smooth **ellipses** are the default; the optional **rim contour (hand-drawn appearance)** preserves irregular terrain shapes. Click 重新生成标注 to apply changes. The close-up crater-pattern and relief-aware terrain refinement routes sample continuous DEM crests with terrain-height projection before fitting ellipses. Catalogue reference circles remain the fallback when suitable elevation contours are unavailable. Both the style and elevation contours are saved in projects and shared by PNG/SVG export. These are not pixel-accurate photographic rim measurements: the approximately 1.9 km DEM grid, occlusion and registration residuals can still cause offsets. A low fitting residual measures internal consistency, not absolute lunar positioning accuracy.
 

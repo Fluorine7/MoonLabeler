@@ -10,8 +10,10 @@ from urllib.error import URLError, HTTPError
 from urllib.parse import urlparse
 import io
 import json
+import mmap
 import re
 import ssl
+import struct
 import zipfile
 
 import certifi
@@ -103,9 +105,21 @@ def download(url, destination, force=False):
     try:
         request = Request(url, headers={"User-Agent": "MoonLabeler/0.3 (lunar photo annotation)"})
         with urlopen(request, timeout=15, context=ssl.create_default_context(cafile=certifi.where())) as source:
+            try:
+                expected = int(source.headers.get("Content-Length", ""))
+            except (TypeError, ValueError):
+                expected = None
+            if expected is not None and expected < 0:
+                expected = None
+            received = 0
             with temporary.open("wb") as target:
                 while chunk := source.read(1024 * 1024):
                     target.write(chunk)
+                    received += len(chunk)
+            if expected is not None and received != expected:
+                host = urlparse(url).hostname or "数据服务"
+                raise DataDownloadError(f"无法下载 {host} 的参考数据：数据不完整"
+                                        f"（收到 {received} 字节，应为 {expected} 字节）。请重试。")
         temporary.replace(destination)
     except (URLError, TimeoutError, ssl.SSLError) as exc:
         raise DataDownloadError(download_error_message(url, exc)) from exc
@@ -159,8 +173,42 @@ def write_json(path, data):
         temp.unlink(missing_ok=True)
 
 
+def _read_high_depth_tiff(path, orientation):
+    if orientation == 1:
+        return cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+    # The TIFF decoder applies orientation internally even with UNCHANGED;
+    # rotating non-square 16-bit data also fails in some OpenCV versions.
+    # Neutralize that tag in a private mapping, never in the original file.
+    with path.open("rb") as source, mmap.mmap(source.fileno(), 0, access=mmap.ACCESS_COPY) as encoded:
+        order = "<" if encoded[:2] == b"II" else ">"
+        version = struct.unpack_from(order+"H", encoded, 2)[0]
+        if version == 42:
+            offset = struct.unpack_from(order+"I", encoded, 4)[0]
+            count = struct.unpack_from(order+"H", encoded, offset)[0]
+            start, entry_size, count_type, value_offset = offset+2, 12, "I", 8
+        elif version == 43:
+            offset = struct.unpack_from(order+"Q", encoded, 8)[0]
+            count = struct.unpack_from(order+"Q", encoded, offset)[0]
+            start, entry_size, count_type, value_offset = offset+8, 20, "Q", 12
+        else:
+            raise ValueError("无法读取 TIFF 方向信息。")
+        for entry in range(start, start+entry_size*count, entry_size):
+            tag, kind = struct.unpack_from(order+"HH", encoded, entry)
+            if tag == 274 and kind == 3 and struct.unpack_from(order+count_type, encoded, entry+4)[0] == 1:
+                struct.pack_into(order+"H", encoded, entry+value_offset, 1)
+                break
+        else:
+            raise ValueError("无法读取 TIFF 方向信息。")
+        pixels = np.frombuffer(encoded, np.uint8)
+        try:
+            return cv2.imdecode(pixels, cv2.IMREAD_UNCHANGED)
+        finally:
+            del pixels
+
+
 def read_image(path):
     path = Path(path)
+    orientation = 1
     if path.suffix.lower() in (".fits", ".fit", ".fts"):
         try:
             from astropy.io import fits
@@ -177,11 +225,26 @@ def read_image(path):
         array = np.flipud(array)
     else:
         with Image.open(path) as raw:
-            raw = ImageOps.exif_transpose(raw)
-            if raw.mode in ("I", "F", "I;16", "I;16B", "I;16L"):
-                array = np.asarray(raw).copy()
+            bits = raw.tag_v2.get(258, (8,)) if raw.format == "TIFF" else (8,)
+            bits = (bits,) if isinstance(bits, int) else bits
+            if raw.mode == "RGB" and max(bits) > 8:
+                # Pillow exposes RGB TIFF as 8-bit even when the source is 16-bit.
+                # Decode original samples before the common display stretch.
+                orientation = raw.getexif().get(274, 1)
+                array = _read_high_depth_tiff(path, orientation)
+                if array is None or array.ndim != 3 or array.shape[2] != 3 or array.dtype.itemsize < 2:
+                    raise ValueError("无法读取高位深 RGB TIFF 的原始像素。")
+                array = cv2.cvtColor(array, cv2.COLOR_BGR2RGB)
             else:
-                return np.asarray(raw.convert("RGB")).copy()
+                raw = ImageOps.exif_transpose(raw)
+                if raw.mode in ("I", "F", "I;16", "I;16B", "I;16L"):
+                    array = np.asarray(raw).copy()
+                else:
+                    if "A" in raw.getbands() or "transparency" in raw.info:
+                        # Hidden RGB values must not become bright lunar foreground.
+                        rgba = raw.convert("RGBA")
+                        raw = Image.alpha_composite(Image.new("RGBA", raw.size, (0, 0, 0, 255)), rgba)
+                    return np.asarray(raw.convert("RGB")).copy()
     if array.ndim not in (2, 3) or (array.ndim == 3 and array.shape[-1] not in (3, 4)):
         raise ValueError("仅支持二维灰度或 RGB 图像；请先从数据立方体中提取图像。")
     finite = array[np.isfinite(array)]
@@ -192,6 +255,10 @@ def read_image(path):
     array = np.uint8(np.clip((array-low) / max(high-low, 1e-9), 0, 1) * 255)
     if array.ndim == 2:
         array = np.repeat(array[:, :, None], 3, axis=2)
+    if orientation != 1:
+        display = Image.fromarray(array)
+        display.getexif()[274] = orientation
+        array = np.asarray(ImageOps.exif_transpose(display)).copy()
     return np.ascontiguousarray(array[:, :, :3])
 
 

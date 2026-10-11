@@ -1,14 +1,94 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2026 Fluorine Zhu
 from datetime import datetime,timezone
+import json
+import os
 import xml.etree.ElementTree as ET
 
 import numpy as np
+import pytest
 from PIL import Image
 
 from moonlabeler.geometry import Geometry
 from moonlabeler.project import Project, export_svg
 from moonlabeler.sources import read_image
+
+
+@pytest.mark.parametrize('field,value', [
+    ('style.font_percent', 'bad'), ('style.font_percent', float('nan')),
+    ('style.font_size', 0), ('style.max_labels', '200'),
+    ('style.max_labels', 0), ('style.min_diameter', -1),
+    ('style.illuminated_only', 'false'), ('style.language', []),
+    ('anchors', [{'id': '42', 'pixel': [1]}]),
+    ('anchors', [{'id': '42', 'pixel': ['x', 2]}]),
+    ('anchors', [{'id': '42', 'pixel': [1, 2], 'enabled': 'yes'}]),
+    ('labels', {'42': {'position': [1, float('inf')]}}),
+    ('labels', {'42': {'text': ['Name']}}),
+    ('labels', {'42': {'hidden': 'false'}}),
+    ('terrain.settings.width_km', 'bad'),
+    ('crater_detection.min_radius', 'bad'),
+    ('automatic_recognition.matched_names', [None]),
+    ('terrain_rims', {'42': {'source': 'missing coordinates'}}),
+    ('matrix', {'unexpected': 'mapping'}),
+    ('matrix', [[True, 0, 0], [0, 1, 0]]),
+])
+def test_project_rejects_invalid_fields_before_gui_consumes_them(tmp_path, field, value):
+    path = tmp_path/'invalid.moonlabel'
+    Project(image_path=str(tmp_path/'photo.png')).save(path)
+    data = json.loads(path.read_text())
+    owner = data
+    parts = field.split('.')
+    for part in parts[:-1]:
+        owner = owner[part]
+    owner[parts[-1]] = value
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match='工程'):
+        Project.load(path)
+
+
+def test_legacy_project_preserves_unknown_ids_extensions_and_pixel_font(tmp_path):
+    path = tmp_path/'legacy.moonlabel'
+    project = Project(image_path=str(tmp_path/'photo.png'), font_size=80,
+                      anchors=[{'id': 'catalogue-entry-no-longer-present', 'pixel': [12, 34]}],
+                      labels={'unavailable': {'text': None, 'position': [-5, 8], 'future_option': 'keep'}},
+                      terrain_settings={'center_id': None})
+    project.save(path)
+    data = json.loads(path.read_text())
+    data['style'].pop('font_percent')
+    data['style']['future_option'] = 'ignore'
+    path.write_text(json.dumps(data))
+    loaded = Project.load(path)
+    loaded.update_font_size((100, 100, 3))
+    assert loaded.font_size == 80
+    assert loaded.anchors == project.anchors and loaded.labels == project.labels
+
+
+def test_svg_render_preserves_spaces_in_edited_names(tmp_path):
+    os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+    from PySide6.QtWidgets import QApplication
+    from PySide6.QtCore import QRectF
+    from PySide6.QtGui import QImage, QPainter
+    from PySide6.QtSvg import QSvgRenderer
+    application = QApplication.instance() or QApplication([])
+    widths = []
+    for text in ('A B', 'A   B'):
+        path = tmp_path/f'spaces-{len(text)}.svg'
+        export_svg(path, np.zeros((200, 400, 3), np.uint8),
+                   [({'id': '42', 'name': text}, [0, 0], [20, 60])],
+                   Project(font_size=40), {'42': (0, 0, 0, 0)})
+        renderer = QSvgRenderer(str(path))
+        assert renderer.isValid()
+        result = QImage(400, 200, QImage.Format.Format_RGB32)
+        result.fill(0xff000000)
+        painter = QPainter(result)
+        renderer.render(painter, QRectF(0, 0, 400, 200))
+        painter.end()
+        pixels = np.asarray(result.constBits()).reshape(200, 400, 4)
+        _, x = np.where(np.all(pixels[50:130, :, :3] > 220, axis=2))
+        widths.append(x.max()-x.min()+1)
+        text_node = ET.parse(path).find('.//{http://www.w3.org/2000/svg}text')
+        assert text_node.text == text  # Names remain editable SVG text.
+    assert widths[1] > widths[0]+10, 'SVG collapsed spaces which the PNG keeps'
 
 
 def test_project_roundtrip_preserves_editing_and_site(tmp_path):

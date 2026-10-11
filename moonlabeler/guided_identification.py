@@ -16,7 +16,7 @@ from .geometry import MOON_RADIUS_KM
 from .identification import IdentificationError, AmbiguousIdentificationError, IdentificationResult
 from .registration import registration_candidates, transform_points
 from .terrain import ElevationMap, download_basic_dem
-from .terrain_identification import terrain_agreement, terrain_consensus
+from .terrain_identification import terrain_agreement, terrain_consensus, _pose_difference, _adopt_refinement
 from .terrain_refinement import render_local_reference, refine_terrain_pose
 
 
@@ -73,6 +73,40 @@ def _field_widths(features, points, pixels, candidates, image_shape):
     return list(dict.fromkeys(float(np.clip(round(width/10)*10, 40, 4200)) for width in widths))
 
 
+def _finish_guided_search(solutions, pending, image, geometry, dem, anchors, catalog):
+    """Certify at most two distinct coarse poses, keeping every click as a check."""
+    limit = max(image.shape[:2])*.08
+    best = max(solutions, key=lambda result: result.score) if solutions else None
+    distinct = []
+    for candidate in sorted(pending, key=lambda result: -result.score):
+        if best is not None and (candidate.score <= best.score*.8 or
+                _pose_difference(best.matrix, candidate.matrix, image.shape) <= limit):
+            continue
+        if all(_pose_difference(other.matrix, candidate.matrix, image.shape) > limit for other in distinct):
+            distinct.append(candidate)
+    for candidate in distinct[:2]:
+        refined = refine_terrain_pose(image, geometry, candidate.matrix, dem, relief_aware=True)
+        if refined is None:
+            continue
+        light, detail = (refined.details['light_before_after'][1], refined.details['detail_before_after'][1])
+        if light < .6 or detail < .25 or not terrain_consensus(light, detail, refined.details['points'], refined.details['coverage']):
+            continue
+        errors = reference_point_errors(refined.matrix, refined.geometry, anchors, catalog)
+        if (errors > reference_point_tolerance(image.shape, refined.rms_px)).any():
+            continue
+        _adopt_refinement(candidate, refined)
+        candidate.method += ' / relief-aware refinement'
+        candidate.reference_points['reference_errors_px'] = errors.tolist()
+        solutions.append(candidate)
+    if not solutions:
+        return None
+    result = max(solutions, key=lambda candidate: candidate.score)
+    for other in solutions:
+        if other is not result and other.score > result.score*.8 and _pose_difference(result.matrix, other.matrix, image.shape) > limit:
+            raise AmbiguousIdentificationError('参考点附近有多个接近的匹配，请再确认一处地形。')
+    return result
+
+
 def identify_from_reference_points(image, geometry, cache, anchors, catalog, candidates=(), *,
                                    reference_size=1400, refine=True):
     """Use manual points first; accept only an independently verified local pose."""
@@ -96,6 +130,7 @@ def identify_from_reference_points(image, geometry, cache, anchors, catalog, can
     sx, sy = photograph.shape[1]/w, photograph.shape[0]/h
     cv2.setRNGSeed(0)
     dem = ElevationMap.load(download_basic_dem(cache))
+    pending = []
     try:
         for width in widths:
             scale = reference_size*MOON_RADIUS_KM/width
@@ -120,42 +155,36 @@ def identify_from_reference_points(image, geometry, cache, anchors, catalog, can
                     light, detail = terrain_agreement(reference, photograph, match.matrix, require_match=False)
                 except IdentificationError:
                     continue
-                if not terrain_consensus(light, detail, match.inliers, match.coverage):
-                    continue
                 # A small matching patch must not certify a mostly uncovered
                 # photograph. Check the usable central field independently.
                 ph, pw = photograph.shape[:2]
                 available = cv2.warpAffine(np.full(reference.shape, 255, np.uint8), match.matrix, (pw, ph))
                 if (available[round(ph*.08):round(ph*.93), round(pw*.05):round(pw*.95)] > 250).mean() < .85:
                     continue
-                solutions.append((match.inliers*(light+detail), matrix, match, rms, light, errors))
+                result = IdentificationResult(matrix, [], rms, float(match.inliers*(light+detail)), 0,
+                                              'LOLA slope + cast-shadow / reference-point guided SIFT / JPL projection',
+                                              match.inliers, match.coverage, 0, light)
+                result.reference_points = {'reference_ids': [a['id'] for a in anchors],
+                                           'reference_errors_px': errors.tolist(), 'search_width_km': width}
+                if terrain_consensus(light, detail, match.inliers, match.coverage):
+                    solutions.append(result)
+                elif refine and match.inliers >= 40 and match.coverage >= .18 and light >= .4 and detail >= .25:
+                    pending.append(result)
             if not solutions:
                 continue
-            solutions.sort(key=lambda value: -value[0])
-            score, matrix, match, rms, light, errors = solutions[0]
-            probes = np.array([[w/2, h/2], [w*.75, h/2], [w/2, h*.75]])
-            source = transform_points(np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2], probes)
-            for other_score, other_matrix, *_ in solutions[1:]:
-                if other_score > score*.8 and np.linalg.norm(transform_points(other_matrix, source)-probes, axis=1).mean() > max(w, h)*.08:
-                    raise AmbiguousIdentificationError('参考点附近有多个接近的匹配，请再确认一处地形。')
-            result = IdentificationResult(matrix, [], rms, float(score), 0,
-                                          'LOLA slope + cast-shadow / reference-point guided SIFT / JPL projection',
-                                          match.inliers, match.coverage, 0, light)
+            result = _finish_guided_search(solutions, pending, image, geometry, dem, anchors, catalog)
             # Refinement needs forty correspondences itself. Avoid another
             # render when the accepted retrieval has less supporting evidence.
-            if refine and match.inliers >= 40:
-                refined = refine_terrain_pose(image, geometry, matrix, dem)
+            if refine and result.image_inliers >= 40 and result.refinement is None:
+                refined = refine_terrain_pose(image, geometry, result.matrix, dem)
                 if refined is not None:
                     updated_errors = reference_point_errors(refined.matrix, refined.geometry, anchors, catalog)
                     if (updated_errors <= reference_point_tolerance(image.shape, refined.rms_px)).all():
-                        result.matrix, result.rms_px = refined.matrix, refined.rms_px
-                        result.projection_geometry, result.refinement = refined.geometry, refined.details
-                        result.image_inliers = refined.details['points']
-                        result.coverage = refined.details['coverage']
-                        result.texture_correlation = refined.details['light_before_after'][1]
-                        errors = updated_errors
-            result.reference_points = {'reference_ids': [a['id'] for a in anchors],
-                                       'reference_errors_px': errors.tolist(), 'search_width_km': width}
+                        _adopt_refinement(result, refined)
+                        result.reference_points['reference_errors_px'] = updated_errors.tolist()
+            return result
+        result = _finish_guided_search([], pending, image, geometry, dem, anchors, catalog)
+        if result is not None:
             return result
     finally:
         dem.close()

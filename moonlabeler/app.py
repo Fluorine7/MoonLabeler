@@ -269,6 +269,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.canvas.image_dropped.connect(self.open_image)
         self.build_toolbar()
         self.build_sidebar()
+        self.displayed_font_percent = self.font_size.value()
         self.update_manual_guide()
         self.statusBar().showMessage("滚轮缩放 · 拖动平移")
         self.empty_hint = self.canvas.scene().addText("打开或拖入照片", QFont("PingFang SC", 20))
@@ -814,7 +815,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.diameter.setValue(self.project.min_diameter)
         self.maximum.setValue(self.project.max_labels)
         self.language.setCurrentText(self.project.language)
-        self.font_size.setValue(self.project.font_percent or DEFAULT_FONT_PERCENT)
+        percent = self.project.font_percent or DEFAULT_FONT_PERCENT
+        # Legacy pixel-size projects can lie outside today's editing range.
+        # Loading them must not silently clamp the stored font proportion.
+        self.font_size.setRange(min(.05, percent), max(8., percent))
+        self.font_size.setValue(percent)
+        self.displayed_font_percent = self.font_size.value()
         self.lit.setChecked(self.project.illuminated_only)
         self.optimize_layout.setChecked(self.project.optimize_layout)
         self.crater_outlines.setChecked(self.project.crater_outlines)
@@ -1385,9 +1391,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def apply_label_settings(self):
         if self.busy:
             return
+        if self.font_size.value() != self.displayed_font_percent:
+            self.project.font_percent = self.font_size.value()
         for key, value in (("min_diameter", self.diameter.value()), ("kind", self.kind.currentText()),
                            ("max_labels", self.maximum.value()), ("language", self.language.currentText()),
-                           ("font_percent", self.font_size.value()), ("illuminated_only", self.lit.isChecked()),
+                           ("illuminated_only", self.lit.isChecked()),
                            ("optimize_layout", self.optimize_layout.isChecked()),
                            ("crater_outlines", self.crater_outlines.isChecked()),
                            ("crater_outline_shape", self.crater_outline_shape.currentData()), ("color", self.pending_color)):
@@ -1395,6 +1403,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if self.image is not None:
             self.project.update_font_size(self.image.shape)
         self.refresh_annotations()
+        self.displayed_font_percent = self.font_size.value()
         self.style_pending = False
         self.settings_status.setText("已更新")
         if self.image is not None:

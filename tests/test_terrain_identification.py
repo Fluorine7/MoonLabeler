@@ -120,3 +120,46 @@ def test_distributed_coarse_pose_needs_relief_refinement_and_fresh_validation(mo
         with pytest.raises(IdentificationError):
             identify_from_terrain(photograph, None, tmp_path, atlas_size=400, tile_size=400)
     assert len(calls) == 1 and calls[0]['relief_aware']
+
+
+@pytest.mark.parametrize('competitive', [True, False])
+def test_pending_competing_region_is_not_hidden_by_one_coarse_accepted_pose(monkeypatch, tmp_path, competitive):
+    """Mixed accepted/deferred regions must share the final ambiguity check."""
+    import moonlabeler.terrain_identification as terrain
+    import moonlabeler.terrain_refinement as refinement
+    from moonlabeler.registration import MatchResult
+    rng = np.random.default_rng(12)
+    reference = rng.integers(0, 255, (800, 800), np.uint8)
+    projection = np.array([[376., 0., 399.5], [0., 376., 399.5]])
+    photograph = np.full((100, 100), 50, np.uint8)
+    monkeypatch.setattr(terrain, 'download_basic_dem', lambda cache: tmp_path/'test.lbl')
+    monkeypatch.setattr(terrain.ElevationMap, 'load', lambda path: SimpleNamespace(close=lambda: None))
+    monkeypatch.setattr(terrain, 'render_terrain_atlas', lambda *args: (reference, projection))
+    retrievals, checks, relief_calls = [], [], []
+    def retrieve(*args, **kwargs):
+        retrievals.append(None)
+        if len(retrievals) > 2:
+            raise ValueError('No other match')
+        count = 100 if competitive and len(retrievals) == 2 else 40
+        return MatchResult(np.array([[1., 0., -300.], [0., 1., -300.]]), count, count+5, 1., .5, False)
+    def agreement(*args, **kwargs):
+        checks.append(None)
+        return (.62, .31) if len(checks) == 1 else ((.54, .35) if competitive else (.4, .25))
+    def correct(image, geometry, matrix, dem, **kwargs):
+        if not kwargs.get('relief_aware'):
+            return None
+        relief_calls.append(matrix)
+        return SimpleNamespace(matrix=matrix, geometry=object(), rms_px=1.,
+                               details={'points': 40, 'coverage': .4,
+                                        'light_before_after': [.54, .65],
+                                        'detail_before_after': [.35, .3]})
+    monkeypatch.setattr(terrain, 'auto_register', retrieve)
+    monkeypatch.setattr(terrain, 'terrain_agreement', agreement)
+    monkeypatch.setattr(refinement, 'refine_terrain_pose', correct)
+    if competitive:
+        with pytest.raises(IdentificationError, match='多个接近'):
+            identify_from_terrain(photograph, None, tmp_path, atlas_size=800, tile_size=400)
+        assert len(relief_calls) == 1
+    else:
+        result = identify_from_terrain(photograph, None, tmp_path, atlas_size=800, tile_size=400)
+        assert result.image_inliers == 40 and not relief_calls

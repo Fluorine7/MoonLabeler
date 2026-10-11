@@ -7,12 +7,13 @@ import io
 import json
 import os
 import heapq
+import math
 import re
 from xml.sax.saxutils import escape
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageColor
 
 from .geometry import Geometry, MOON_RADIUS_KM, surface_vectors
 from .sources import read_image, write_json, COMMON_FEATURES
@@ -20,6 +21,144 @@ from .registration import transform_points
 
 DEFAULT_FONT_PERCENT = 1.5
 MIN_OUTLINE_DIAMETER_KM = 35.
+
+
+def _invalid_field(field):
+    raise ValueError(f"工程字段无效：{field}。")
+
+
+def _number(value, field, minimum=None, maximum=None, *, integer=False):
+    # JSON booleans and numeric-looking strings must not reach Qt spin boxes.
+    okay = type(value) in (int, float) and (not integer or type(value) is int)
+    try:
+        okay = okay and math.isfinite(value)
+    except (TypeError, OverflowError):
+        okay = False
+    if not okay or (minimum is not None and value < minimum) or (maximum is not None and value > maximum):
+        _invalid_field(field)
+
+
+def _mapping(value, field):
+    if not isinstance(value, dict):
+        _invalid_field(field)
+    return value
+
+
+def _point(value, field, size=2):
+    if not isinstance(value, list) or len(value) != size:
+        _invalid_field(field)
+    for coordinate in value:
+        _number(coordinate, field)
+
+
+def _validate_project_data(data):
+    """Validate before replacing an editor's current document.
+
+    Unknown catalogue IDs and extension keys remain usable when opening older
+    projects. Validate fields consumed by the UI rather than requiring today's
+    complete schema or silently clipping malformed values in its controls.
+    """
+    _mapping(data, '根节点')
+    for key in ('image_path', 'utc', 'anchors', 'labels', 'geometry', 'matrix', 'style'):
+        if key not in data:
+            _invalid_field(key)
+    for key in ('image_path', 'utc'):
+        if not isinstance(data[key], str):
+            _invalid_field(key)
+    if data['utc']:
+        from datetime import datetime
+        try:
+            if datetime.fromisoformat(data['utc']).tzinfo is None:
+                _invalid_field('utc')
+        except ValueError as exc:
+            raise ValueError('工程字段无效：utc。') from exc
+    if not isinstance(data['anchors'], list):
+        _invalid_field('anchors')
+    for anchor in data['anchors']:
+        _mapping(anchor, 'anchors')
+        if not isinstance(anchor.get('id'), str):
+            _invalid_field('anchors.id')
+        _point(anchor.get('pixel'), 'anchors.pixel')
+        if 'enabled' in anchor and type(anchor['enabled']) is not bool:
+            _invalid_field('anchors.enabled')
+    for label in _mapping(data['labels'], 'labels').values():
+        _mapping(label, 'labels')
+        if 'position' in label:
+            _point(label['position'], 'labels.position')
+        if label.get('text') is not None and not isinstance(label['text'], str):
+            _invalid_field('labels.text')
+        for key in ('hidden', 'force'):
+            if key in label and type(label[key]) is not bool:
+                _invalid_field(f'labels.{key}')
+    if data['matrix'] is not None:
+        if not isinstance(data['matrix'], list) or len(data['matrix']) != 2:
+            _invalid_field('matrix')
+        for row in data['matrix']:
+            _point(row, 'matrix', 3)
+    style = _mapping(data['style'], 'style')
+    for key, bounds, integer in (('font_size', (1, 2147483647), True),
+                                 ('max_labels', (1, 1000), True),
+                                 ('min_diameter', (0, 3000), False)):
+        if key in style:
+            _number(style[key], f'style.{key}', *bounds, integer=integer)
+    # Legacy pixel fonts can migrate above today's 8% UI limit; retain them.
+    if style.get('font_percent') is not None:
+        _number(style['font_percent'], 'style.font_percent', .000001, 100)
+    for key in ('illuminated_only', 'optimize_layout', 'crater_outlines'):
+        if key in style and type(style[key]) is not bool:
+            _invalid_field(f'style.{key}')
+    for key in ('kind', 'language', 'color', 'crater_outline_shape'):
+        if key in style and not isinstance(style[key], str):
+            _invalid_field(f'style.{key}')
+    if 'language' in style and style['language'] not in ('双语', '英文', '中文'):
+        _invalid_field('style.language')
+    if 'color' in style:
+        try:
+            ImageColor.getrgb(style['color'])
+        except ValueError as exc:
+            raise ValueError('工程字段无效：style.color。') from exc
+    observer = _mapping(data.get('observer', {}), 'observer')
+    for key, extent in (('latitude', 90), ('longitude', 180)):
+        if observer.get(key) is not None:
+            _number(observer[key], f'observer.{key}', -extent, extent)
+    terrain = _mapping(data.get('terrain', {}), 'terrain')
+    if not isinstance(terrain.get('dem_path', ''), str):
+        _invalid_field('terrain.dem_path')
+    settings = _mapping(terrain.get('settings', {}), 'terrain.settings')
+    for key, bounds in (('width_km', (10, 2000)), ('gamma', (.3, 4))):
+        if key in settings:
+            _number(settings[key], f'terrain.settings.{key}', *bounds)
+    if settings.get('center_id') is not None and not isinstance(settings['center_id'], str):
+        _invalid_field('terrain.settings.center_id')
+    if 'model' in settings and not isinstance(settings['model'], str):
+        _invalid_field('terrain.settings.model')
+    if 'shadows' in settings and type(settings['shadows']) is not bool:
+        _invalid_field('terrain.settings.shadows')
+    craters = _mapping(data.get('crater_detection', {}), 'crater_detection')
+    for key, bounds in (('min_radius', (3, 4000)), ('max_radius', (3, 4000)),
+                        ('sensitivity', (0, 100)), ('max_candidates', (1, 500))):
+        if key in craters:
+            _number(craters[key], f'crater_detection.{key}', *bounds, integer=True)
+    if 'viewport' in craters and type(craters['viewport']) is not bool:
+        _invalid_field('crater_detection.viewport')
+    recognition = _mapping(data.get('automatic_recognition', {}), 'automatic_recognition')
+    if 'matched_names' in recognition and (not isinstance(recognition['matched_names'], list) or
+                                         not all(isinstance(name, str) for name in recognition['matched_names'])):
+        _invalid_field('automatic_recognition.matched_names')
+    for rim in _mapping(data.get('terrain_rims', {}), 'terrain_rims').values():
+        _mapping(rim, 'terrain_rims')
+        coordinates = rim.get('coordinates')
+        if not isinstance(coordinates, list) or len(coordinates) < 16:
+            _invalid_field('terrain_rims.coordinates')
+        for point in coordinates:
+            _point(point, 'terrain_rims.coordinates', 3)
+    if data['geometry'] is not None:
+        geometry = _mapping(data['geometry'], 'geometry')
+        for key in ('observer', 'right', 'north', 'sun'):
+            _point(geometry.get(key), f'geometry.{key}', 3)
+        _number(geometry.get('distance_km'), 'geometry.distance_km', MOON_RADIUS_KM+1)
+        if not isinstance(geometry.get('utc'), str):
+            _invalid_field('geometry.utc')
 
 
 def _ellipse_outline(pixels):
@@ -105,8 +244,9 @@ class Project:
     def load(cls, path):
         path = Path(path)
         data = json.loads(path.read_text(encoding="utf-8"))
-        if data.get("format") != "MoonLabeler" or data.get("version") != 2:
+        if not isinstance(data, dict) or data.get("format") != "MoonLabeler" or data.get("version") != 2:
             raise ValueError("这不是受支持的 MoonLabeler 工程。")
+        _validate_project_data(data)
         project = cls(image_path=str((path.parent / data["image_path"]).resolve()),
                       utc=data["utc"], anchors=data["anchors"], labels=data["labels"])
         project.latitude = data.get("observer", {}).get("latitude")
@@ -121,7 +261,8 @@ class Project:
             project.geometry = Geometry.from_dict(data["geometry"])
         if data["matrix"] is not None:
             matrix = np.asarray(data["matrix"], float)
-            if matrix.shape != (2, 3) or not np.isfinite(matrix).all() or abs(np.linalg.det(matrix[:,:2])) < 1e-10:
+            determinant = np.linalg.det(matrix[:, :2]) if matrix.shape == (2, 3) else float('nan')
+            if matrix.shape != (2, 3) or not np.isfinite(matrix).all() or not np.isfinite(determinant) or abs(determinant) < 1e-10:
                 raise ValueError("工程配准矩阵无效。")
             project.matrix = matrix
         project.font_percent = None  # Older projects only store a pixel size.
@@ -339,7 +480,7 @@ def export_svg(path, image, entries, project, leaders=None):
         lines.extend([
                       f'<path d="M {line[0]:.3f},{line[1]:.3f} L {line[2]:.3f},{line[3]:.3f}" stroke="{color}" stroke-width="{max(1.2, project.font_size*.035):.3f}" fill="none"/>',
                       '' if outline else f'<circle cx="{ax:.3f}" cy="{ay:.3f}" r="{max(2.5, project.font_size*.06):.3f}" fill="{color}"/>',
-                      f'<text x="{x:.3f}" y="{y+project.font_size:.3f}" fill="{color}" font-size="{project.font_size}" stroke="#141923" stroke-width="{max(2., project.font_size*.06):.3f}" paint-order="stroke">{escape(project.label_text(feature))}</text>',
+                      f'<text xml:space="preserve" x="{x:.3f}" y="{y+project.font_size:.3f}" fill="{color}" font-size="{project.font_size}" stroke="#141923" stroke-width="{max(2., project.font_size*.06):.3f}" paint-order="stroke">{escape(project.label_text(feature))}</text>',
                       '</g>'])
     lines.extend(['</g>', '</svg>'])
     Path(path).write_text('\n'.join(lines), encoding="utf-8")
