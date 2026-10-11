@@ -108,7 +108,8 @@ def test_hidden_labels_do_not_spend_display_quota(monkeypatch):
         window.close()
 
 
-def test_full_moon_prominent_craters_survive_selection_and_layout():
+@pytest.mark.parametrize('maximum,step', [(1.5, 0.), (1.8, .3)])
+def test_full_moon_prominent_craters_survive_selection_and_layout(maximum, step):
     source = Path(__file__).parents[1]
     photo = source/'1001.jpg'
     if not photo.exists():
@@ -119,7 +120,7 @@ def test_full_moon_prominent_craters_survive_selection_and_layout():
     try:
         window.image = read_image(photo)
         window.project = Project(geometry=Geometry.from_dict(pose['geometry']), matrix=np.array(pose['matrix']),
-                                 min_diameter=6.65, max_labels=200, font_percent=1.5)
+                                 min_diameter=6.65, max_labels=200, font_percent=maximum, font_step_percent=step)
         window.project.update_font_size(window.image.shape)
         window.refresh_annotations()
         rendered = {item.feature['name'] for item in window.annotation_items}

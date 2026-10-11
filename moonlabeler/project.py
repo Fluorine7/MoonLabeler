@@ -19,8 +19,17 @@ from .geometry import Geometry, MOON_RADIUS_KM, surface_vectors
 from .sources import read_image, write_json, COMMON_FEATURES
 from .registration import transform_points
 
-DEFAULT_FONT_PERCENT = 1.5
+DEFAULT_FONT_PERCENT = 1.8
+DEFAULT_FONT_STEP_PERCENT = .3
+# Equivalent projected diameter as a fraction of the photograph's short side.
+# Fixed boundaries keep a formation's tier independent of catalogue filters.
+FONT_TIER_BOUNDARIES = (.008, .02)
 MIN_OUTLINE_DIAMETER_KM = 35.
+
+
+def font_tier_percentages(maximum, step):
+    """Subtract percentage points, rather than compounding a relative ratio."""
+    return tuple(max(.05, maximum-level*step) for level in range(3))
 
 
 def _invalid_field(field):
@@ -104,6 +113,8 @@ def _validate_project_data(data):
     # Legacy pixel fonts can migrate above today's 8% UI limit; retain them.
     if style.get('font_percent') is not None:
         _number(style['font_percent'], 'style.font_percent', .000001, 100)
+    if 'font_step_percent' in style:
+        _number(style['font_step_percent'], 'style.font_step_percent', 0, 100)
     for key in ('illuminated_only', 'optimize_layout', 'crater_outlines'):
         if key in style and type(style[key]) is not bool:
             _invalid_field(f'style.{key}')
@@ -199,6 +210,7 @@ class Project:
     labels: dict = field(default_factory=dict)
     font_size: int = 24
     font_percent: float | None = DEFAULT_FONT_PERCENT
+    font_step_percent: float = DEFAULT_FONT_STEP_PERCENT
     color: str = "#f5f5f2"
     language: str = "双语"
     min_diameter: float = 40.
@@ -221,7 +233,47 @@ class Project:
         if self.font_percent is None:
             # Migrate old pixel-size projects without changing their appearance.
             self.font_percent = self.font_size*100/short_side
+            self.font_step_percent = 0.
         self.font_size = max(6, round(short_side*self.font_percent/100))
+
+    def font_sizes(self, shape):
+        if self.font_percent is None:
+            return (self.font_size,)*3
+        return tuple(max(6, round(min(shape[:2])*percent/100))
+                     for percent in font_tier_percentages(self.font_percent, self.font_step_percent))
+
+    def label_font_sizes(self, features, shape):
+        """Assign three sizes using the projected equivalent-area diameter.
+
+        The local sphere-to-photo Jacobian includes limb foreshortening,
+        finite observing distance, and the fitted camera's affine transform.
+        Evaluate all centers together; no rim fitting or image analysis is
+        needed when changing typography. Long formations use catalogue extent.
+        """
+        sizes = self.font_sizes(shape)
+        result = {feature['id']: self.font_size for feature in features}
+        if self.font_step_percent == 0 or self.geometry is None or self.matrix is None:
+            return result
+        usable = [f for f in features if all(key in f for key in ('lat', 'lon', 'diameter'))]
+        if not usable:
+            return result
+        centers = surface_vectors([f['lat'] for f in usable], [f['lon'] for f in usable])
+        longitude = np.radians([f['lon'] for f in usable])
+        east = np.column_stack((-np.sin(longitude), np.cos(longitude), np.zeros(len(usable))))
+        tangents = np.stack((east, np.cross(centers, east)), axis=2)
+        camera = np.stack((self.geometry.right, -self.geometry.north))
+        distance_ratio = MOON_RADIUS_KM/self.geometry.distance_km
+        perspective = 1-distance_ratio*(centers @ self.geometry.observer)
+        differential = (camera[None, :, :]/perspective[:, None, None] +
+                        (centers @ camera.T)[:, :, None]*distance_ratio*
+                        self.geometry.observer[None, None, :]/perspective[:, None, None]**2)
+        local = self.matrix[None, :, :2] @ differential @ tangents
+        diameter = np.array([f['diameter'] for f in usable])/MOON_RADIUS_KM
+        apparent = diameter*np.sqrt(np.abs(np.linalg.det(local)))/min(shape[:2])
+        levels = np.where(apparent >= FONT_TIER_BOUNDARIES[1], 0,
+                          np.where(apparent >= FONT_TIER_BOUNDARIES[0], 1, 2))
+        result.update((f['id'], sizes[level]) for f, level in zip(usable, levels))
+        return result
 
     def save(self, path):
         path = Path(path)
@@ -237,7 +289,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": os.path.relpath(Path(self.terrain_path).resolve(), path.parent.resolve()) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape")}}
         write_json(path, data)
 
     @classmethod
@@ -266,8 +318,9 @@ class Project:
                 raise ValueError("工程配准矩阵无效。")
             project.matrix = matrix
         project.font_percent = None  # Older projects only store a pixel size.
+        project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape"):
+            if key in ("font_size", "font_percent", "font_step_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
@@ -307,6 +360,7 @@ class Project:
         # the lunar limb over distinct craters on smoother mare surfaces.
         noise = abs(gray-cv2.GaussianBlur(gray.astype(float), (0, 0), 1.2)) if gray is not None else None
         scale = np.sqrt(abs(np.linalg.det(self.matrix[:, :2])))
+        reference_font = self.font_sizes(shape)[1]
         bright = max(16., float(np.percentile(gray[::8, ::8], 95))) if gray is not None else None
         brightness_limit = max(4., bright*.08) if gray is not None else None
         offsets = np.linspace(-1, 1, 13)
@@ -374,7 +428,7 @@ class Project:
             # outrank a smaller, high-contrast rim. Foreshortened limb features
             # receive less size credit. Long rilles/cliffs share the same cap.
             apparent = f['diameter']*scale/MOON_RADIUS_KM*np.sqrt(max(0., depth))
-            score = 2.5*contrast/(1+12*roughness) + min(1., np.sqrt(apparent/max(6, self.font_size)))
+            score = 2.5*contrast/(1+12*roughness) + min(1., np.sqrt(apparent/max(6, reference_font)))
             score += .4*np.sqrt(max(0., depth))
             score += .4 if f['kind'] == 'Crater, craters' else 0.
             cell = (min(3, int(xy[0]*4/w)), min(3, int(xy[1]*4/h)))
@@ -439,7 +493,7 @@ class Project:
             return []
         pixels, visible = self._project_crater_rim(feature)
         extent = np.ptp(pixels, axis=0)
-        if min(extent) < self.font_size*1.6 or max(extent) < min(shape[:2])*.055:
+        if min(extent) < self.font_sizes(shape)[1]*1.6 or max(extent) < min(shape[:2])*.055:
             return []
         if self.crater_outline_shape != "terrain":
             pixels = _ellipse_outline(pixels)
@@ -458,6 +512,8 @@ class Project:
 
 
 def export_svg(path, image, entries, project, leaders=None):
+    entries = list(entries)
+    font_sizes = project.label_font_sizes([feature for feature, _, _ in entries], image.shape)
     buffer = io.BytesIO()
     Image.fromarray(image).save(buffer, format="PNG")
     embedded = base64.b64encode(buffer.getvalue()).decode("ascii")
@@ -471,16 +527,17 @@ def export_svg(path, image, entries, project, leaders=None):
         color = escape(project.color, {'"': '&quot;'})
         ax, ay = anchor
         x, y = position
-        line = (leaders or {}).get(feature["id"], (ax, ay, x, y+project.font_size/2))
+        font_size = font_sizes[feature['id']]
+        line = (leaders or {}).get(feature["id"], (ax, ay, x, y+font_size/2))
         lines.append(f'<g id="feature-{fid}">')
         outline = project.crater_outline(feature, image.shape)
         for segment in outline:
             contour = 'M '+ ' L '.join(f'{px:.3f},{py:.3f}' for px, py in segment)
-            lines.append(f'<path class="crater-outline" d="{contour}" stroke="{color}" stroke-width="{max(1.2, project.font_size*.045):.3f}" fill="none"/>')
+            lines.append(f'<path class="crater-outline" d="{contour}" stroke="{color}" stroke-width="{max(1.2, font_size*.045):.3f}" fill="none"/>')
         lines.extend([
-                      f'<path d="M {line[0]:.3f},{line[1]:.3f} L {line[2]:.3f},{line[3]:.3f}" stroke="{color}" stroke-width="{max(1.2, project.font_size*.035):.3f}" fill="none"/>',
-                      '' if outline else f'<circle cx="{ax:.3f}" cy="{ay:.3f}" r="{max(2.5, project.font_size*.06):.3f}" fill="{color}"/>',
-                      f'<text xml:space="preserve" x="{x:.3f}" y="{y+project.font_size:.3f}" fill="{color}" font-size="{project.font_size}" stroke="#141923" stroke-width="{max(2., project.font_size*.06):.3f}" paint-order="stroke">{escape(project.label_text(feature))}</text>',
+                      f'<path d="M {line[0]:.3f},{line[1]:.3f} L {line[2]:.3f},{line[3]:.3f}" stroke="{color}" stroke-width="{max(1.2, font_size*.035):.3f}" fill="none"/>',
+                      '' if outline else f'<circle cx="{ax:.3f}" cy="{ay:.3f}" r="{max(2.5, font_size*.06):.3f}" fill="{color}"/>',
+                      f'<text xml:space="preserve" x="{x:.3f}" y="{y+font_size:.3f}" fill="{color}" font-size="{font_size}" stroke="#141923" stroke-width="{max(2., font_size*.06):.3f}" paint-order="stroke">{escape(project.label_text(feature))}</text>',
                       '</g>'])
     lines.extend(['</g>', '</svg>'])
     Path(path).write_text('\n'.join(lines), encoding="utf-8")

@@ -207,7 +207,7 @@ def test_one_click_recognizes_real_crescent_with_few_crater_candidates(monkeypat
         main = next(item for item in window.annotation_items if item.feature['name'] == 'Mare Crisium')
         # Broad independently inspected mare-center box, never search input.
         assert 2650 < main.anchor.x() < 3020 and 1090 < main.anchor.y() < 1370
-        assert window.project.font_percent == 1.5
+        assert window.project.font_percent == 1.8
     finally:
         window.dirty = False
         window.close()

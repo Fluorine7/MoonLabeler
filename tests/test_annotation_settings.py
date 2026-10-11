@@ -34,14 +34,17 @@ def test_style_edits_wait_for_generate_and_preserve_dragged_label(monkeypatch):
     window.language.setCurrentText("中文")
     window.maximum.setValue(240)
     window.font_size.setValue(1.8)
+    window.ui_font_step.setValue(.3)
     window.crater_outline_shape.setCurrentIndex(window.crater_outline_shape.findData('terrain'))
     assert not refreshes, "Editing settings regenerated every label before Apply"
     assert (window.project.language, window.project.max_labels, window.project.font_size) == previous
     assert window.project.crater_outline_shape == 'ellipse' and window.style_pending
+    assert window.project.font_step_percent == 0
     window.generate_labels_button.click()
     assert len(refreshes) == 1
     assert window.project.language == "中文" and window.project.max_labels == 240
     assert window.project.font_size == round(min(window.image.shape[:2])*.018)
+    assert window.project.font_step_percent == .3
     assert window.project.crater_outline_shape == 'terrain'
     assert window.project.labels[fid]["position"] == [122, 234]
     assert not window.style_pending

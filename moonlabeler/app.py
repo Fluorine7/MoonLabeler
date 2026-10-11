@@ -37,7 +37,7 @@ from .guided_identification import identify_from_reference_points, reference_poi
 from .terrain_refinement import refine_crater_identification
 from .geometry import compute_geometry, MOON_RADIUS_KM
 from .layout import LabelBox, arrange_labels, leader_segment
-from .project import Project, export_svg, DEFAULT_FONT_PERCENT
+from .project import Project, export_svg, DEFAULT_FONT_PERCENT, font_tier_percentages
 from .registration import calibration_report, transform_points, auto_register
 from .sources import load_catalog, read_image, nasa_reference, refresh_catalog, feature_search_text
 from .terrain import ElevationMap, download_basic_dem, render_region
@@ -127,35 +127,36 @@ class Canvas(QGraphicsView):
 
 
 class Annotation(QGraphicsItem):
-    def __init__(self, feature, anchor, text, project, moved, edit):
+    def __init__(self, feature, anchor, text, project, moved, edit, *, font_size=None):
         super().__init__()
         self.feature, self.anchor, self.text = feature, QPointF(*anchor), text
         self.project, self.moved, self.edit = project, moved, edit
+        self.font_size = project.font_size if font_size is None else font_size
         self.outline_segments = []
         self.font = QFont("PingFang SC")
-        self.font.setPixelSize(project.font_size)
+        self.font.setPixelSize(self.font_size)
         self.path = QPainterPath()
-        self.path.addText(0, project.font_size, self.font, text)
+        self.path.addText(0, self.font_size, self.font, text)
         self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
                       QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                       QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
         self.setCursor(Qt.CursorShape.OpenHandCursor)
         self.setZValue(20)
         self.line = QGraphicsLineItem()
-        self.line.setPen(QPen(QColor(project.color), max(1.2, project.font_size*.035)))
+        self.line.setPen(QPen(QColor(project.color), max(1.2, self.font_size*.035)))
         self.line.setZValue(10)
-        marker_radius = max(2.5, project.font_size*.06)
+        marker_radius = max(2.5, self.font_size*.06)
         marker = QGraphicsEllipseItem(self.anchor.x()-marker_radius, self.anchor.y()-marker_radius,
                                       marker_radius*2, marker_radius*2, self.line)
         marker.setBrush(QColor(project.color))
         marker.setPen(QPen(Qt.PenStyle.NoPen))
 
     def boundingRect(self):
-        padding = max(5., self.project.font_size*.04)
+        padding = max(5., self.font_size*.04)
         return self.path.boundingRect().adjusted(-padding, -padding, padding, padding)
 
     def paint(self, painter, option, widget=None):
-        painter.strokePath(self.path, QPen(QColor("#141923"), max(2., self.project.font_size*.06),
+        painter.strokePath(self.path, QPen(QColor("#141923"), max(2., self.font_size*.06),
                                            Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         painter.fillPath(self.path, QColor(self.project.color))
         if self.isSelected():
@@ -270,6 +271,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.build_toolbar()
         self.build_sidebar()
         self.displayed_font_percent = self.font_size.value()
+        self.displayed_font_step_percent = self.ui_font_step.value()
         self.update_manual_guide()
         self.statusBar().showMessage("滚轮缩放 · 拖动平移")
         self.empty_hint = self.canvas.scene().addText("打开或拖入照片", QFont("PingFang SC", 20))
@@ -839,6 +841,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.font_size.setRange(min(.05, percent), max(8., percent))
         self.font_size.setValue(percent)
         self.displayed_font_percent = self.font_size.value()
+        self.ui_font_step.setRange(0., max(8., self.project.font_step_percent))
+        self.ui_font_step.setValue(self.project.font_step_percent)
+        self.displayed_font_step_percent = self.ui_font_step.value()
         self.lit.setChecked(self.project.illuminated_only)
         self.optimize_layout.setChecked(self.project.optimize_layout)
         self.crater_outlines.setChecked(self.project.crater_outlines)
@@ -1408,15 +1413,25 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.settings_status.setText("设置已改，需重新生成")
 
     def update_font_hint(self):
-        if self.image is not None:
-            pixels = max(6, round(min(self.image.shape[:2])*self.font_size.value()/100))
-            self.font_pixels_hint.setText(f"原图 {pixels} px")
+        percentages = font_tier_percentages(self.font_size.value(), self.ui_font_step.value())
+        if self.ui_font_step.value() == 0:
+            hint = "统一字号"
+            if self.image is not None:
+                hint += f" · 原图 {max(6, round(min(self.image.shape[:2])*percentages[0]/100))} px"
+        else:
+            hint = "大 / 中 / 小："+" / ".join(f"{percent:.2f}%" for percent in percentages)
+            if self.image is not None:
+                pixels = [max(6, round(min(self.image.shape[:2])*percent/100)) for percent in percentages]
+                hint += "\n原图 "+" / ".join(map(str, pixels))+" px"
+        self.font_pixels_hint.setText(hint)
 
     def apply_label_settings(self):
         if self.busy:
             return
         if self.font_size.value() != self.displayed_font_percent:
             self.project.font_percent = self.font_size.value()
+        if self.ui_font_step.value() != self.displayed_font_step_percent:
+            self.project.font_step_percent = self.ui_font_step.value()
         for key, value in (("min_diameter", self.diameter.value()), ("kind", self.kind.currentText()),
                            ("max_labels", self.maximum.value()), ("language", self.language.currentText()),
                            ("illuminated_only", self.lit.isChecked()),
@@ -1428,6 +1443,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.project.update_font_size(self.image.shape)
         self.refresh_annotations()
         self.displayed_font_percent = self.font_size.value()
+        self.displayed_font_step_percent = self.ui_font_step.value()
         self.style_pending = False
         self.settings_status.setText("已更新")
         if self.image is not None:
@@ -1459,6 +1475,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.rebuilding = False
             return
         candidates = self.project.visible_features(self.catalog, self.image.shape, image=self.image, all_candidates=True)
+        font_sizes = self.project.label_font_sizes([feature for feature, _ in candidates], self.image.shape)
+        reference_font = self.project.font_sizes(self.image.shape)[1]
         objects = {}
         scale = np.sqrt(abs(np.linalg.det(self.project.matrix[:, :2]))) if self.project.matrix is not None else 1.
         def requests():
@@ -1469,7 +1487,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 data = self.project.labels.get(fid, {})
                 if data.get("hidden", False):
                     continue
-                item = Annotation(feature, xy, self.project.label_text(feature), self.project, self.move_label, self.edit_label)
+                item = Annotation(feature, xy, self.project.label_text(feature), self.project, self.move_label, self.edit_label,
+                                  font_size=font_sizes[fid])
                 outline = self.project.crater_outline(feature, self.image.shape)
                 if outline:
                     item.outline_segments = outline
@@ -1478,7 +1497,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                         contour.moveTo(*segment[0])
                         for point in segment[1:]:
                             contour.lineTo(*point)
-                    ring = self.canvas.scene().addPath(contour, QPen(QColor(self.project.color), max(1.2, self.project.font_size*.045)))
+                    ring = self.canvas.scene().addPath(contour, QPen(QColor(self.project.color), max(1.2, item.font_size*.045)))
                     # Own the absolute contour with the leader; moving the
                     # caption must leave the projected crater rim in place.
                     self.canvas.scene().removeItem(ring)
@@ -1492,13 +1511,13 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 if feature["kind"] in ("Crater, craters", "Satellite Feature"):
                     radius = min(min(self.image.shape[:2])*.12, max(4., feature["diameter"]*scale/(2*MOON_RADIUS_KM)))
                 else:
-                    radius = min(self.project.font_size*1.3, max(4., feature["diameter"]*scale/(4*MOON_RADIUS_KM)))
+                    radius = min(item.font_size*1.3, max(4., feature["diameter"]*scale/(4*MOON_RADIUS_KM)))
                 objects[fid] = item
                 yield LabelBox(fid, tuple(xy), bounds.width(), bounds.height(), radius, fixed,
                                data.get("force", False), item.outline_segments)
         h, w = self.image.shape[:2]
         if self.project.optimize_layout:
-            placements, self.auto_omitted = arrange_labels(requests(), w, h, gap=max(5., self.project.font_size*.4),
+            placements, self.auto_omitted = arrange_labels(requests(), w, h, gap=max(5., reference_font*.4),
                                                           max_labels=self.project.max_labels)
         else:
             placements = {request.key: (*(request.fixed or (request.anchor[0]+request.radius+8, request.anchor[1]-request.height/2)),
@@ -1644,7 +1663,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             "手动补点：展开“手动补点”，搜索地名，点击取点按钮，再点照片中同一个坑的完整坑缘中心。不要点亮斑或阴影中心。取 3–6 个分散、不共线的点，再完成校准。\n"
             "Esc 取消取点；双击参考点行重选，取消勾选停用。橙色行需核对。\n\n"
             "月溪、山脉等在“手动补点”中选择。\n\n"
-            "标注：改设置后点击“重新生成标注”。拖动标签调整位置，双击编辑文字。字号按照片短边计算。可保存工程或导出 PNG / SVG。\n\n"
+            "标注：改设置后点击“重新生成标注”。拖动标签调整位置，双击编辑文字。字号按照片短边计算，按视直径分大、中、小三档；字号递减设为 0 则统一字号。可保存工程或导出 PNG / SVG。\n\n"
             "DEM：导入或下载高程数据，选择区域生成光照参考。基础采样约 1.9 km；不适用于近月缘区域。\n\n"
             "坑缘圈是目录投影参考，可能偏离实际坑缘。拟合残差只表示一致性；模型和数据来源详见 README。")
 

@@ -16,6 +16,8 @@ from moonlabeler.sources import read_image
 
 @pytest.mark.parametrize('field,value', [
     ('style.font_percent', 'bad'), ('style.font_percent', float('nan')),
+    ('style.font_step_percent', -.1), ('style.font_step_percent', float('inf')),
+    ('style.font_step_percent', True),
     ('style.font_size', 0), ('style.max_labels', '200'),
     ('style.max_labels', 0), ('style.min_diameter', -1),
     ('style.illuminated_only', 'false'), ('style.language', []),

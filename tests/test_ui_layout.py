@@ -133,7 +133,7 @@ def test_every_business_consumed_widget_exists():
             "dem_status", "dem_import", "dem_download",
             "terrain_search", "terrain_center", "terrain_width", "terrain_size",
             "terrain_model", "terrain_gamma", "terrain_shadows", "terrain_button",
-            "kind", "diameter", "maximum", "language", "font_size",
+            "kind", "diameter", "maximum", "language", "font_size", "ui_font_step",
             "font_pixels_hint", "color_button", "lit", "optimize_layout",
             "crater_outlines", "crater_overlay_toggle", "generate_labels_button", "settings_status",
             "layout_status", "names", "catalog_button",
