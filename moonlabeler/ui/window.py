@@ -105,14 +105,26 @@ class WindowUiMixin:
 
     def ui_refresh_crater_hits_view(self, *args):
         """Show actual matches without consuming space for an empty list."""
-        self.ui_size_review_list(self.crater_feature, 2 if self.height() < 800 else 3)
+        self.ui_size_review_list(self.crater_feature, 2)
 
     def ui_refresh_crater_review(self):
         if not hasattr(self, 'crater_action_panel'):
             return  # The detector controls are constructed before the footer.
-        self.ui_size_review_list(self.crater_list, 2 if self.height() < 800 else 4)
-        for widget in (self.crater_overlay_toggle, self.crater_repick, self.crater_remove, self.crater_export):
-            widget.setVisible(bool(self.crater_candidates))
+        self.ui_size_review_list(self.crater_list, 3)
+        self.ui_crater_tools_toggle.setVisible(bool(self.crater_candidates))
+        self.ui_crater_tools_block.setVisible(bool(self.crater_candidates) and self.ui_crater_tools_toggle.isChecked())
+        index = self.crater_list.currentRow()
+        candidate = self.crater_candidates[index] if 0 <= index < len(self.crater_candidates) else None
+        self.ui_crater_selection.setText(
+            f"候选 {index+1:02d} · ({candidate.x:.0f}, {candidate.y:.0f}) · 半径 {(candidate.major+candidate.minor)/2:.0f} px"
+            if candidate else "未选择候选坑")
+        item = self.crater_feature.currentItem()
+        name = f"地名：{item.text()}" if item is not None else "地名：未选择"
+        self.ui_crater_name.setText(self.ui_crater_name.fontMetrics().elidedText(
+            name, Qt.TextElideMode.ElideRight, max(120, self.crater_action_panel.width()-20)))
+        self.ui_crater_name.setToolTip(name)
+        count = len(self.project.anchors)
+        self.crater_finish_button.setText(f"查看参考点（{count}）并继续配准" if count else "查看参考点并继续配准")
         self.ui_refresh_crater_hits_view()
         self.ui_update_registration_height()
 
@@ -136,14 +148,15 @@ class WindowUiMixin:
 
     def ui_reveal_crater_controls(self):
         if self.crater_action_panel.isVisible() and self.registration_tabs.currentWidget() is self.crater_tab:
-            self.scroll.ensureWidgetVisible(self.crater_button, 0, 12)
+            control = self.crater_search if self.crater_candidates else self.crater_button
+            # Scroll the full frame, not Qt's input cursor / item-view focus rect.
+            center = control.mapTo(self.scroll.widget(), control.rect().center())
+            self.scroll.ensureVisible(center.x(), center.y(), 0, control.height()//2+12)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, 'ui_crater_scroll_timer'):
             self.ui_refresh_crater_review()
-            if self.crater_action_panel.isVisible():
-                self.ui_scroll_to_crater_controls()
 
     def ui_update_time_summary(self, *args):
         """折叠时标题附带当前时间；展开后编辑框就在眼前，标题只留“具体时间”。
@@ -174,9 +187,6 @@ class WindowUiMixin:
                 self.ui_scroll_to_crater_controls()
         if watched is getattr(self, 'crater_tab', None) and event.type() in (QEvent.Type.LayoutRequest, QEvent.Type.Resize):
             self.ui_update_registration_height()
-        if watched is getattr(self, 'ui_crater_viewport', None) and event.type() == QEvent.Type.Resize:
-            if self.crater_action_panel.isVisible():
-                self.ui_scroll_to_crater_controls()
         return super().eventFilter(watched, event)
 
     def ui_collapsible(self, title, expanded=False):
@@ -685,14 +695,13 @@ class WindowUiMixin:
         labels_layout.addStretch()
 
         # -------------------------------------------------- 疑似坑确认操作条
-        # Fixed footer holds review controls; detector settings scroll above it.
-        self.crater_action_panel = QGroupBox("确认地形")
+        # Only the current candidate/name pair and confirmation stay pinned.
+        # Detection, candidates and name search share the page's scroll area.
+        self.crater_action_panel = QWidget()
         self.crater_action_panel.setObjectName("confirmPanel")
         self.ui_crater_scroll_timer = QTimer(self)
         self.ui_crater_scroll_timer.setSingleShot(True)
         self.ui_crater_scroll_timer.timeout.connect(self.ui_reveal_crater_controls)
-        self.ui_crater_viewport = self.scroll.viewport()
-        self.ui_crater_viewport.installEventFilter(self)
         # Showing either widget is app.py's way of entering a manual flow;
         # the section opens with them (see eventFilter).
         for review_widget in (self.cancel_pick_button, self.crater_action_panel):
@@ -700,18 +709,18 @@ class WindowUiMixin:
         self.manual_section_toggle.toggled.connect(self.ui_reconcile_confirm_bar)
         self.manual_section_toggle.toggled.connect(self.review_page_changed)
         action_box = QVBoxLayout(self.crater_action_panel)
-        action_box.setSpacing(7)
-        self.crater_controls_layout.removeItem(self.crater_review_actions)
-        self.crater_review_actions.setParent(None)
-        action_box.addLayout(self.crater_review_actions)
-        # 复核操作条 = 完整确认流程：候选列表 → 轮廓开关 → 搜索 → 地名 → 确认。
-        action_box.addWidget(self.crater_list, 1)
-        action_box.addWidget(self.crater_overlay_toggle)
-        action_box.addWidget(self.crater_search)
-        action_box.addWidget(self.crater_feature)
+        action_box.setContentsMargins(10, 8, 10, 8)
+        action_box.setSpacing(5)
+        self.ui_crater_selection = QLabel()
+        self.ui_crater_selection.setObjectName("reviewSelection")
+        self.ui_crater_name = QLabel()
+        self.ui_crater_name.setObjectName("statusStrong")
+        self.ui_crater_name.setMinimumWidth(0)
+        self.ui_crater_name.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        action_box.addWidget(self.ui_crater_selection)
+        action_box.addWidget(self.ui_crater_name)
         self.crater_anchor_button.setProperty("primary", True)
         action_box.addWidget(self.crater_anchor_button)
-        action_box.addWidget(self.crater_finish_button)
         calibration_footer.addWidget(self.crater_action_panel)
         self.crater_action_panel.hide()
 
@@ -749,7 +758,6 @@ class WindowUiMixin:
         self.crater_controls_layout = box
         box.setContentsMargins(0, 6, 0, 0)
         box.setSpacing(8)
-        box.addWidget(self.ui_note("检测中心后，在底部确认地名。"))
         self.crater_settings_toggle, self.crater_settings_block, config_box = \
             self.ui_collapsible("检测设置 · 半径 8–180 px")
         box.addWidget(self.crater_settings_toggle)
@@ -793,10 +801,17 @@ class WindowUiMixin:
         self.crater_status.setWordWrap(True)
         self.crater_status.setObjectName("statusLabel")
         box.addWidget(self.crater_status)
-        # 检测在页签里完成；候选列表与轮廓开关归底部复核操作条（见 panel 组装），
-        # 避免“上半屏检测、下半屏确认”的割裂。
+        candidate_heading = QHBoxLayout()
+        candidate_heading.addWidget(QLabel("1  选择候选坑"))
+        candidate_heading.addStretch()
+        self.ui_crater_tools_toggle, self.ui_crater_tools_block, tools_box = self.ui_collapsible("更多操作")
+        candidate_heading.addWidget(self.ui_crater_tools_toggle)
+        box.addLayout(candidate_heading)
         self.crater_list = QListWidget()
         self.crater_list.currentRowChanged.connect(self.select_crater_candidate)
+        self.crater_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.crater_list.setToolTip("选列表中的编号，或点击照片中的候选坑。当前编号始终显示在底部确认条。")
+        box.addWidget(self.crater_list)
         self.crater_overlay_toggle = QCheckBox("显示全部候选轮廓")
         self.crater_overlay_toggle.toggled.connect(self.show_crater_overlays)
         row = QHBoxLayout()
@@ -810,7 +825,10 @@ class WindowUiMixin:
         row.addWidget(self.crater_repick)
         row.addWidget(self.crater_remove)
         row.addWidget(self.crater_export)
-        box.addLayout(row)
+        tools_box.addLayout(row)
+        tools_box.addWidget(self.crater_overlay_toggle)
+        box.addWidget(self.ui_crater_tools_block)
+        box.addWidget(QLabel("2  选择地名"))
         self.crater_search = QLineEdit()
         self.crater_search.setPlaceholderText("搜索环形山：Hadley C / 哥白尼")
         self.crater_search.textChanged.connect(self.search_crater_features)

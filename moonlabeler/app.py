@@ -443,6 +443,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.crater_candidates = []
         self.crater_result = None
         self.crater_list.clear()
+        self.crater_feature.setCurrentRow(-1)
         self.crater_status.setText("未检测")
         self.update_crater_buttons()
 
@@ -457,8 +458,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
             message += " · 已缩小检测"
         self.crater_status.setText(message)
         self.statusBar().showMessage("检测完成" if count else "未找到候选")
+        if count:
+            self.ui_scroll_to_crater_controls()
 
-    def refresh_crater_candidates(self):
+    def refresh_crater_candidates(self, selected_index=0):
         for item in self.crater_items:
             self.canvas.scene().removeItem(item)
         self.crater_items = []
@@ -472,15 +475,19 @@ class MainWindow(WindowUiMixin, QMainWindow):
             overlay = CraterOverlay(candidate, index, self.crater_list.setCurrentRow)
             self.canvas.scene().addItem(overlay)
             self.crater_items.append(overlay)
-        self.crater_list.blockSignals(False)
         if self.crater_candidates:
-            self.crater_list.setCurrentRow(0)
+            self.crater_list.setCurrentRow(selected_index)
+        self.crater_list.blockSignals(False)
         self.show_crater_overlays()
         self.update_crater_buttons()
 
     def select_crater_candidate(self, index):
         if self.picking_crater_index is not None and index != self.picking_crater_index:
             self.cancel_pick()
+        # A name is a deliberate choice for this candidate, not a sticky
+        # search result that may silently be assigned to the next crater.
+        self.crater_feature.clearSelection()
+        self.crater_feature.setCurrentRow(-1)
         self.show_crater_overlays()
         self.update_crater_buttons()
 
@@ -514,7 +521,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         name_item = self.crater_feature.currentItem()
         fid = name_item.data(Qt.ItemDataRole.UserRole) if name_item is not None else None
         self.crater_anchor_button.setEnabled(selected and fid is not None)
-        self.crater_anchor_button.setText("确认地名，更新参考点" if any(a["id"] == fid for a in self.project.anchors) else "确认地名，加入参考点")
+        operation = "更新参考点" if fid is not None and any(a["id"] == fid for a in self.project.anchors) else "加入参考点"
+        self.crater_anchor_button.setText(f"确认候选 {self.crater_list.currentRow()+1:02d}，{operation}" if selected else "确认地名，加入参考点")
         self.ui_refresh_crater_review()
 
     def search_crater_features(self, text):
@@ -552,7 +560,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         candidate = self.crater_candidates[index]
         self.add_anchor(candidate.x, candidate.y)
         self.update_crater_buttons()
-        self.crater_status.setText(f"已加入：{feature.get('name_zh') or feature['name']}")
+        self.crater_status.setText(f"已确认候选 {index+1:02d}：{feature.get('name_zh') or feature['name']}")
         self.statusBar().showMessage(self.crater_status.text())
 
     def remove_crater_candidate(self):
@@ -560,6 +568,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         index = self.crater_list.currentRow()
         if 0 <= index < len(self.crater_candidates):
             self.crater_candidates.pop(index)
+            self.crater_feature.clearSelection()
+            self.crater_feature.setCurrentRow(-1)
             self.refresh_crater_candidates()
             self.crater_status.setText(f"保留 {len(self.crater_candidates)} 个候选")
 
@@ -584,8 +594,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             return
         self.crater_candidates[index] = replace(self.crater_candidates[index], x=x, y=y, support=None, method="manual")
         self.cancel_pick()
-        self.refresh_crater_candidates()
-        self.crater_list.setCurrentRow(index)
+        self.refresh_crater_candidates(selected_index=index)
         self.crater_status.setText(f"候选 {index+1} 中心已更新")
 
     def export_crater_candidates(self):

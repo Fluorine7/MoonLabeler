@@ -256,7 +256,7 @@ def test_time_summary_only_when_collapsed_and_compact_entry():
         window.close()
 
 
-def test_crater_review_bar_holds_the_full_confirmation_flow():
+def test_crater_review_keeps_search_in_the_page_and_context_in_the_footer():
     window, application = make_window()
     try:
         window.workspace_tabs.setCurrentIndex(0)
@@ -269,7 +269,11 @@ def test_crater_review_bar_holds_the_full_confirmation_flow():
         assert window.crater_action_panel.isVisible()
         for widget in (window.crater_list, window.crater_overlay_toggle,
                        window.crater_search, window.crater_feature,
-                       window.crater_anchor_button, window.crater_finish_button):
+                       window.crater_finish_button):
+            assert window.crater_tab.isAncestorOf(widget)
+            assert not window.crater_action_panel.isAncestorOf(widget)
+        for widget in (window.ui_crater_selection, window.ui_crater_name,
+                       window.crater_anchor_button):
             assert window.crater_action_panel.isAncestorOf(widget)
         # 进入复核模式自动展开区域，并把页签顶部滚入视野。
         assert window.manual_section_block.isVisible()

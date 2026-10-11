@@ -76,9 +76,8 @@ QPushButton[primary="true"]:disabled {{ background: #453f32; border-color: #453f
 QGroupBox {{ border: 0; margin-top: 16px; padding: 1px 0 0 0; }}
 QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left;
                    left: 1px; padding: 0; color: {TEXT_2}; font-weight: 600; }}
-QGroupBox#confirmPanel {{ background: {SURFACE_HI}; border: 1px solid {LINE_HI};
-                         border-radius: 9px; margin-top: 16px; padding: 8px 10px 10px; }}
-QGroupBox#confirmPanel::title {{ left: 10px; color: #d9bd93; }}
+QWidget#confirmPanel {{ background: {SURFACE_HI}; border-top: 1px solid {LINE_HI}; }}
+QLabel#reviewSelection {{ color: #eef3f9; font-weight: 600; }}
 
 /* ---- inputs -------------------------------------------------------------- */
 QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateTimeEdit {{
