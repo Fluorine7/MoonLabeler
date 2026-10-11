@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.10** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.11** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -29,6 +29,10 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 - 中文译名来自国家天文科学数据中心词表；没有可靠译名的名称保留英文。
 - 保存 `.moonlabel` 工程，导出与原图同尺寸 PNG 或可编辑 SVG；另提供 LOLA DEM 光照模拟参考。
 
+支持 WinJUPOS 的 `YYYY-MM-DD-HHMM.T`、`YYYY-MM-DD-HHMMT` 以及常见的 `HHMM_T` 写法，可带拍摄者前缀和处理后缀。例如 `2026-08-31-2137_7-Moon_lapl3_ap311(1).tif` → **2026-08-31 21:37:42 UTC**；末位是十分之一分钟，不是秒。无效日期不导入，工程中的已保存时间优先，导入后仍可修改。规范依据为 [WinJUPOS 官方安装包](https://jupos.org/gh/download.htm)内英文帮助的 *Image measurement → Image → WinJUPOS-Conventions*；若采集软件实际用本地时间命名，需自行换算。
+
+高倍单坑照片增加低分辨率长弧椭圆候选，检查整圈边缘方向与分布；大半径搜索降低工作分辨率以减少计算。候选中心仍需核对，找到一个椭圆不等于确定坑名或完成自动配准。
+
 ### 从源码运行
 
 需要 **Python 3.11 或更高版本**。主要在 macOS 上开发与测试。
@@ -55,7 +59,7 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 ### 使用与限制
 
-打开新照片会返回“校准”并收起辅助内容，保留当前日期与时间。启动时默认 **UTC 15:00**；确认或修改拍摄日期，点击“自动识别并标注”。“具体时间”默认折叠，展开后通过独立的时、分框设置 UTC 时间，旧工程的秒值保留；收起或更换日期不会重置时间，可点击恢复默认。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，坑群精修和高程后备匹配使用约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
+打开新照片会返回“校准”并收起辅助内容。识别到 WinJUPOS 文件名时自动填入 UTC；其他文件保留当前日期与时间。启动时默认 **UTC 15:00**；确认或修改拍摄日期，点击“自动识别并标注”。“具体时间”默认折叠，展开后通过独立的时、分框设置 UTC 时间，旧工程的秒值保留；收起或更换日期不会重置时间，可点击恢复默认。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，坑群精修和高程后备匹配使用约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
 
 自动识别属于实验性功能。强阴影、月缘与极区的严重压缩、模糊、水印、日期错误或候选坑太少时仍可能失败。不能通过验证的结果不会作为地名标注，也不会替换已有配准。可改用已知地形点手动校准。
 
@@ -108,7 +112,11 @@ The font tiers use projected equivalent-area diameter: large at **2%** or more o
 Requires **Python 3.11+**. Development and native UI testing are primarily on macOS.
 Clone the repository and run `./start-mac.command` on macOS, or create a virtual environment, install `requirements.txt`, and run `python -m moonlabeler` as shown above. Windows and Linux have not received native UI validation.
 
-Opening a new photograph returns to Calibration and collapses assistance, retaining the current date and time. The initial default is **15:00 UTC**. Check or change the capture date in the separate year, month and day fields, then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours and minutes in separate fields; seconds saved in older projects are retained. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; crater refinement and the terrain fallback use about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
+Opening a new photograph returns to Calibration and collapses assistance. WinJUPOS filenames populate UTC automatically; other filenames retain the current date and time. The initial default is **15:00 UTC**. Check or change the capture date in the separate year, month and day fields, then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours and minutes in separate fields; seconds saved in older projects are retained. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; crater refinement and the terrain fallback use about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
+
+WinJUPOS filename timestamps accept `YYYY-MM-DD-HHMM.T`, `YYYY-MM-DD-HHMMT`, and the common `HHMM_T` variant, with observer prefixes and processing suffixes. For example, `2026-08-31-2137_7-Moon_lapl3_ap311(1).tif` imports **2026-08-31 21:37:42 UTC**: the final digit is a tenth of a minute. Invalid dates are ignored; saved project times remain authoritative and imported values are editable. Source: the English *Image measurement → Image → WinJUPOS-Conventions* help in the [official WinJUPOS distribution](https://jupos.org/gh/download.htm). Correct the value if the capture application actually used local time.
+
+Close-up crater detection also tests smoothed long-arc ellipse proposals against edge directions around the whole rim. Large-radius searches use fewer working pixels. These are approximate centre candidates, not proof of a crater name or a successful registration.
 
 For manual point placement, expand **校准 → 辅助找坑与参考点 → 手动补点** (Calibration → Candidate and reference assistance → Add points manually). A reference point pairs a known terrain name with its location in your photograph:
 

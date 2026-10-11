@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import __version__
+from .capture_time import winjupos_capture_time
 from .ui.theme import STYLE
 from .ui.window import WindowUiMixin
 from .craters import DetectionOptions, detect_craters, detect_crater_rims
@@ -728,7 +729,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             return
         try:
             image = read_image(path)
-            self.project = Project(image_path=str(Path(path).resolve()), utc=self.utc().isoformat())
+            filename_utc = winjupos_capture_time(path)
+            self.project = Project(image_path=str(Path(path).resolve()), utc=(filename_utc or self.utc()).isoformat())
             self.project_path = None
             self.set_image(image)
             self.sync_controls()
@@ -738,7 +740,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.registration_status.setText("未配准")
             self.identification_status.setText("未识别")
             self.identification_status.setToolTip("")
-            self.statusBar().showMessage(f"{Path(path).name} · {image.shape[1]} × {image.shape[0]} 像素")
+            timestamp = f" · 文件名时间：{filename_utc:%Y-%m-%d %H:%M:%S} UTC" if filename_utc else ""
+            self.statusBar().showMessage(f"{Path(path).name} · {image.shape[1]} × {image.shape[0]} 像素{timestamp}")
         except Exception as exc:
             self.error(str(exc))
 

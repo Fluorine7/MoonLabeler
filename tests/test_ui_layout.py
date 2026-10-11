@@ -232,17 +232,17 @@ def test_manual_calibration_section_collapsed_by_default_with_expand_hook():
         window.close()
 
 
-def test_time_summary_only_when_collapsed_and_compact_entry():
+def test_time_summary_keeps_seconds_visible_with_compact_entry():
     window, application = make_window()
     try:
         assert "15:00:00" in window.capture_time_toggle.text()
         window.capture_time_toggle.setChecked(True)
         application.processEvents()
-        # 展开后编辑框就在眼前，标题不再重复时间。
-        assert window.capture_time_toggle.text() == "具体时间"
+        # 分钟输入框不显示秒，展开后摘要也应保留文件名或工程的秒值。
+        assert "15:00:00" in window.capture_time_toggle.text()
         window.date.setTime(QTime(21, 30))
         application.processEvents()
-        assert window.capture_time_toggle.text() == "具体时间"
+        assert "21:30:00" in window.capture_time_toggle.text()
         window.capture_time_toggle.setChecked(False)
         assert "21:30:00" in window.capture_time_toggle.text()
         # 时:分输入；秒值内部保留（默认 0 或工程原值）。

@@ -58,3 +58,52 @@ def test_partial_rim_arcs_are_grouped_into_one_original_image_center():
     assert abs(nearby[0].major-100) < 5 and abs(nearby[0].minor-65) < 5
     assert np.array_equal(image, original)
     assert not detect_crater_rims(np.full((120, 160),72,np.uint8)).candidates
+
+
+def test_large_broken_ellipse_is_not_cut_off_by_automatic_size_limit():
+    image = np.full((600, 1000), 72, np.uint8)
+    for start, end in ((5, 95), (110, 200), (220, 340)):
+        cv2.ellipse(image, (480, 300), (280, 210), 8, start, end, 210, 5)
+    for detect in (detect_crater_rims,
+                   lambda image: detect_craters(image, DetectionOptions(190, 400, 100, 10))):
+        candidates = detect(image).candidates
+        nearby = [c for c in candidates if np.hypot(c.x-480, c.y-300) < 12]
+        assert nearby, 'A crater occupying most of the image height is a valid candidate'
+        assert abs(nearby[0].major-280) < 15
+
+
+def test_large_crater_photo_candidate_when_local_fixture_available():
+    # User's photograph is not redistributed. Bounds select the large central
+    # crater, independently of the algorithm; they do not assert a place name.
+    from pathlib import Path
+    from moonlabeler.sources import read_image
+    path = Path(__file__).resolve().parent.parent/'2026-08-31-2137_7-Moon_lapl3_ap311(1).tif'
+    if not path.exists():
+        pytest.skip('Local telescope photo unavailable')
+    image = read_image(path)
+    for detect in (detect_crater_rims,
+                   lambda image: detect_craters(image, DetectionOptions(200, 1300, 100, 80))):
+        candidates = detect(image).candidates
+        assert any(1150 < c.x < 1450 and 450 < c.y < 680
+                   and 500 < c.major < 750 and 350 < c.minor < 600 for c in candidates)
+        assert not any(c.x > 2100 and c.y > 600 for c in candidates), \
+            'The lower-right bright terrain is not a crater'
+
+
+def test_large_rim_pass_rejects_lunar_limb_and_straight_terrain():
+    from moonlabeler.craters import _large_rim_candidates
+    moon = np.zeros((500, 700), np.uint8)
+    cv2.circle(moon, (350, 250), 210, 160, -1)
+    assert not _large_rim_candidates(moon)
+    terrain = np.full((500, 700), 80, np.uint8)
+    for i in range(-500, 700, 35):
+        cv2.line(terrain, (i, 0), (i+300, 500), 200, 5)
+    assert not _large_rim_candidates(terrain)
+
+
+def test_large_detection_preserves_roi_coordinates_and_radius_filter():
+    image = np.full((1000, 1800), 72, np.uint8)
+    cv2.ellipse(image, (1140, 570), (270, 190), 12, 0, 360, 210, 5)
+    result = detect_craters(image, DetectionOptions(170, 330, 100, 20), (600, 180, 950, 740))
+    assert any(np.hypot(c.x-1140, c.y-570) < 10 for c in result.candidates)
+    assert all(170 <= (c.major+c.minor)/2 <= 330 for c in result.candidates)

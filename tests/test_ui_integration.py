@@ -167,7 +167,7 @@ def test_compact_time_entry_and_direct_sync_keep_seconds(visible_window):
     window.capture_time_toggle.setChecked(True)
     window.capture_time.setTime(QTime(12, 34, 56))
     window.sync_capture_time()
-    assert window.capture_time_toggle.text() == '具体时间'
+    assert '12:34:56' in window.capture_time_toggle.text()
     window.ui_hour.setFocus()
     QTest.keyClicks(window.ui_hour, '21')
     assert window.ui_minute.hasFocus()

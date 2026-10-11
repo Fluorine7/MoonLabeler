@@ -186,13 +186,9 @@ class WindowUiMixin:
             self.ui_refresh_crater_review()
 
     def ui_update_time_summary(self, *args):
-        """折叠时标题附带当前时间；展开后编辑框就在眼前，标题只留“具体时间”。
-        app.sync_capture_time calls this after synchronizing the editor."""
-        if self.capture_time_toggle.isChecked():
-            self.capture_time_toggle.setText("具体时间")
-        else:
-            self.capture_time_toggle.setText(
-                f"具体时间 · UTC {self.capture_time.time().toString('HH:mm:ss')}")
+        """Keep imported/saved seconds visible even with the minute editor open."""
+        self.capture_time_toggle.setText(
+            f"具体时间 · UTC {self.capture_time.time().toString('HH:mm:ss')}")
 
     def ui_sync_capture_fields(self):
         day, time = self.date.date(), self.date.time()

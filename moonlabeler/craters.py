@@ -42,6 +42,103 @@ class DetectionResult:
     scale: float
 
 
+def _map_candidate(candidate, sx, sy, x=0, y=0):
+    """Map a fitted conic through the actual (possibly rounded) resize."""
+    theta = math.radians(candidate.angle)
+    basis = np.array([[math.cos(theta), -math.sin(theta)],
+                      [math.sin(theta), math.cos(theta)]]) @ np.diag([candidate.major, candidate.minor])
+    axes, lengths, _ = np.linalg.svd(np.diag([1/sx, 1/sy]) @ basis)
+    return CraterCandidate(candidate.x/sx+x, candidate.y/sy+y,
+                           float(lengths[0]), float(lengths[1]),
+                           math.degrees(math.atan2(axes[1, 0], axes[0, 0])) % 180,
+                           candidate.support, candidate.method)
+
+
+def _large_rim_candidates(gray):
+    """Low-frequency arc proposals for craters dominating a close-up.
+
+    High-pass enhancement fragments terraced rims. Fit long smoothed arcs,
+    then check the *whole* ellipse against independently sampled edge normals
+    in at least six octants. This is only a centre proposal, not a named feature
+    or an accurate physical rim. Work is bounded by a 600-pixel image.
+    """
+    h, w = gray.shape
+    factor = min(1., 600/max(h, w))
+    sample = cv2.resize(gray, (round(w*factor), round(h*factor)), interpolation=cv2.INTER_AREA) if factor < 1 else gray
+    sh, sw = sample.shape
+    if min(sh, sw) < 32:
+        return []
+    sy, sx = sh/h, sw/w
+    t = np.linspace(0, 2*np.pi, 144, endpoint=False)
+    proposals = []
+    for sigma in (1.3, 2.):
+        smooth = cv2.GaussianBlur(sample, (0, 0), sigma)
+        edges = cv2.Canny(smooth, 10, 25)
+        ey, ex = np.nonzero(edges)
+        if not len(ex):
+            continue
+        distance, labels = cv2.distanceTransformWithLabels(255-edges, cv2.DIST_L2, 3, labelType=cv2.DIST_LABEL_PIXEL)
+        gx = cv2.Sobel(smooth, cv2.CV_32F, 1, 0)
+        gy = cv2.Sobel(smooth, cv2.CV_32F, 0, 1)
+        normals = np.column_stack((gx[ey, ex], gy[ey, ex]))
+        normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-6)
+        gradient = np.zeros((int(labels.max())+1, 2), np.float32)
+        gradient[labels[ey, ex]] = normals
+        contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        arcs = []
+        for contour in sorted(contours, key=len, reverse=True)[:32]:
+            arcs.append(contour)
+            # Connected terrace/shadow edges can branch into unrelated terrain.
+            # Bounded overlapping arc windows avoid fitting the entire branch.
+            for length in (80, 160, 320):
+                if len(contour) >= length*1.5:
+                    for start in range(0, len(contour)-length+1, length//2):
+                        arcs.append(contour[start:start+length])
+        for contour in arcs:
+            if len(contour) < max(60, min(sh, sw)*.2):
+                continue
+            (cx, cy), (da, db), angle = cv2.fitEllipse(contour)
+            a, b = da/2, db/2
+            radius = (a+b)/2
+            if (not np.isfinite([cx, cy, a, b, angle]).all() or
+                    min(a, b) <= 0 or min(a, b)/max(a, b) < .35 or
+                    radius < min(sh, sw)*.2 or max(a, b) > max(sh, sw)*.5):
+                continue
+            theta = math.radians(angle)
+            ct, st = math.cos(theta), math.sin(theta)
+            hw, hh = math.hypot(a*ct, b*st), math.hypot(a*st, b*ct)
+            if cx-hw < 2 or cy-hh < 2 or cx+hw >= sw-2 or cy+hh >= sh-2:
+                continue
+            delta = contour[:, 0, :]-[cx, cy]
+            u, v = delta[:, 0]*ct+delta[:, 1]*st, -delta[:, 0]*st+delta[:, 1]*ct
+            if np.quantile(np.abs(np.hypot(u/a, v/b)-1), .8) > .06:
+                continue
+            # At least a quarter arc nominates a conic; the full-rim check
+            # below must independently support the remaining directions.
+            phase = np.mod(np.arctan2(v/b, u/a), 2*np.pi)
+            if len(np.unique((phase/(2*np.pi)*24).astype(int))) < 6:
+                continue
+            xx = np.rint(cx+a*np.cos(t)*ct-b*np.sin(t)*st).astype(int)
+            yy = np.rint(cy+a*np.cos(t)*st+b*np.sin(t)*ct).astype(int)
+            ox = np.rint(cx+1.1*(xx-cx)).astype(int)
+            oy = np.rint(cy+1.1*(yy-cy)).astype(int)
+            outside = (ox >= 0) & (oy >= 0) & (ox < sw) & (oy < sh)
+            if outside.sum() >= 72 and np.mean(sample[oy[outside], ox[outside]] < 15) > .7:
+                # The Moon/black-sky boundary is not a crater rim.
+                continue
+            radial = np.column_stack((np.cos(t)/a*ct-np.sin(t)/b*st,
+                                      np.cos(t)/a*st+np.sin(t)/b*ct))
+            radial /= np.linalg.norm(radial, axis=1, keepdims=True)
+            aligned = np.abs(np.sum(gradient[labels[yy, xx]]*radial, axis=1)) > .75
+            supported = (distance[yy, xx] <= 2.5) & aligned
+            support = float(supported.mean())
+            if support < .6 or np.count_nonzero(supported.reshape(8, -1).mean(axis=1) >= .4) < 6:
+                continue
+            candidate = CraterCandidate(cx, cy, a, b, angle, support, 'coarse-ellipse')
+            proposals.append(_map_candidate(candidate, sx, sy))
+    return sorted(proposals, key=lambda c: -c.support)
+
+
 def detect_crater_rims(image):
     """Group partial rim arcs with OpenCV EDCircles at several resolutions.
 
@@ -102,6 +199,7 @@ def detect_crater_rims(image):
                 continue
             original_angle = math.degrees(math.atan2(axes[1, 0], axes[0, 0])) % 180
             proposals.append(CraterCandidate(x, y, float(major), float(minor), original_angle, None, "edge-drawing"))
+    proposals.extend(_large_rim_candidates(gray[:bottom]))
     # Keep the first high resolution fit in each scale-consistent cluster;
     # retaining every pass would falsely count one rim as several observations.
     kept = []
@@ -146,7 +244,10 @@ def detect_craters(image, options=None, region=None):
     if gray.ndim == 3:
         gray = cv2.cvtColor(gray, cv2.COLOR_RGB2GRAY)
     # Bound Hough memory/work. A zoomed ROI preserves smaller original details.
-    factor = min(1., options.max_dimension/max(w, h))
+    # Large-radius searches need far fewer pixels. Keep at least ~24 samples
+    # per minimum radius, avoiding a costly 1600px Hough pass for close-ups.
+    dimension = min(options.max_dimension, max(600., max(w, h)*24/options.min_radius))
+    factor = min(1., dimension/max(w, h))
     if factor < 1:
         gray = cv2.resize(gray, (max(1, round(w*factor)), max(1, round(h*factor))), interpolation=cv2.INTER_AREA)
     sy, sx = gray.shape[0]/h, gray.shape[1]/w
@@ -176,6 +277,11 @@ def detect_craters(image, options=None, region=None):
         normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-6)
         gradient[labels[ey, ex]] = normals
     proposals = []
+    if options.max_radius*factor >= min(gray.shape)*.2:
+        for candidate in _large_rim_candidates(gray):
+            original = _map_candidate(candidate, sx, sy, x, y)
+            if options.min_radius <= (original.major+original.minor)/2 <= options.max_radius:
+                proposals.append(original)
 
     def accept(cx, cy, a, b, angle, method):
         if b > a:
@@ -200,6 +306,10 @@ def detect_craters(image, options=None, region=None):
         support = float(np.mean((distance[yy, xx] <= 2.) & (alignment > .85)))
         if support < .58-.16*sensitivity:
             return
+        if radius >= min(gray.shape)*.2:
+            supported = (distance[yy, xx] <= 2.) & (alignment > .85)
+            if support < .55 or np.count_nonzero(supported.reshape(8, -1).mean(axis=1) >= .4) < 6:
+                return
         # Transform the conic, not just the center: rounded resize dimensions
         # can have slightly different x/y factors.
         basis = np.array([[cos_t, -sin_t], [sin_t, cos_t]]) @ np.diag([a, b])
