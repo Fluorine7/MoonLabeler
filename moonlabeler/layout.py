@@ -19,6 +19,7 @@ class LabelBox:
     fixed: tuple | None = None  # Actual bounding-box top-left, in image pixels.
     force: bool = False
     outline: list | None = None
+    important: bool = False  # Reserve space before ordinary automatic labels.
 
 
 def rect_intersects(first, second, padding=0.):
@@ -95,7 +96,7 @@ def segments_cross(first, second):
            side(cx, cy, dx, dy, ax, ay)*side(cx, cy, dx, dy, bx, by) < -1e-8
 
 
-def candidate_boxes(label, gap):
+def candidate_boxes(label, gap, *, extended=False):
     """Sixteen directions at each of three local distances."""
     ax, ay = label.anchor
     # Begin with diagonals for compact captions, then cardinal directions.
@@ -111,7 +112,8 @@ def candidate_boxes(label, gap):
             # An occulted arc may have no intersection in this direction.
             if start[:2] != start[2:]:
                 rim_distances[angle] = math.hypot(start[0]-ax, start[1]-ay)
-    for extra in (0., gap, 2.5*gap):
+    distances = (4*gap, 7*gap, 11*gap) if extended else (0., gap, 2.5*gap)
+    for extra in distances:
         for angle in angles:
             distance = rim_distances.get(angle, label.radius)+gap+extra
             dx, dy = math.cos(math.radians(angle)), math.sin(math.radians(angle))
@@ -167,7 +169,8 @@ def _line_bounds(line):
 def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
     """Return non-overlapping placements and temporarily omitted keys.
 
-    Input order expresses priority. User-pinned captions are fixed obstacles.
+    Important captions reserve space before ordinary centers are considered.
+    Within each group, input order expresses priority. User pins stay fixed.
     A forced caption can fall back to the least-conflicting candidate. Automatic
     positions are never stored as user edits, so filtering can reflow the image.
     With a budget, consume candidates lazily and refill omissions from reserves.
@@ -189,17 +192,18 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
     marker_radius = {label.key: min(label.radius, max(4., label.height*.45)) for label in labels}
     markers = {label.key: (label.anchor[0]-marker_radius[label.key], label.anchor[1]-marker_radius[label.key],
                             2*marker_radius[label.key], 2*marker_radius[label.key]) for label in labels}
-    for key, rect in markers.items():
-        marker_index.put(key, rect)
     fixed = {label.key for label in labels if label.fixed is not None}
+    protected = {label.key for label in labels if label.important or label.force} | fixed
+    for key in protected:
+        marker_index.put(key, markers[key])
     for label in labels:
         if label.fixed is not None:
             rect = (*label.fixed, label.width, label.height)
             place(label, rect, leader_segment(label.anchor, rect, outline=label.outline))
 
-    def best_position(label):
+    def best_position(label, *, extended=False):
         candidates = []
-        for rect in candidate_boxes(label, gap):
+        for rect in candidate_boxes(label, gap, extended=extended):
             x, y, w, h = rect
             if x < gap or y < gap or x+w > width-gap or y+h > height-gap:
                 continue
@@ -243,27 +247,44 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
             length = math.hypot(line[2]-line[0], line[3]-line[1])
             score = conflicts*1e6 + .45*length - .8*min(clearance, 3*gap)
             candidates.append((score, rect, line))
-        return min(candidates, key=lambda item: item[0]) if candidates else None
+        if candidates:
+            return min(candidates, key=lambda item: item[0])
+        # Only important captions pay for a wider search, and only after all
+        # compact positions fail. Collision and image-boundary rules remain.
+        if label.important and not extended:
+            return best_position(label, extended=True)
+        return None
 
     pending = [label for label in labels if label.key not in fixed]
-    # Greedy placement gives larger named features first choice.
+    def arrange_group(group):
+        # One placement pass and at most two local relocation passes.
+        for _ in range(3):
+            moved = False
+            for label in group:
+                previous = placements.get(label.key)
+                best = best_position(label)
+                if best:
+                    _, rect, line = best
+                    place(label, rect, line)
+                    moved |= previous != placements[label.key]
+            if not moved:
+                break
+
+    arrange_group([label for label in pending if label.key in protected])
+
+    # Ordinary centers cannot veto an important caption before they even
+    # have a label. Once important captions are placed, an ordinary center
+    # underneath their text or leader is omitted together with its label.
+    def center_conflicts(marker):
+        return (any(rect_intersects(marker, rect, gap*.3) for rect in text_index.near(marker, gap*.3)) or
+                any(segment_hits_rect(line, marker) for line in line_index.near(marker)))
+
+    ordinary = []
     for label in pending:
-        best = best_position(label)
-        if best:
-            _, rect, line = best
-            place(label, rect, line)
-    # Relocate existing captions and reinsert omissions, with a bounded loop.
-    for _ in range(2):
-        moved = False
-        for label in pending:
-            previous = placements.get(label.key)
-            best = best_position(label)
-            if best:
-                _, rect, line = best
-                place(label, rect, line)
-                moved |= previous != placements[label.key]
-        if not moved:
-            break
+        if label.key not in protected and not center_conflicts(markers[label.key]):
+            marker_index.put(label.key, markers[label.key])
+            ordinary.append(label)
+    arrange_group(ordinary)
     if max_labels is not None:
         # Protect only the centers of actual annotations when filling gaps.
         # The initial pool still gets joint relocation; later candidates may

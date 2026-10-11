@@ -777,7 +777,7 @@ class WindowUiMixin:
         option_box.setContentsMargins(0, 4, 0, 0)
         option_box.setSpacing(8)
         self.optimize_layout = QCheckBox("自动避让")
-        self.optimize_layout.setToolTip("避让标签、地形中心和引线。")
+        self.optimize_layout.setToolTip("重要地形先排，普通标注让位；避让标签、中心和引线。保留手动拖动的位置。")
         self.optimize_layout.setChecked(True)
         self.optimize_layout.toggled.connect(self.style_changed)
         option_box.addWidget(self.optimize_layout)

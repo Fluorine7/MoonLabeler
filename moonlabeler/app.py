@@ -41,7 +41,7 @@ from .layout import LabelBox, arrange_labels, leader_segment
 from .landing_sites import is_landing_site, landing_marker_radius
 from .project import Project, export_svg, DEFAULT_FONT_PERCENT, font_tier_percentages
 from .registration import calibration_report, transform_points, auto_register
-from .sources import load_catalog, read_image, nasa_reference, refresh_catalog, feature_search_text
+from .sources import load_catalog, read_image, nasa_reference, refresh_catalog, feature_search_text, COMMON_FEATURES
 from .terrain import ElevationMap, download_basic_dem, render_region
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1539,7 +1539,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                     radius = min(item.font_size*1.3, max(4., feature["diameter"]*scale/(4*MOON_RADIUS_KM)))
                 objects[fid] = item
                 yield LabelBox(fid, tuple(xy), bounds.width(), bounds.height(), radius, fixed,
-                               data.get("force", False), item.outline_segments)
+                               data.get("force", False), item.outline_segments,
+                               important=feature['name'] in COMMON_FEATURES or is_landing_site(feature))
         h, w = self.image.shape[:2]
         if self.project.optimize_layout:
             placements, self.auto_omitted = arrange_labels(requests(), w, h, gap=max(5., reference_font*.4),

@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.0** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.1** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -21,7 +21,7 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 - 辅助找坑、名称确认和参考点配准合并在同一流程；手动补点默认折叠，识别失败保留当前候选和参考点。
 - 疑似坑检测：本地 OpenCV 检测圆形 / 椭圆坑缘，支持修正中心与导出 CSV。
 - 照片画布在左、紧凑检查器在右；低频参数折叠，候选坑确认操作固定在页脚。
-- 标注布局：自动避让标签、地形中心和引线；拖动标签或双击改名。
+- 标注布局：哥白尼、第谷、柏拉图等常见重要地形先占位，普通标签及其中心不抢占这些位置；必要时对重要标签有限扩大引线范围。自动避让标签、地形中心和引线；拖动标签或双击改名。
 - 候选选择综合投影大小、坑缘与周围地表对比及区域分布；主地形优先于附属字母坑，避让后从其余候选补位，数量上限约束最终显示结果。
 - 按投影视直径分大、中、小三档字号，默认短边的 **1.8% / 1.5% / 1.2%**；“字号递减”默认每档减 **0.3 个百分点**，设为 0 则统一字号。新照片的标签上限为 **200**。
 - 默认近白色文字与深色描边；大环形山默认用平滑椭圆，可选坑缘轮廓，小坑使用短引线。
@@ -134,6 +134,8 @@ If you can confirm only one or two points, click **用参考点自动配准** (R
 The **辅助找坑与参考点** (Candidate and reference assistance) section only assists point placement; you still confirm each name. Search for a crater name in the scrolling page, click a search-result row (or press Enter in the search field to choose the first hit), then click **确认地名，加入参考点** (Confirm name and add reference point). Results appear directly in a list, including single matches such as Hadley C; entering a query does not assign a name automatically. This search lists craters only; rilles, mountains and other formations remain available in **手动补点**. The confirmed reference points and automatic-registration action remain on the same page. Double-click a reference-point table row to replace its position, or uncheck it to exclude it before recalibrating.
 
 The bundled example is explicitly synthetic and demonstrates calibration and editing. It is not a real-image recognition benchmark. Optional FITS support requires `astropy`.
+
+Important named landmarks (including Copernicus, Tycho and Plato) reserve label space before ordinary terrain centers enter collision checks. Ordinary captions and markers yield to those placements. A bounded wider search runs only when compact placements for an important caption fail. Manual positions, explicit hiding, visibility filters and the final label budget remain respected; conflicts between important targets or fixed captions can still cause omissions. This layout change does not rerun registration.
 
 ### Landing sites
 
