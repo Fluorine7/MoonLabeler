@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.11** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.0** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -25,6 +25,7 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 - 候选选择综合投影大小、坑缘与周围地表对比及区域分布；主地形优先于附属字母坑，避让后从其余候选补位，数量上限约束最终显示结果。
 - 按投影视直径分大、中、小三档字号，默认短边的 **1.8% / 1.5% / 1.2%**；“字号递减”默认每档减 **0.3 个百分点**，设为 0 则统一字号。新照片的标签上限为 **200**。
 - 默认近白色文字与深色描边；大环形山默认用平滑椭圆，可选坑缘轮廓，小坑使用短引线。
+- 可选着陆点图层：阿波罗 11、12、14、15、16、17 与嫦娥三、四、五、六号；默认关闭，浅青色十字与短引线，使用小档字号。
 - 设置修改后，点击 **“重新生成标注”** 统一应用。
 - 中文译名来自国家天文科学数据中心词表；没有可靠译名的名称保留英文。
 - 保存 `.moonlabel` 工程，导出与原图同尺寸 PNG 或可编辑 SVG；另提供 LOLA DEM 光照模拟参考。
@@ -76,6 +77,10 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 坑缘圈仅用于直径至少 35 km 且在照片中足够大的坑，小坑保留短引线。“标注 → 排版选项 → 轮廓形状”默认选择平滑 **椭圆**，也可选 **坑缘轮廓（手绘风）**；点击“重新生成标注”应用。局部坑群路径和含高程投影的后备精修路径优先沿 DEM 中连续的坑缘高地取点，考虑地形高度投影，再拟合椭圆；坑缘轮廓选项保留这些点的不规则形状。数据不足或其他识别路径使用目录参考圈。形状设置与高程坑缘保存在工程中，并用于 PNG / SVG。这些轮廓受 DEM 约 1.9 km 网格、遮挡与配准残差限制，并非逐像素测得的真实坑壁。小拟合残差不等于绝对定位精度。
 
 本仓库包含源码、公开数据来源记录及可公开示例。用户提供的摄影师实拍、相关导出图、运行缓存和虚拟环境不随源码分发。
+
+### 着陆点
+
+在“标注 → 筛选与数量”勾选 **“着陆点（阿波罗 / 嫦娥）”**，点击“重新生成标注”。旁边“颜色”可单独调整着陆点颜色。着陆点不受地形类别和最小直径限制，但仍遵循照片范围、可见半球、受光筛选、数量上限及布局避让；嫦娥四号、六号位于背面，不会标在地球视角的正面月盘。坐标数据随程序提供，可离线使用；这里只投影地理位置，并非从照片识别着陆器。
 
 ### 许可与致谢
 
@@ -129,6 +134,12 @@ If you can confirm only one or two points, click **用参考点自动配准** (R
 The **辅助找坑与参考点** (Candidate and reference assistance) section only assists point placement; you still confirm each name. Search for a crater name in the scrolling page, click a search-result row (or press Enter in the search field to choose the first hit), then click **确认地名，加入参考点** (Confirm name and add reference point). Results appear directly in a list, including single matches such as Hadley C; entering a query does not assign a name automatically. This search lists craters only; rilles, mountains and other formations remain available in **手动补点**. The confirmed reference points and automatic-registration action remain on the same page. Double-click a reference-point table row to replace its position, or uncheck it to exclude it before recalibrating.
 
 The bundled example is explicitly synthetic and demonstrates calibration and editing. It is not a real-image recognition benchmark. Optional FITS support requires `astropy`.
+
+### Landing sites
+
+In the Annotation tab, enable **着陆点（阿波罗 / 嫦娥）** under the filter controls, then click **重新生成标注** (Regenerate annotations). This optional layer is off by default and uses a separate pale-cyan color, cross markers and short leaders, with the smallest configured font tier. The adjacent color button changes this layer alone.
+
+The bundled offline locations cover Apollo 11, 12, 14, 15, 16, 17 and Chang’e 3, 4, 5, 6. Terrain type and minimum diameter do not filter these points; photo bounds, hemisphere visibility, illumination, label budget and collision avoidance still apply. Chang’e 4 and 6 are on the far side and are excluded from Earth-view photographs. These are projected geographic locations, not detections of visible landers. Settings and label edits persist in projects; PNG and SVG use the same styling. Toggling the layer does not rerun recognition. Coordinates and provenance: [NASA NSSDCA / LROC](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html).
 
 ### Scientific limitations
 

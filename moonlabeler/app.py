@@ -38,6 +38,7 @@ from .guided_identification import identify_from_reference_points, reference_poi
 from .terrain_refinement import refine_crater_identification
 from .geometry import compute_geometry, MOON_RADIUS_KM
 from .layout import LabelBox, arrange_labels, leader_segment
+from .landing_sites import is_landing_site, landing_marker_radius
 from .project import Project, export_svg, DEFAULT_FONT_PERCENT, font_tier_percentages
 from .registration import calibration_report, transform_points, auto_register
 from .sources import load_catalog, read_image, nasa_reference, refresh_catalog, feature_search_text
@@ -133,6 +134,7 @@ class Annotation(QGraphicsItem):
         self.feature, self.anchor, self.text = feature, QPointF(*anchor), text
         self.project, self.moved, self.edit = project, moved, edit
         self.font_size = project.font_size if font_size is None else font_size
+        self.color = project.label_color(feature)
         self.outline_segments = []
         self.font = QFont("PingFang SC")
         self.font.setPixelSize(self.font_size)
@@ -144,13 +146,20 @@ class Annotation(QGraphicsItem):
         self.setCursor(Qt.CursorShape.OpenHandCursor)
         self.setZValue(20)
         self.line = QGraphicsLineItem()
-        self.line.setPen(QPen(QColor(project.color), max(1.2, self.font_size*.035)))
+        self.line.setPen(QPen(QColor(self.color), max(1.2, self.font_size*.035)))
         self.line.setZValue(10)
-        marker_radius = max(2.5, self.font_size*.06)
-        marker = QGraphicsEllipseItem(self.anchor.x()-marker_radius, self.anchor.y()-marker_radius,
-                                      marker_radius*2, marker_radius*2, self.line)
-        marker.setBrush(QColor(project.color))
-        marker.setPen(QPen(Qt.PenStyle.NoPen))
+        if is_landing_site(feature):
+            radius = landing_marker_radius(self.font_size)
+            x, y = self.anchor.x(), self.anchor.y()
+            for segment in ((x-radius, y, x+radius, y), (x, y-radius, x, y+radius)):
+                marker = QGraphicsLineItem(*segment, self.line)
+                marker.setPen(QPen(QColor(self.color), max(1.2, self.font_size*.045)))
+        else:
+            marker_radius = max(2.5, self.font_size*.06)
+            marker = QGraphicsEllipseItem(self.anchor.x()-marker_radius, self.anchor.y()-marker_radius,
+                                          marker_radius*2, marker_radius*2, self.line)
+            marker.setBrush(QColor(self.color))
+            marker.setPen(QPen(Qt.PenStyle.NoPen))
 
     def boundingRect(self):
         padding = max(5., self.font_size*.04)
@@ -159,7 +168,7 @@ class Annotation(QGraphicsItem):
     def paint(self, painter, option, widget=None):
         painter.strokePath(self.path, QPen(QColor("#141923"), max(2., self.font_size*.06),
                                            Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-        painter.fillPath(self.path, QColor(self.project.color))
+        painter.fillPath(self.path, QColor(self.color))
         if self.isSelected():
             painter.setPen(QPen(QColor("#88baf3"), 1.))
             painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -266,6 +275,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.workers = set()
         self.style_pending = False
         self.pending_color = self.project.color
+        self.pending_landing_color = self.project.landing_color
         self.canvas = Canvas()
         self.canvas.point_clicked.connect(self.canvas_point_clicked)
         self.canvas.image_dropped.connect(self.open_image)
@@ -848,6 +858,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.ui_font_step.setValue(self.project.font_step_percent)
         self.displayed_font_step_percent = self.ui_font_step.value()
         self.lit.setChecked(self.project.illuminated_only)
+        self.landing_sites_toggle.setChecked(self.project.show_landing_sites)
+        self.pending_landing_color = self.project.landing_color
+        self.landing_color_button.setToolTip(f"着陆点颜色：{self.pending_landing_color}；使用小档字号")
         self.optimize_layout.setChecked(self.project.optimize_layout)
         self.crater_outlines.setChecked(self.project.crater_outlines)
         self.crater_outline_shape.setCurrentIndex(self.crater_outline_shape.findData(self.project.crater_outline_shape))
@@ -1404,7 +1417,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                           "致敬 Jim Mosher 与 Henrik Bondo 创建的 Lunar Terminator Visualization Tool。"
                           "本程序参考其地形点校准与 DEM 光照思路，使用 Python / Qt 独立实现。\n\n"
                           "感谢樊仕达（10deg）提供 moonlib 代码作为参考。\n\n"
-                          "地名：USGS / IAU；月面高程：LRO / LOLA；星历：JPL DE421。\n"
+                          "地名：USGS / IAU；月面高程：LRO / LOLA；星历：JPL DE421；着陆点：NASA NSSDCA / LROC。\n"
                           "疑似坑检测改编自 Ram Maruboina 的 Lunar Crater Detector（MIT）。\n"
                           "来源和模型限制见项目目录的 ACKNOWLEDGEMENTS.md 与 README.md。")
 
@@ -1438,6 +1451,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         for key, value in (("min_diameter", self.diameter.value()), ("kind", self.kind.currentText()),
                            ("max_labels", self.maximum.value()), ("language", self.language.currentText()),
                            ("illuminated_only", self.lit.isChecked()),
+                           ("show_landing_sites", self.landing_sites_toggle.isChecked()),
+                           ("landing_color", self.pending_landing_color),
                            ("optimize_layout", self.optimize_layout.isChecked()),
                            ("crater_outlines", self.crater_outlines.isChecked()),
                            ("crater_outline_shape", self.crater_outline_shape.currentData()), ("color", self.pending_color)):
@@ -1457,6 +1472,13 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if color.isValid():
             self.pending_color = color.name()
             self.color_button.setText(f"文字与引线颜色：{self.pending_color}")
+            self.style_changed()
+
+    def choose_landing_color(self):
+        color = QColorDialog.getColor(QColor(self.pending_landing_color), self)
+        if color.isValid():
+            self.pending_landing_color = color.name()
+            self.landing_color_button.setToolTip(f"着陆点颜色：{self.pending_landing_color}；使用小档字号")
             self.style_changed()
 
     def move_label(self, fid, position):

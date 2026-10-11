@@ -18,6 +18,7 @@ from PIL import Image, ImageColor
 from .geometry import Geometry, MOON_RADIUS_KM, surface_vectors
 from .sources import read_image, write_json, COMMON_FEATURES
 from .registration import transform_points
+from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR, landing_marker_radius
 
 DEFAULT_FONT_PERCENT = 1.8
 DEFAULT_FONT_STEP_PERCENT = .3
@@ -115,10 +116,10 @@ def _validate_project_data(data):
         _number(style['font_percent'], 'style.font_percent', .000001, 100)
     if 'font_step_percent' in style:
         _number(style['font_step_percent'], 'style.font_step_percent', 0, 100)
-    for key in ('illuminated_only', 'optimize_layout', 'crater_outlines'):
+    for key in ('illuminated_only', 'optimize_layout', 'crater_outlines', 'show_landing_sites'):
         if key in style and type(style[key]) is not bool:
             _invalid_field(f'style.{key}')
-    for key in ('kind', 'language', 'color', 'crater_outline_shape'):
+    for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color'):
         if key in style and not isinstance(style[key], str):
             _invalid_field(f'style.{key}')
     if 'language' in style and style['language'] not in ('双语', '英文', '中文'):
@@ -128,6 +129,11 @@ def _validate_project_data(data):
             ImageColor.getrgb(style['color'])
         except ValueError as exc:
             raise ValueError('工程字段无效：style.color。') from exc
+    if 'landing_color' in style:
+        try:
+            ImageColor.getrgb(style['landing_color'])
+        except ValueError as exc:
+            raise ValueError('工程字段无效：style.landing_color。') from exc
     observer = _mapping(data.get('observer', {}), 'observer')
     for key, extent in (('latitude', 90), ('longitude', 180)):
         if observer.get(key) is not None:
@@ -212,6 +218,8 @@ class Project:
     font_percent: float | None = DEFAULT_FONT_PERCENT
     font_step_percent: float = DEFAULT_FONT_STEP_PERCENT
     color: str = "#f5f5f2"
+    show_landing_sites: bool = False
+    landing_color: str = DEFAULT_LANDING_COLOR
     language: str = "双语"
     min_diameter: float = 40.
     kind: str = "全部"
@@ -251,10 +259,10 @@ class Project:
         needed when changing typography. Long formations use catalogue extent.
         """
         sizes = self.font_sizes(shape)
-        result = {feature['id']: self.font_size for feature in features}
+        result = {feature['id']: sizes[-1] if is_landing_site(feature) else self.font_size for feature in features}
         if self.font_step_percent == 0 or self.geometry is None or self.matrix is None:
             return result
-        usable = [f for f in features if all(key in f for key in ('lat', 'lon', 'diameter'))]
+        usable = [f for f in features if not is_landing_site(f) and all(key in f for key in ('lat', 'lon', 'diameter'))]
         if not usable:
             return result
         centers = surface_vectors([f['lat'] for f in usable], [f['lon'] for f in usable])
@@ -275,6 +283,9 @@ class Project:
         result.update((f['id'], sizes[level]) for f, level in zip(usable, levels))
         return result
 
+    def label_color(self, feature):
+        return self.landing_color if is_landing_site(feature) else self.color
+
     def save(self, path):
         path = Path(path)
         image = Path(self.image_path).resolve()
@@ -289,7 +300,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": os.path.relpath(Path(self.terrain_path).resolve(), path.parent.resolve()) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape")}}
         write_json(path, data)
 
     @classmethod
@@ -320,7 +331,7 @@ class Project:
         project.font_percent = None  # Older projects only store a pixel size.
         project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "font_step_percent", "color", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape"):
+            if key in ("font_size", "font_percent", "font_step_percent", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
@@ -346,6 +357,11 @@ class Project:
         """
         if self.geometry is None or self.matrix is None:
             return []
+        # Landing locations never enter crater recognition or the terrain
+        # catalogue. Only the optional display layer appends these ten points.
+        catalog = list(catalog)
+        if self.show_landing_sites:
+            catalog.extend(landing_sites())
         points, visible, lit = self.geometry.project([f["lat"] for f in catalog], [f["lon"] for f in catalog])
         pixels = transform_points(self.matrix, points)
         h, w = shape[:2]
@@ -373,7 +389,8 @@ class Project:
         for f, xy, okay, sunlight, depth in zip(catalog, pixels, visible & inside, lit, depths):
             if not okay:
                 continue
-            if f["diameter"] < self.min_diameter or (self.kind != "全部" and f["kind"] != self.kind):
+            site = is_landing_site(f)
+            if not site and (f["diameter"] < self.min_diameter or (self.kind != "全部" and f["kind"] != self.kind)):
                 continue
             contrast, roughness = 0., 0.
             if gray is not None:
@@ -422,7 +439,7 @@ class Project:
                     roughness = float(np.percentile(noise[sy, sx], 80)/bright)
             data = self.labels.get(f['id'], {})
             satellite = f['kind'] == 'Satellite Feature' or bool(re.search(r'\s[A-Z]$', f['name']))
-            tier = (0 if data.get('force') or 'position' in data else
+            tier = (0 if site or data.get('force') or 'position' in data else
                     1 if f['name'] in COMMON_FEATURES else 3 if satellite else 2)
             # Apparent size saturates: a huge flooded floor should not always
             # outrank a smaller, high-contrast rim. Foreshortened limb features
@@ -524,7 +541,7 @@ def export_svg(path, image, entries, project, leaders=None):
              '<g id="annotations" font-family="PingFang SC, sans-serif">']
     for feature, anchor, position in entries:
         fid = escape(feature["id"], {'"': '&quot;'})
-        color = escape(project.color, {'"': '&quot;'})
+        color = escape(project.label_color(feature), {'"': '&quot;'})
         ax, ay = anchor
         x, y = position
         font_size = font_sizes[feature['id']]
@@ -534,9 +551,14 @@ def export_svg(path, image, entries, project, leaders=None):
         for segment in outline:
             contour = 'M '+ ' L '.join(f'{px:.3f},{py:.3f}' for px, py in segment)
             lines.append(f'<path class="crater-outline" d="{contour}" stroke="{color}" stroke-width="{max(1.2, font_size*.045):.3f}" fill="none"/>')
+        if is_landing_site(feature):
+            radius = landing_marker_radius(font_size)
+            marker = f'<path class="landing-marker" d="M {ax-radius:.3f},{ay:.3f} H {ax+radius:.3f} M {ax:.3f},{ay-radius:.3f} V {ay+radius:.3f}" stroke="{color}" stroke-width="{max(1.2, font_size*.045):.3f}" fill="none"/>'
+        else:
+            marker = '' if outline else f'<circle cx="{ax:.3f}" cy="{ay:.3f}" r="{max(2.5, font_size*.06):.3f}" fill="{color}"/>'
         lines.extend([
                       f'<path d="M {line[0]:.3f},{line[1]:.3f} L {line[2]:.3f},{line[3]:.3f}" stroke="{color}" stroke-width="{max(1.2, font_size*.035):.3f}" fill="none"/>',
-                      '' if outline else f'<circle cx="{ax:.3f}" cy="{ay:.3f}" r="{max(2.5, font_size*.06):.3f}" fill="{color}"/>',
+                      marker,
                       f'<text xml:space="preserve" x="{x:.3f}" y="{y+font_size:.3f}" fill="{color}" font-size="{font_size}" stroke="#141923" stroke-width="{max(2., font_size*.06):.3f}" paint-order="stroke">{escape(project.label_text(feature))}</text>',
                       '</g>'])
     lines.extend(['</g>', '</svg>'])

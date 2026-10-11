@@ -36,6 +36,7 @@ Lommel–Seeliger 使用 `cos(i) / (cos(i) + cos(e))`；Lambert 使用 `max(cos(
 - 月面地名：[USGS / IAU Planetary Nomenclature GIS](https://planetarynames.wr.usgs.gov/GIS_Downloads)。
 - 中文地名：[国家天文科学数据中心 · 天文学名词](https://nadc.china-vo.org/astrodict/)，致谢中国天文学会天文学名词审定委员会、词表编订者和数据中心。908 对源词条与链接保存于 `moonlabeler/data/chinese_names.json`；对照原名并去掉环形山类别后缀用于紧凑标注，卫星坑按主坑译名加字母派生。词条出版与审定状态以原网站为准，并不声称覆盖所有月球地名。未收录者保留官方英文名称。
 - 星历与月球姿态：[JPL DE421](https://ssd.jpl.nasa.gov/planets/eph_export.html)，通过 [Skyfield 月面参考系接口](https://rhodesmill.org/skyfield/planetary.html)计算。
+- 着陆点：[NASA NSSDCA 月面人造物位置表](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html)，感谢 NSSDCA 与 LROC 团队。采用阿波罗登月舱下降级及嫦娥着陆器坐标，DE421 平均地球 / 极轴坐标系，北纬、东经为正；内置数据记录来源日期，不包含其代码。
 - 高程：[LRO / LOLA](https://lola.gsfc.nasa.gov/) 科学团队及数据生产者。
 - 在线参考：[NASA SVS 2026 月相与天平动](https://svs.gsfc.nasa.gov/5587/)。
 - 配准回归照片：[NASA Galileo PIA00405](https://science.nasa.gov/photojournal/earths-moon/)。它用于已知图像变换的回归测试，未用于证明独立照片识别精度。
@@ -50,6 +51,7 @@ MoonLabeler is authored by **Fluorine Zhu** and released under **GNU GPL version
 - **C. Akinlar, C. Topal, and OpenCV contributors:** EdgeDrawing / EDCircles provides partial-edge grouping and ellipse detection. This is image geometry detection, not lunar place-name identification.
 - **NASA SVS, Ernie Wright, Noah Petro, LRO, LROC, and LOLA teams:** Lunar textures, elevation data, and visualization references. The bundled texture's canonical source, fixed mirror, and JPEG recompression provenance are recorded with the data.
 - **USGS / IAU planetary nomenclature contributors:** Terrain names, positions, categories, and diameters.
+- **NASA NSSDCA and LROC:** [Landing-location coordinates](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html) for Apollo LM descent stages and Chang’e landers, in the DE421 mean Earth / polar axis frame (north/east positive). The bundled data retain source and retrieval dates; no upstream code is included.
 - **JPL and Skyfield contributors:** Ephemerides, lunar orientation, and observing geometry.
 - **樊仕达 (10deg) — moonlib:** Provided code as a reference for this project's lunar geometry research and implementation.
 - **National Astronomical Data Center and Chinese astronomical terminology contributors:** Sourced Chinese names. Each imported term retains its source URL. Lettered satellites derive their names from the parent term and the original official letter; they are not presented as independently approved translations.
