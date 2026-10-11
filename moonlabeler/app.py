@@ -515,6 +515,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         fid = name_item.data(Qt.ItemDataRole.UserRole) if name_item is not None else None
         self.crater_anchor_button.setEnabled(selected and fid is not None)
         self.crater_anchor_button.setText("确认地名，更新参考点" if any(a["id"] == fid for a in self.project.anchors) else "确认地名，加入参考点")
+        self.ui_refresh_crater_review()
 
     def search_crater_features(self, text):
         normalized = lambda value: "".join(c for c in unicodedata.normalize("NFKD", value.casefold()) if not unicodedata.combining(c))
@@ -634,7 +635,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         blocked = self.capture_time.blockSignals(True)
         self.capture_time.setTime(time)
         self.capture_time.blockSignals(blocked)
-        self.capture_time_toggle.setText(f"具体时间 · UTC {time.toString('HH:mm:ss')}")
+        self.ui_update_time_summary()
 
     def utc(self):
         # Treat displayed components as UTC, independent of host timezone.
@@ -918,7 +919,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.workspace_tabs.setCurrentIndex(0)
         self.registration_tabs.setCurrentWidget(self.crater_tab)
         self.ui_set_manual_section_expanded(True)
-        QTimer.singleShot(0, lambda: self.scroll.ensureWidgetVisible(self.crater_button))
+        self.ui_scroll_to_crater_controls()
 
     def start_pick(self):
         if self.image is None:

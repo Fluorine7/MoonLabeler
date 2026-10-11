@@ -22,7 +22,7 @@ Layout contract notes:
 Do not import app.py here (it imports this mixin).
 """
 from pathlib import Path
-from PySide6.QtCore import Qt, QDateTime, QEvent, QTime, QTimeZone
+from PySide6.QtCore import Qt, QDateTime, QEvent, QTimer, QTime, QTimeZone
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
@@ -96,6 +96,64 @@ class WindowUiMixin:
         since the button itself lives inside it)."""
         self.ui_set_manual_section_expanded(True)
 
+    def ui_size_review_list(self, widget, maximum_rows):
+        count = widget.count()
+        widget.setVisible(count > 0)
+        if count:
+            row_height = max(24, widget.sizeHintForRow(0))
+            widget.setFixedHeight(min(count, maximum_rows)*row_height + 2*widget.frameWidth() + 4)
+
+    def ui_refresh_crater_hits_view(self, *args):
+        """Show actual matches without consuming space for an empty list."""
+        self.ui_size_review_list(self.crater_feature, 2 if self.height() < 800 else 3)
+
+    def ui_refresh_crater_review(self):
+        if not hasattr(self, 'crater_action_panel'):
+            return  # The detector controls are constructed before the footer.
+        self.ui_size_review_list(self.crater_list, 2 if self.height() < 800 else 4)
+        for widget in (self.crater_overlay_toggle, self.crater_repick, self.crater_remove, self.crater_export):
+            widget.setVisible(bool(self.crater_candidates))
+        self.ui_refresh_crater_hits_view()
+        self.ui_update_registration_height()
+
+    def ui_update_registration_height(self, *args):
+        if not hasattr(self, 'crater_action_panel'):
+            return
+        height = 16777215
+        if self.registration_tabs.currentWidget() is self.crater_tab:
+            # QTabWidget otherwise reserves the much taller manual-points page,
+            # leaving blank space and scrolling the detector out of sight.
+            layout = self.crater_tab.layout()
+            height = self.crater_tab.sizeHint().height()
+            if layout.hasHeightForWidth():
+                height = max(height, layout.totalHeightForWidth(self.crater_tab.width()))
+            height += self.registration_tabs.tabBar().sizeHint().height() + 4
+        if self.registration_tabs.maximumHeight() != height:
+            self.registration_tabs.setMaximumHeight(height)
+
+    def ui_scroll_to_crater_controls(self):
+        self.ui_crater_scroll_timer.start(0)
+
+    def ui_reveal_crater_controls(self):
+        if self.crater_action_panel.isVisible() and self.registration_tabs.currentWidget() is self.crater_tab:
+            self.scroll.ensureWidgetVisible(self.crater_button, 0, 12)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, 'ui_crater_scroll_timer'):
+            self.ui_refresh_crater_review()
+            if self.crater_action_panel.isVisible():
+                self.ui_scroll_to_crater_controls()
+
+    def ui_update_time_summary(self, *args):
+        """折叠时标题附带当前时间；展开后编辑框就在眼前，标题只留“具体时间”。
+        app.sync_capture_time calls this after synchronizing the editor."""
+        if self.capture_time_toggle.isChecked():
+            self.capture_time_toggle.setText("具体时间")
+        else:
+            self.capture_time_toggle.setText(
+                f"具体时间 · UTC {self.capture_time.time().toString('HH:mm:ss')}")
+
     def ui_reconcile_confirm_bar(self, expanded):
         """While 辅助找坑 review is active, the fixed confirmation bar must not
         outlive a manually collapsed section. app.py re-evaluates the bar on
@@ -112,6 +170,13 @@ class WindowUiMixin:
                                                             getattr(self, "crater_action_panel", None)):
             if not self.manual_section_toggle.isChecked():
                 self.manual_section_toggle.setChecked(True)
+            if watched is self.crater_action_panel:
+                self.ui_scroll_to_crater_controls()
+        if watched is getattr(self, 'crater_tab', None) and event.type() in (QEvent.Type.LayoutRequest, QEvent.Type.Resize):
+            self.ui_update_registration_height()
+        if watched is getattr(self, 'ui_crater_viewport', None) and event.type() == QEvent.Type.Resize:
+            if self.crater_action_panel.isVisible():
+                self.ui_scroll_to_crater_controls()
         return super().eventFilter(watched, event)
 
     def ui_collapsible(self, title, expanded=False):
@@ -255,8 +320,10 @@ class WindowUiMixin:
         form.addRow("拍摄日期", self.date)
         self.capture_time_toggle, self.capture_time_block, time_box = self.ui_collapsible("具体时间 · UTC 15:00:00")
         self.capture_time = QTimeEdit(QTime(15, 0))
-        self.capture_time.setDisplayFormat("HH:mm:ss")
-        self.capture_time.setToolTip("输入 UTC 时间；北京时间需要减去 8 小时，注意日期跨天。")
+        # 时:分 keeps typed entry short — 两位小时后自动跳到分钟，无需点击定位或删除；
+        # 秒保留默认或工程原值，仍随 time() 一起读写。
+        self.capture_time.setDisplayFormat("HH:mm")
+        self.capture_time.setToolTip("输入 UTC 时:分；秒保留默认或工程原值。北京时间需减 8 小时，注意日期跨天。")
         time_form = self.ui_form()
         time_form.addRow("时间（UTC）", self.capture_time)
         time_box.addLayout(time_form)
@@ -267,6 +334,7 @@ class WindowUiMixin:
         form.addRow(self.capture_time_block)
         self.capture_time.timeChanged.connect(self.date.setTime)
         self.date.dateTimeChanged.connect(self.sync_capture_time)
+        self.capture_time_toggle.toggled.connect(self.ui_update_time_summary)
         self.date.dateTimeChanged.connect(self.geometry_changed)
         self.topocentric = QCheckBox("使用拍摄地点")
         self.topocentric.toggled.connect(self.geometry_changed)
@@ -322,6 +390,7 @@ class WindowUiMixin:
         self.registration_tabs.addTab(craters, "辅助找坑")
         self.registration_tabs.addTab(manual, "已知地名取点")
         self.crater_tab = craters
+        self.crater_tab.installEventFilter(self)
         self.manual_tab = manual
         self.reference_tabs = QTabWidget()
         self.reference_tabs.setObjectName("subTabs")
@@ -439,6 +508,7 @@ class WindowUiMixin:
         # 疑似坑（检测与确认）
         self.build_crater_controls(craters)
         self.registration_tabs.currentChanged.connect(self.registration_page_changed)
+        self.registration_tabs.currentChanged.connect(self.ui_update_registration_height)
         self.workspace_tabs.currentChanged.connect(self.review_page_changed)
 
         # -------------------------------------------------- 校准 · DEM 模拟页签
@@ -615,10 +685,14 @@ class WindowUiMixin:
         labels_layout.addStretch()
 
         # -------------------------------------------------- 疑似坑确认操作条
-        # Kept visible above the tab bar (outside the scroll) while detector
-        # settings and the candidate list scroll; app.py toggles visibility.
+        # Fixed footer holds review controls; detector settings scroll above it.
         self.crater_action_panel = QGroupBox("确认地形")
         self.crater_action_panel.setObjectName("confirmPanel")
+        self.ui_crater_scroll_timer = QTimer(self)
+        self.ui_crater_scroll_timer.setSingleShot(True)
+        self.ui_crater_scroll_timer.timeout.connect(self.ui_reveal_crater_controls)
+        self.ui_crater_viewport = self.scroll.viewport()
+        self.ui_crater_viewport.installEventFilter(self)
         # Showing either widget is app.py's way of entering a manual flow;
         # the section opens with them (see eventFilter).
         for review_widget in (self.cancel_pick_button, self.crater_action_panel):
@@ -630,6 +704,9 @@ class WindowUiMixin:
         self.crater_controls_layout.removeItem(self.crater_review_actions)
         self.crater_review_actions.setParent(None)
         action_box.addLayout(self.crater_review_actions)
+        # 复核操作条 = 完整确认流程：候选列表 → 轮廓开关 → 搜索 → 地名 → 确认。
+        action_box.addWidget(self.crater_list, 1)
+        action_box.addWidget(self.crater_overlay_toggle)
         action_box.addWidget(self.crater_search)
         action_box.addWidget(self.crater_feature)
         self.crater_anchor_button.setProperty("primary", True)
@@ -665,6 +742,7 @@ class WindowUiMixin:
         splitter.setSizes([1050, 390])
         self.setCentralWidget(splitter)
         self.search_features("")
+        self.ui_refresh_crater_review()
 
     def build_crater_controls(self, page):
         box = QVBoxLayout(page)
@@ -715,14 +793,12 @@ class WindowUiMixin:
         self.crater_status.setWordWrap(True)
         self.crater_status.setObjectName("statusLabel")
         box.addWidget(self.crater_status)
+        # 检测在页签里完成；候选列表与轮廓开关归底部复核操作条（见 panel 组装），
+        # 避免“上半屏检测、下半屏确认”的割裂。
         self.crater_list = QListWidget()
-        self.crater_list.setMinimumHeight(100)
-        self.crater_list.setMaximumHeight(150)
         self.crater_list.currentRowChanged.connect(self.select_crater_candidate)
-        box.addWidget(self.crater_list, 1)
         self.crater_overlay_toggle = QCheckBox("显示全部候选轮廓")
         self.crater_overlay_toggle.toggled.connect(self.show_crater_overlays)
-        box.addWidget(self.crater_overlay_toggle)
         row = QHBoxLayout()
         self.crater_review_actions = row
         self.crater_remove = QPushButton("移除候选")
@@ -743,11 +819,10 @@ class WindowUiMixin:
         # Show search hits directly, including a single result. A combo box
         # silently preselects that result and opens a popup over confirmation.
         self.crater_feature = QListWidget()
-        self.crater_feature.setMinimumHeight(60)
-        self.crater_feature.setMaximumHeight(100)
         self.crater_feature.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.crater_feature.setToolTip("点击地名后确认。这里只列环形山；月溪、山脉等在“已知地名取点”中选择。")
         self.crater_feature.currentItemChanged.connect(self.update_crater_buttons)
+        self.crater_feature.hide()
         box.addWidget(self.crater_feature)
         self.crater_anchor_button = QPushButton("确认地名，加入参考点")
         self.crater_anchor_button.clicked.connect(self.use_crater_candidate)

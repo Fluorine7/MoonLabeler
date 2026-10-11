@@ -4,7 +4,7 @@
 import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTime
 from PySide6.QtWidgets import QApplication, QPushButton, QToolButton
 
 from moonlabeler.app import MainWindow
@@ -229,6 +229,50 @@ def test_manual_calibration_section_collapsed_by_default_with_expand_hook():
         assert window.ui_manual_section_expanded() is True
         # 拍摄条件 stays outside the collapsible and always visible.
         assert window.geometry_group.isVisible()
+    finally:
+        window.dirty = False
+        window.close()
+
+
+def test_time_summary_only_when_collapsed_and_compact_entry():
+    window, application = make_window()
+    try:
+        assert "15:00:00" in window.capture_time_toggle.text()
+        window.capture_time_toggle.setChecked(True)
+        application.processEvents()
+        # 展开后编辑框就在眼前，标题不再重复时间。
+        assert window.capture_time_toggle.text() == "具体时间"
+        window.date.setTime(QTime(21, 30))
+        application.processEvents()
+        assert window.capture_time_toggle.text() == "具体时间"
+        window.capture_time_toggle.setChecked(False)
+        assert "21:30:00" in window.capture_time_toggle.text()
+        # 时:分输入；秒值内部保留（默认 0 或工程原值）。
+        assert window.capture_time.displayFormat() == "HH:mm"
+        window.capture_time.setTime(QTime(12, 34, 56))
+        assert window.capture_time.time() == QTime(12, 34, 56)
+    finally:
+        window.dirty = False
+        window.close()
+
+
+def test_crater_review_bar_holds_the_full_confirmation_flow():
+    window, application = make_window()
+    try:
+        window.workspace_tabs.setCurrentIndex(0)
+        # 真实路径：用户展开入口后进入复核；页签顺序可能辅助找坑在前，
+        # 两种状态都归位到复核页签。
+        window.ui_set_manual_section_expanded(True)
+        window.registration_tabs.setCurrentWidget(window.manual_tab)
+        window.registration_tabs.setCurrentWidget(window.crater_tab)
+        application.processEvents()
+        assert window.crater_action_panel.isVisible()
+        for widget in (window.crater_list, window.crater_overlay_toggle,
+                       window.crater_search, window.crater_feature,
+                       window.crater_anchor_button, window.crater_finish_button):
+            assert window.crater_action_panel.isAncestorOf(widget)
+        # 进入复核模式自动展开区域，并把页签顶部滚入视野。
+        assert window.manual_section_block.isVisible()
     finally:
         window.dirty = False
         window.close()
