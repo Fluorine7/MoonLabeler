@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.8** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.9** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -65,7 +65,7 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 局部坑群识别通过后，会使用同一份约 33 MB 的 LOLA DEM 精修相机与观测方向；局部参考渲染和拟合都考虑地形高度。修正必须通过空间分区留出点与重新渲染的整幅纹理检查，否则保留原配准。该修正不代表反推出的拍摄地点或天平动测量值。
 
-高程后备搜索中，若粗略球面参考已有充分、分散的图像对应点，但明暗验证未通过，会先用含地形高度的投影精修，再执行原有的明暗、细节与分区验证。重叠分块的同一结果只精修一次，最多检查两个不同区域；没有降低最终接受门槛。2023-01-03 的南极实拍已通过无参考点配准回归。
+高程后备搜索中，粗略球面参考的对应点和纹理只能用于提名候选区域。模糊极区照片的稀疏匹配可进入含地形高度的投影精修，但必须重新找到足够且分散的对应点，通过明暗、细节与分区留出验证后才能接受。重叠分块的同一结果只精修一次，最多检查两个不同区域；最终接受门槛不变。拼接照片的黑色空白边界由实拍本身确定并排除，坑内阴影仍参与检查。2023-01-03 南极实拍、2020-08-06 北极 Meton 区域和 2004-10-08 南极 Drygalski 区域均通过无参考点配准回归；这些是区域与主要地形定位检查，并非逐像素坑缘精度测量。
 
 参考点辅助搜索也使用上述高程精修，并在精修后再次检查全部已确认点。已有候选通过粗检查时，其他区域中有竞争力的候选仍参与验证；不能区分的结果继续拒绝。导入工程会先检查参数与坐标，非法工程不会替换当前编辑内容。透明图片以黑底合成；16 位彩色 TIFF 保留原精度后作显示拉伸。
 
@@ -132,7 +132,7 @@ Atlas texture registration now attempts a global projection refinement from dist
 
 After crater-pattern identification, local refinement uses the same small LOLA DEM, with terrain height included consistently in reference rendering and pose fitting. A small camera correction is followed by retrieval of further independent terrain points and a bounded two-axis view fit. The terrain fallback also attempts view refinement. Changes are accepted only with spatially held-out improvement and a fresh dense-render check. The estimated direction is an image-derived projection correction, not a recovered observing location or a libration measurement. The original ephemeris geometry and validation record are retained in the project.
 
-When a coarse spherical terrain reference has strong, distributed image correspondences but fails the lighting check, the fallback now attempts relief-aware refinement before final validation. Duplicate tile poses are refined once, with at most two distinct regions attempted; the final lighting, detail and held-out checks are unchanged. A local south-polar photograph from 2023-01-03 now passes registration without supplied reference points.
+Coarse spherical terrain matches only nominate regions. Sparse retrievals from blurred polar photographs may enter relief-aware refinement, but acceptance requires fresh, sufficiently distributed correspondences, lighting/detail agreement and spatially held-out improvement. Duplicate tile poses are refined once, with at most two distinct regions attempted; the final acceptance thresholds are unchanged. Empty mosaic borders are excluded using a footprint derived from the photograph alone, while internal crater shadows remain checked. Local photographs of the south pole on 2023-01-03, the northern Meton region on 2020-08-06 and the southern Drygalski region on 2004-10-08 pass zero-reference-point regressions. These check region and major landmark placement, not pixel-accurate rims.
 
 Reference-guided searches also use this relief-aware refinement and recheck every confirmed point afterwards. Competitive candidates in other regions are still validated when a coarse pose has already passed; ambiguous results remain rejected. Project fields and coordinates are checked before replacing the current document. Transparent images are composited against black; 16-bit colour TIFFs retain their source precision before display stretching.
 

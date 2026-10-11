@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Fluorine Zhu
 """Automatic full-Moon search using coarse LOLA slope/shadow references.
 
-The coarse search uses a spherical 2.5-D reference; strongly supported poses
+The coarse search uses a spherical 2.5-D reference; promising regional poses
 may then use relief-aware local refinement before final validation. This is
 used only after the albedo, limb and crater searches fail. No region or names
 are given to the search. Distributed correspondences, photometric agreement
@@ -47,6 +47,24 @@ def render_terrain_atlas(dem, geometry, size=4000):
     return reference, np.array([[scale, 0., center], [0., scale, center]])
 
 
+def _photographic_footprint(gray):
+    """Exclude empty mosaic borders without deleting dark crater interiors.
+
+    Derive this from the photograph alone, independent of the tested pose.
+    The largest connected surface avoids isolated captions; its convex hull
+    retains enclosed shadows, unlike masking individual dark pixels.
+    """
+    kernel = max(3, round(max(gray.shape)/180) | 1)
+    foreground = cv2.morphologyEx((gray > 15).astype(np.uint8), cv2.MORPH_CLOSE,
+                                 np.ones((kernel, kernel), np.uint8))
+    contours, _ = cv2.findContours(foreground, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    footprint = np.zeros(gray.shape, np.uint8)
+    if contours:
+        surface = max(contours, key=cv2.contourArea)
+        cv2.fillConvexPoly(footprint, cv2.convexHull(surface), 1)
+    return footprint.astype(bool)
+
+
 def terrain_agreement(reference, photograph, reference_to_photo, *, require_match=True):
     """Independent dense light and spatial-detail checks, outside captions."""
     h, w = photograph.shape[:2]
@@ -55,7 +73,7 @@ def terrain_agreement(reference, photograph, reference_to_photo, *, require_matc
     available = cv2.warpAffine(np.full(reference.shape, 255, np.uint8), reference_to_photo, (w, h)) > 250
     domain = np.zeros((h, w), bool)
     domain[round(h*.08):round(h*.93), round(w*.05):round(w*.95)] = True
-    domain &= available & ((gray > 15) | (projected > 15))
+    domain &= available & _photographic_footprint(gray) & ((gray > 15) | (projected > 15))
     if domain.sum() < 600 or np.std(gray[domain]) < 8 or np.std(projected[domain]) < 8:
         raise IdentificationError("高程参考有效纹理不足，未采用结果。")
     a, b = gray.astype(np.float32), projected.astype(np.float32)
@@ -142,7 +160,7 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
                                       contrast_threshold=.01, min_inlier_fraction=.25)
             except ValueError:
                 continue
-            if match.inliers < 24 or match.coverage < .06:
+            if match.inliers < 18 or match.coverage < .06:
                 continue
             offset = np.array([[1., 0., -x], [0., 1., -y], [0., 0., 1.]])
             reference_to_photo = (np.vstack((match.matrix, [0., 0., 1.])) @ offset)[:2]
@@ -160,10 +178,12 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
                                           match.inliers, match.coverage, 0, light)
             if terrain_consensus(light, detail, match.inliers, match.coverage):
                 solutions.append(result)
-            elif refine and match.inliers >= 40 and match.coverage >= .18 and light >= .4 and detail >= .25:
+            elif refine and match.coverage >= .08 and light >= .25 and detail >= .04:
                 # A coarse sphere can retrieve the correct oblique region but
                 # displace its relief/shadows. This only nominates a candidate:
                 # fresh relief rendering and held-out validation must certify it.
+                # Sparse retrieval is useful for blurred polar photographs,
+                # but cannot pass the unchanged final consensus by itself.
                 pending.append(result)
     if pending:
         from .terrain_refinement import refine_terrain_pose

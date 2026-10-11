@@ -14,6 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 """MoonLabeler: label your own lunar photographs."""
-__version__ = "0.5.8"
+__version__ = "0.5.9"
 __author__ = "Fluorine Zhu"
 __license__ = "GPL-3.0-or-later"

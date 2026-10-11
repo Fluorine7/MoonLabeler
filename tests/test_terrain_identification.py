@@ -51,6 +51,29 @@ def test_terrain_agreement_rejects_smooth_phase_without_detail():
         terrain_agreement(reference, reference.copy(), np.array([[1., 0., 0.], [0., 1., 0.]]))
 
 
+@pytest.mark.parametrize('defect', [None, 'shifted', 'missing_shadow'])
+def test_mosaic_blank_margin_is_excluded_but_internal_shadows_are_checked(defect):
+    rng = np.random.default_rng(23)
+    illuminated = cv2.GaussianBlur(rng.integers(40, 210, (256, 384), np.uint8), (0, 0), 1)
+    reference = illuminated.copy()
+    cv2.circle(reference, (270, 120), 44, 0, -1)
+    footprint = np.ones(reference.shape, np.uint8)
+    # A rotated mosaic has an empty border wedge, not a lunar shadow.
+    cv2.fillPoly(footprint, [np.array([[0, 0], [130, 0], [180, 256], [0, 256]])], 0)
+    photograph = reference * footprint
+    identity = np.array([[1., 0., 0.], [0., 1., 0.]])
+    if defect == 'shifted':
+        reference = cv2.warpAffine(reference, np.array([[1., 0., 16.], [0., 1., 0.]]), (384, 256))
+    elif defect == 'missing_shadow':
+        reference = illuminated
+    if defect:
+        with pytest.raises(IdentificationError):
+            terrain_agreement(reference, photograph, identity)
+    else:
+        light, detail = terrain_agreement(reference, photograph, identity)
+        assert light > .85 and detail > .8
+
+
 def test_borderline_light_needs_stronger_detail_count_and_distribution():
     assert terrain_consensus(.5987, .303, 33, .179)
     assert terrain_consensus(.65, .27, 24, .07)
@@ -59,6 +82,39 @@ def test_borderline_light_needs_stronger_detail_count_and_distribution():
     assert not terrain_consensus(.5987, .303, 33, .10)
     assert not terrain_consensus(.58, .5, 60, .5)
     assert not terrain_consensus(np.nan, .5, 60, .5)
+
+
+@pytest.mark.parametrize('fresh_light,points,accepted', [(.72, 100, True), (.58, 100, False), (.72, 18, False)])
+def test_sparse_oblique_retrieval_requires_fresh_strong_refinement(monkeypatch, tmp_path, fresh_light, points, accepted):
+    """A blurred polar crop can supply a weak seed, never a final map pose."""
+    from dataclasses import replace
+    import moonlabeler.terrain_identification as terrain
+    import moonlabeler.terrain_refinement as refinement
+    rng = np.random.default_rng(18)
+    reference = cv2.GaussianBlur(rng.integers(0, 256, (400, 400), dtype=np.uint8), (0, 0), .8)
+    photograph = np.repeat(reference[80:320, 80:320, None], 3, axis=2)
+    projection = np.array([[188., 0., 199.5], [0., 188., 199.5]])
+    monkeypatch.setattr(terrain, 'download_basic_dem', lambda cache: tmp_path/'test.lbl')
+    monkeypatch.setattr(terrain.ElevationMap, 'load', lambda path: SimpleNamespace(close=lambda: None))
+    monkeypatch.setattr(terrain, 'render_terrain_atlas', lambda *args: (reference, projection))
+    register = terrain.auto_register
+    monkeypatch.setattr(terrain, 'auto_register', lambda *a, **kw: replace(register(*a, **kw), inliers=18))
+    monkeypatch.setattr(terrain, 'terrain_agreement', lambda *a, **kw: (.30, .10))
+    calls = []
+    def correct(image, geometry, matrix, dem, **kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(matrix=matrix, geometry=object(), rms_px=1.,
+                               details={'points': points, 'coverage': .4,
+                                        'light_before_after': [.30, fresh_light],
+                                        'detail_before_after': [.10, .5]})
+    monkeypatch.setattr(refinement, 'refine_terrain_pose', correct)
+    if accepted:
+        result = identify_from_terrain(photograph, None, tmp_path, atlas_size=400, tile_size=400)
+        assert result.image_inliers == points and result.texture_correlation == fresh_light
+    else:
+        with pytest.raises(IdentificationError):
+            identify_from_terrain(photograph, None, tmp_path, atlas_size=400, tile_size=400)
+    assert calls == [{'relief_aware': True}]
 
 
 @pytest.mark.parametrize('coarse', [False, True])

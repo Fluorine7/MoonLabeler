@@ -69,7 +69,10 @@ def test_smoothed_ellipse_retains_occulted_limb_arc():
     from moonlabeler.project import _ellipse_outline
     g = Geometry(np.array([1., 0., 0.]), np.array([0., 1., 0.]), np.array([0., 0., 1.]),
                  np.array([1., 0., 0.]), 384400., 'test')
-    p = Project(geometry=g, matrix=np.array([[15000., 0., 200.], [0., 15000., 200.]]), font_size=1)
+    # Explicit legacy pixel sizing isolates arc clipping from the modern
+    # percentage-font rule that intentionally hides very narrow outlines.
+    p = Project(geometry=g, matrix=np.array([[15000., 0., 200.], [0., 15000., 200.]]),
+                font_size=1, font_percent=None)
     feature = dict(id='limb', lat=0., lon=89.8, diameter=200., kind='Crater, craters')
     pixels, visible = p._project_crater_rim(feature)
     assert visible.any() and not visible.all()
