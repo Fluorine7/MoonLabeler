@@ -276,7 +276,7 @@ def test_confirmed_hadley_c_candidate_guides_local_photo(monkeypatch, tmp_path):
         window.crater_feature.setCurrentRow(0)
         window.crater_anchor_button.click()
         window.crater_finish_button.click()
-        assert window.registration_tabs.currentWidget() is window.manual_tab
+        assert window.registration_tabs.currentWidget() is window.crater_tab
         assert window.guided_identify_button.isEnabled() and not window.solve_button.isEnabled()
         original = [a.copy() for a in window.project.anchors]
         window.guided_identify_button.click()

@@ -22,8 +22,8 @@ Codex 负责，其余文件只读：
 接口约定：
 1. 保留 WindowUiMixin 及 build_toolbar(self)、build_sidebar(self)、build_crater_controls(self, page) 的签名。可以提取内部组件或新增纯 UI 辅助方法，不覆盖 app.py 已有方法。
 2. 保留现有 self.<控件名>，以及业务代码调用的控件类型/方法、信号连接。新增控件和纯 UI 回调使用 ui_ 前缀，避免与业务属性重名。
-3. 保留 workspace_tabs 的页面索引：0=校准，1=标注，2=参考；保留 registration_tabs 与 crater_tab 的对象身份契约。可自定义外观及页面内部排布。
-4. 日期仍只显示年月日，新选日期默认 UTC 15:00；旧工程加载保留原始时间。不要在 UI 重写日期、天平动、配准逻辑。
+3. 保留 workspace_tabs 的页面索引：0=校准，1=标注，2=参考；保留 registration_tabs 与 crater_tab 的对象身份契约（目前只有一个辅助页，隐藏页签栏）；参考点和配准在该页，手动取点仅保留“手动补点”折叠入口，不恢复独立页签。可自定义外观及页面内部排布。
+4. 日期使用独立年/月/日输入框，折叠的时间使用独立时/分输入框，输入满位自动前进。date 与 capture_time 是隐藏的时间模型，保留旧 API 和旧工程秒值。打开新照片回到校准并折叠辅助区域，保留当前日期和时间。不要重写天平动和配准逻辑。
 5. 标签设置修改后只标记待应用，点击“重新生成标注”才执行；不要改成每次控件变化立即重算。
 6. 画布、标签避让、坑缘圈坐标、导出字号及 PNG/SVG 的逻辑归 Codex。界面重排不能修改项目参数、生成假识别结果、改变文件格式或复制另一套业务状态。
 7. 保留全部现有功能入口；可折叠低频选项。保持照片缩放/平移、拖入照片、保存/导出、后台忙碌禁用状态和错误反馈正常。不能 disconnect() 清空业务信号。
@@ -40,6 +40,6 @@ Codex 负责，其余文件只读：
 检查：
 - 使用现有 .venv，不额外安装或替换依赖。
 - 启动：.venv/bin/python -m moonlabeler（或 start-mac.command）。
-- 快速回归：QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q tests/test_gui.py::test_photo_workflow_has_automatic_name_recognition tests/test_gui.py::test_capture_date_hides_time_and_uses_utc_1500 tests/test_gui.py::test_gui_edit_save_filter_and_export
+- 快速回归：QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q tests/test_gui.py::test_photo_workflow_has_automatic_name_recognition tests/test_capture_workflow.py tests/test_gui.py::test_gui_edit_save_filter_and_export
 - 截图只放 docs/ui/；公开展示使用合成 demo，勿提交摄影师原图或派生截图。
 - 请列出修改文件、说明设计选择和未完成项，并提供普通窗口及最大化预览。不要声称通过未执行的验证。

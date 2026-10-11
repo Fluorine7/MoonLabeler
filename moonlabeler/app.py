@@ -314,6 +314,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
             return
         if self.busy:
             return
+        if not self.ui_capture_inputs_valid():
+            self.error(self.ui_capture_error.text())
+            return
         self.cancel_pick()
         utc = self.utc()
         lat = self.latitude.value() if self.topocentric.isChecked() else None
@@ -351,7 +354,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         def failure(message):
             self.identification_status.setText("参考点配准失败，请核对取点" if known else "识别失败，可改用手动校准")
             self.identification_status.setToolTip(message)
-            self.show_manual_points() if known else self.show_crater_review()
+            self.show_crater_review()
             self.error(message)
         self.identification_status.setText("正在按参考点配准…" if known else "正在识别…")
         self.run_background("正在按参考点配准…" if known else "正在识别，首次运行需下载参考数据…",
@@ -502,7 +505,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def show_crater_overlays(self, *args):
         visible = (self.workspace_tabs.currentIndex() == 0
                    and self.registration_tabs.currentWidget() == self.crater_tab
-                   and self.ui_manual_section_expanded())
+                   and self.ui_manual_section_expanded()
+                   and not self.ui_manual_pick_toggle.isChecked())
         if hasattr(self, "crater_action_panel"):
             self.crater_action_panel.setVisible(visible)
         for index, item in enumerate(self.crater_items):
@@ -511,7 +515,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             item.setVisible(visible)
             item.update()
         for item in self.reference_items:
-            item.setVisible(self.workspace_tabs.currentIndex() == 0 and not visible)
+            item.setVisible(self.workspace_tabs.currentIndex() == 0 and (not visible or self.ui_reference_toggle.isChecked()))
 
     def update_crater_buttons(self, *args):
         selected = 0 <= self.crater_list.currentRow() < len(self.crater_candidates)
@@ -674,6 +678,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.dirty = True
 
     def calculate_geometry(self, checked=False, *, after=None):
+        if not self.ui_capture_inputs_valid():
+            self.error(self.ui_capture_error.text())
+            return
         utc = self.utc()
         lat = self.latitude.value() if self.topocentric.isChecked() else None
         lon = self.longitude.value() if self.topocentric.isChecked() else None
@@ -723,6 +730,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.project_path = None
             self.set_image(image)
             self.sync_controls()
+            self.ui_reset_for_new_photo()
             self.dirty = False
             self.geometry_status.setText("未计算")
             self.registration_status.setText("未配准")
@@ -888,7 +896,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         count = sum(a.get("enabled", True) for a in self.project.anchors)
         known_count = len(self.manual_reference_points())
         required = 3 if self.mirror.currentIndex() == 0 else 2
-        self.anchor_count.setText(f"{count} 个有效参考点 · 手动校准最少 {required} 个")
+        self.anchor_count.setText(f"{count} 个有效参考点" + (" · 可尝试自动配准" if known_count else ""))
+        self.solve_button.setToolTip(f"至少 {required} 个分散、不共线的参考点。")
         self.solve_button.setEnabled(self.image is not None and count >= required and not self.canvas.picking)
         self.guided_identify_button.setEnabled(self.image is not None and known_count > 0 and not self.canvas.picking)
         item = self.feature_list.currentItem()
@@ -917,12 +926,13 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.pick_button.setText("选择地名后取点")
 
     def show_manual_points(self):
+        self.ui_crater_scroll_timer.stop()
         self.workspace_tabs.setCurrentIndex(0)
-        self.registration_tabs.setCurrentWidget(self.manual_tab)
+        self.registration_tabs.setCurrentWidget(self.crater_tab)
         self.ui_set_manual_section_expanded(True)
-        target = (self.solve_button if self.solve_button.isEnabled() else
-                  self.guided_identify_button if self.guided_identify_button.isEnabled() else self.feature_search)
-        QTimer.singleShot(0, lambda: self.scroll.ensureWidgetVisible(target))
+        self.ui_reference_toggle.setChecked(True)
+        target = self.guided_identify_button if self.guided_identify_button.isEnabled() else self.anchor_table
+        self.ui_scroll_to_reference_points(target)
 
     def show_crater_review(self):
         self.workspace_tabs.setCurrentIndex(0)
@@ -938,7 +948,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if item is None:
             self.error("请先搜索并选择一个已知地形。")
             return
-        self.show_manual_points()
+        self.workspace_tabs.setCurrentIndex(0)
+        self.ui_set_manual_section_expanded(True)
+        self.ui_manual_pick_toggle.setChecked(True)
         self.cancel_pick()
         self.picking_id = item.data(Qt.ItemDataRole.UserRole)
         self.canvas.picking = True
@@ -975,10 +987,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.registration_status.setText("")
         self.statusBar().showMessage(self.manual_guide.text())
         self.dirty = True
-        if self.workspace_tabs.currentIndex() == 0 and self.registration_tabs.currentWidget() == self.manual_tab:
-            target = (self.solve_button if self.solve_button.isEnabled() else
-                      self.guided_identify_button if self.guided_identify_button.isEnabled() else self.feature_search)
-            QTimer.singleShot(0, lambda: self.scroll.ensureWidgetVisible(target))
+        if self.workspace_tabs.currentIndex() == 0 and self.ui_manual_pick_toggle.isChecked():
+            self.ui_manual_pick_toggle.setChecked(False)
+            self.show_manual_points()
 
     def refresh_anchor_table(self):
         enabled = [a for a in self.project.anchors if a.get("enabled", True)]
@@ -1099,6 +1110,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.dirty = True
 
     def solve_manual(self):
+        if not self.ui_capture_inputs_valid():
+            self.error(self.ui_capture_error.text())
+            return
         anchors = [a for a in self.project.anchors if a.get("enabled", True)]
         required = 3 if self.mirror.currentIndex() == 0 else 2
         if self.image is None or len(anchors) < required:
@@ -1167,7 +1181,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.run_background("下载 NASA 同时刻影像并匹配…", work, self.accept_auto, self.nasa_failed)
 
     def nasa_failed(self, text):
-        self.show_manual_points() if self.manual_reference_points() else self.show_crater_review()
+        self.show_crater_review()
         self.registration_status.setText("NASA 配准失败，可用手动校准")
         self.error(text)
 
@@ -1625,11 +1639,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def help_dialog(self):
         QMessageBox.information(self, "使用 MoonLabeler",
             "自动：打开照片，设置拍摄日期，点击“自动识别并标注”。时间默认 UTC 15:00，展开可修改；北京时间请换算为 UTC。首次需下载参考数据。\n\n"
-            "辅助找坑：自动识别失败后，先检测中心，选候选，在底部搜索并点击环形山名称，再确认加入参考点。按 Enter 可选首条地名。\n\n"
+            "辅助找坑：自动识别失败后，先检测中心，选候选，搜索并点击环形山名称，再在底部确认加入参考点。按 Enter 可选首条地名。\n\n"
             "参考点辅助自动：确认一两个已知点后，点击“用参考点自动配准”或顶部“自动识别并标注”。程序搜索附近地形，验证通过后生成标注。\n\n"
-            "手动：搜索已知地名，点击取点按钮，再点照片中同一个坑的完整坑缘中心。不要点亮斑或阴影中心。取 3–6 个分散、不共线的点，再完成校准。\n"
+            "手动补点：展开“手动补点”，搜索地名，点击取点按钮，再点照片中同一个坑的完整坑缘中心。不要点亮斑或阴影中心。取 3–6 个分散、不共线的点，再完成校准。\n"
             "Esc 取消取点；双击参考点行重选，取消勾选停用。橙色行需核对。\n\n"
-            "月溪、山脉等在“已知地名取点”中选择。\n\n"
+            "月溪、山脉等在“手动补点”中选择。\n\n"
             "标注：改设置后点击“重新生成标注”。拖动标签调整位置，双击编辑文字。字号按照片短边计算。可保存工程或导出 PNG / SVG。\n\n"
             "DEM：导入或下载高程数据，选择区域生成光照参考。基础采样约 1.9 km；不适用于近月缘区域。\n\n"
             "坑缘圈是目录投影参考，可能偏离实际坑缘。拟合残差只表示一致性；模型和数据来源详见 README。")

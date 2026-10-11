@@ -108,7 +108,7 @@ def _finish_guided_search(solutions, pending, image, geometry, dem, anchors, cat
 
 
 def identify_from_reference_points(image, geometry, cache, anchors, catalog, candidates=(), *,
-                                   reference_size=1400, refine=True):
+                                   reference_size=600, refine=True):
     """Use manual points first; accept only an independently verified local pose."""
     catalog = list(catalog)
     anchors = [a for a in anchors if a.get('enabled', True) and a.get('source') != 'automatic']
@@ -125,6 +125,9 @@ def identify_from_reference_points(image, geometry, cache, anchors, catalog, can
     points, _, _ = geometry.project([f['lat'] for f in features], [f['lon'] for f in features])
     center = points.mean(axis=0)
     widths = _field_widths(features, points, pixels, candidates, image.shape)
+    # Keep retrieval resolution close to the photograph's working resolution.
+    # A 1400-pixel reference oversamples the small DEM and loses mutual SIFT
+    # matches to real small-crater detail; dense acceptance gates stay unchanged.
     factor = min(1., 880/max(h, w))
     photograph = cv2.resize(image, (round(w*factor), round(h*factor)), interpolation=cv2.INTER_AREA)
     sx, sy = photograph.shape[1]/w, photograph.shape[0]/h

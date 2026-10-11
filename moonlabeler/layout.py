@@ -2,8 +2,8 @@
 # Copyright (c) 2026 Fluorine Zhu
 """Place labels around their objects, keeping captions and leaders separate.
 
-Inspired by AnnotateImage's candidate relocation / local clearance strategy;
-independently implemented for a lunar photograph and user-pinned captions.
+Candidate relocation and local clearance for lunar photographs and
+user-pinned captions.
 """
 from dataclasses import dataclass
 from itertools import islice
@@ -237,7 +237,7 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
                 conflicts += sum(segment_hits_rect(old, rect, 1) for old in other_lines)
                 conflicts += sum(segments_cross(line, old) for old in other_lines)
                 conflicts += sum(segment_hits_rect(line, old) for old in other_markers)
-            # Like AnnotateImage, prefer locally separated captions. Limit the
+            # Prefer locally separated captions. Limit the
             # reward so empty corners do not pull labels away from their objects.
             clearance = min((rect_distance(rect, old) for old in other_rects+other_markers), default=3*gap)
             length = math.hypot(line[2]-line[0], line[3]-line[1])

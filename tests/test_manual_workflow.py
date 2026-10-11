@@ -180,8 +180,9 @@ def test_failure_without_confirmed_points_opens_candidate_detection_before_manua
         assert window.crater_button.isVisible()
         window.crater_finish_button.click()
         app.processEvents()
-        assert window.registration_tabs.currentWidget() is window.manual_tab
-        assert window.feature_search.isVisible() and not window.crater_action_panel.isVisible()
+        assert window.registration_tabs.currentWidget() is window.crater_tab
+        assert window.ui_reference_toggle.isChecked()
+        assert not window.ui_manual_pick_toggle.isChecked() and window.crater_action_panel.isVisible()
     finally:
         window.dirty = False
         window.close()

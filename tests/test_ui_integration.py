@@ -6,6 +6,7 @@ import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 import pytest
+import numpy as np
 from PySide6.QtCore import QPoint, Qt, QTime
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDateTimeEdit
@@ -167,11 +168,32 @@ def test_compact_time_entry_and_direct_sync_keep_seconds(visible_window):
     window.capture_time.setTime(QTime(12, 34, 56))
     window.sync_capture_time()
     assert window.capture_time_toggle.text() == '具体时间'
-    window.capture_time.setFocus()
-    window.capture_time.setCurrentSection(QDateTimeEdit.Section.HourSection)
-    window.capture_time.setSelectedSection(QDateTimeEdit.Section.HourSection)
-    QTest.keyClicks(window.capture_time, '2132')
+    window.ui_hour.setFocus()
+    QTest.keyClicks(window.ui_hour, '21')
+    assert window.ui_minute.hasFocus()
+    QTest.keyClicks(window.ui_minute, '32')
     assert window.capture_time.time() == QTime(21, 32, 56)
     assert window.utc().strftime('%H:%M:%S') == '21:32:56'
     window.capture_time_toggle.setChecked(False)
     assert '21:32:56' in window.capture_time_toggle.text()
+
+
+def test_reference_action_is_reachable_after_detection_in_small_window(visible_window):
+    window, application = visible_window
+    window.resize(1100, 720)
+    window.set_image(np.zeros((2112, 2000, 3), np.uint8))
+    review_candidates(window)
+    window.crater_search.setText('Hadley C')
+    window.crater_feature.setCurrentRow(0)
+    window.crater_anchor_button.click()
+    for _ in range(3):
+        application.processEvents()
+    window.crater_finish_button.click()
+    for _ in range(4):
+        application.processEvents()
+    button = window.guided_identify_button
+    assert button.isEnabled()
+    top = button.mapTo(window.scroll.viewport(), QPoint(0, 0)).y()
+    assert 0 <= top and top + button.height() <= window.scroll.viewport().height()
+    assert window.ui_reference_toggle.isChecked()
+    assert not window.ui_manual_pick_toggle.isChecked()

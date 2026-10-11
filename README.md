@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.5** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.5.6** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -18,7 +18,7 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 - 自动识别：匹配内置 LROC 纹理；也可拟合较完整的月盘外缘，并联合验证月相和月海纹理；局部图再通过坑群搜索目录；仍失败时使用小型 LOLA 高程数据生成阴影参考。
 - 参考点辅助自动配准：确认一两个已知地形点即可搜索附近区域，由周围纹理验证比例、旋转和镜像，再生成标注。
 - 手动校准：以至少 3 个已知地形中心求解比例、旋转、偏移和镜像；显示逐点偏差。
-- 辅助校准区域默认折叠；辅助找坑排在已知地名取点前面，没有确认点时识别失败先进入辅助找坑。
+- 辅助找坑、名称确认和参考点配准合并在同一流程；手动补点默认折叠，识别失败保留当前候选和参考点。
 - 疑似坑检测：本地 OpenCV 检测圆形 / 椭圆坑缘，支持修正中心与导出 CSV。
 - 照片画布在左、紧凑检查器在右；低频参数折叠，候选坑确认操作固定在页脚。
 - 标注布局：自动避让标签、地形中心和引线；拖动标签或双击改名。
@@ -55,11 +55,11 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 ### 使用与限制
 
-打开照片，选择拍摄日期（默认使用当日 **UTC 15:00**），点击“自动识别并标注”。“具体时间”默认折叠，展开后可设置 UTC 时分秒；收起或更换日期不会重置时间，可点击恢复默认。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，坑群精修和高程后备匹配使用约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
+打开新照片会返回“校准”并收起辅助内容，保留当前日期与时间。启动时默认 **UTC 15:00**；确认或修改拍摄日期，点击“自动识别并标注”。“具体时间”默认折叠，展开后通过独立的时、分框设置 UTC 时间，旧工程的秒值保留；收起或更换日期不会重置时间，可点击恢复默认。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，坑群精修和高程后备匹配使用约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
 
 自动识别属于实验性功能。强阴影、月缘与极区的严重压缩、模糊、水印、日期错误或候选坑太少时仍可能失败。不能通过验证的结果不会作为地名标注，也不会替换已有配准。可改用已知地形点手动校准。
 
-只认得一两个地形时，在“已知地名取点”或“辅助找坑”中确认名称和位置，然后点击参考点表下的 **“用参考点自动配准”**。顶部“自动识别并标注”也会优先使用已确认的点。程序复用同一份小型 LOLA 数据，尝试少量局部参考尺度，通过后立即停止搜索；仍需至少 24 个图像对应点、分布覆盖、明暗与细节相关，以及全部参考点位置的一致性。失败保留参考点和原配准。一个点本身不能确定方向和比例；纯手动校准仍默认需要至少三点。
+只认得一两个地形时，在“辅助找坑”中确认名称和位置，然后展开“参考点与配准”，点击 **“用参考点自动配准”**。顶部“自动识别并标注”也会优先使用已确认的点。程序复用同一份小型 LOLA 数据，尝试少量局部参考尺度，通过后立即停止搜索；仍需至少 24 个图像对应点、分布覆盖、明暗与细节相关，以及全部参考点位置的一致性。失败保留参考点和原配准。一个点本身不能确定方向和比例；纯手动校准仍默认需要至少三点。
 
 局部坑群识别通过后，会使用同一份约 33 MB 的 LOLA DEM 精修相机与观测方向；局部参考渲染和拟合都考虑地形高度。修正必须通过空间分区留出点与重新渲染的整幅纹理检查，否则保留原配准。该修正不代表反推出的拍摄地点或天平动测量值。
 
@@ -75,7 +75,7 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 Copyright © 2026 **Fluorine Zhu**。MoonLabeler 代码按 **GNU General Public License v3.0 or later** 发布，完整文本见 [LICENSE](LICENSE)。改编代码保留原作者的 MIT 许可与版权声明；第三方数据及依赖保留其原有条款，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-向 Jim Mosher、Henrik Bondo、Ram Maruboina，以及 LTVT、PixInsight AnnotateImage、OpenCV、NASA / LROC / LOLA、USGS / IAU、JPL、Skyfield 和中文词表的贡献者致敬。完整来源与实际采用范围见 [致谢](ACKNOWLEDGEMENTS.md)。
+向 Jim Mosher、Henrik Bondo、Ram Maruboina，以及 LTVT、OpenCV、NASA / LROC / LOLA、USGS / IAU、JPL、Skyfield 和中文词表的贡献者致敬。完整来源与实际采用范围见 [致谢](ACKNOWLEDGEMENTS.md)。
 
 感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考。
 
@@ -88,7 +88,7 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 - Automatic registration using a bundled LROC texture, a wide-limb fallback validated with phase and albedo texture, crater-pattern catalogue matching for close-up views, and a small LOLA slope/shadow-reference fallback.
 - Manual calibration from at least three known terrain centers, with rotation, scale, translation, reflection, and per-point error review.
 - Automatic local registration guided by one or two confirmed terrain points, with image evidence validating scale, rotation and reflection.
-- Calibration assistance is collapsed by default. Candidate detection comes before known-name picking; identification failure opens candidate detection when no points have been confirmed.
+- Candidate detection, name confirmation and reference-point registration share one workflow. Manual point placement is a collapsed fallback; failures retain confirmed points and the current candidate workflow.
 - Local OpenCV crater-rim candidate detection, center correction, and CSV export.
 - Photo-first layout with a compact right-hand inspector, collapsible advanced settings, and a pinned crater-confirmation panel.
 - Automatic label placement with collision avoidance, draggable labels, and editable names.
@@ -104,17 +104,17 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 Requires **Python 3.11+**. Development and native UI testing are primarily on macOS.
 Clone the repository and run `./start-mac.command` on macOS, or create a virtual environment, install `requirements.txt`, and run `python -m moonlabeler` as shown above. Windows and Linux have not received native UI validation.
 
-Open a photograph, select the capture date (default **15:00 UTC** on that date; saved projects retain their original timestamps), then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours, minutes and seconds. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; crater refinement and the terrain fallback use about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
+Opening a new photograph returns to Calibration and collapses assistance, retaining the current date and time. The initial default is **15:00 UTC**. Check or change the capture date in the separate year, month and day fields, then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours and minutes in separate fields; seconds saved in older projects are retained. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; crater refinement and the terrain fallback use about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
 
-For manual calibration, open **校准 → 已知地名取点** (Calibration → Known-name points). A reference point pairs a known terrain name with its location in your photograph:
+For manual point placement, expand **校准 → 辅助找坑与参考点 → 手动补点** (Calibration → Candidate and reference assistance → Add points manually). A reference point pairs a known terrain name with its location in your photograph:
 
 1. Search for a crater you recognize and select its name from the results.
 2. Click **在照片中标记** (Mark in photo), then click the geometric center of that same crater's rim. Avoid using the bright patch or shadow center. Zoom if needed; Esc cancels picking.
-3. Repeat for 3–6 well-separated, non-collinear craters, then click **完成校准并生成标注** (Calibrate and generate annotations). Geometry is computed automatically and the annotation page opens. Collected points survive an ephemeris-download failure.
+3. Repeat for 3–6 well-separated, non-collinear craters, then click **按参考点手动校准** (Calibrate manually using reference points) in the shared **参考点与配准** (Reference points and registration) section. Geometry is computed automatically and the annotation page opens. Collected points survive an ephemeris-download failure.
 
 If you can confirm only one or two points, click **用参考点自动配准** (Register automatically using reference points) below the reference-point table. The main Identify and annotate button also uses confirmed points first. The search reuses the small LOLA DEM, tries a bounded set of local field sizes and stops at a validated result. Acceptance still requires at least 24 image correspondences, spatial coverage, dense lighting and detail agreement, and consistency with every confirmed point. Rejected results preserve points and any existing registration. A single point does not determine a camera pose; full manual calibration still defaults to three points.
 
-The **辅助找坑** (Find candidate centers) tab only assists point placement; you still confirm each name. In its fixed footer, search for a crater name, click a search-result row (or press Enter in the search field to choose the first hit), then click **确认地名，加入参考点** (Confirm name and add reference point). Results appear directly in a list, including single matches such as Hadley C; entering a query does not assign a name automatically. This search lists craters only; rilles, mountains and other formations remain available in **已知地名取点**. The footer links back to the confirmed reference points. Double-click a reference-point table row to replace its position, or uncheck it to exclude it before recalibrating.
+The **辅助找坑与参考点** (Candidate and reference assistance) section only assists point placement; you still confirm each name. Search for a crater name in the scrolling page, click a search-result row (or press Enter in the search field to choose the first hit), then click **确认地名，加入参考点** (Confirm name and add reference point). Results appear directly in a list, including single matches such as Hadley C; entering a query does not assign a name automatically. This search lists craters only; rilles, mountains and other formations remain available in **手动补点**. The confirmed reference points and automatic-registration action remain on the same page. Double-click a reference-point table row to replace its position, or uncheck it to exclude it before recalibrating.
 
 The bundled example is explicitly synthetic and demonstrates calibration and editing. It is not a real-image recognition benchmark. Optional FITS support requires `astropy`.
 
@@ -147,6 +147,6 @@ Tests cover geometry, mirrored registration, crater detection, catalogue matchin
 
 Copyright © 2026 **Fluorine Zhu**. The MoonLabeler code is licensed under **GNU GPL version 3 or, at your option, any later version**. See [LICENSE](LICENSE). Adapted MIT code retains its original copyright and permission notice. Third-party dependencies and data retain their respective terms; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-We gratefully acknowledge Jim Mosher and Henrik Bondo for LTVT, Ram Maruboina for Lunar Crater Detector, the PixInsight AnnotateImage authors, OpenCV contributors, NASA / LROC / LOLA, USGS / IAU, JPL, Skyfield, and the Chinese astronomical terminology contributors. See [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) for detailed credits and a clear distinction between adapted code, independent implementations, and projects studied for future work.
+We gratefully acknowledge Jim Mosher and Henrik Bondo for LTVT, Ram Maruboina for Lunar Crater Detector, OpenCV contributors, NASA / LROC / LOLA, USGS / IAU, JPL, Skyfield, and the Chinese astronomical terminology contributors. See [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) for detailed credits and a clear distinction between adapted code, independent implementations, and projects studied for future work.
 
 Thanks to **樊仕达 (10deg)** for providing the **moonlib** code as a reference for this project's lunar geometry research and implementation.

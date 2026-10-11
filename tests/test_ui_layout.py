@@ -24,7 +24,7 @@ def test_workspace_tabs_keep_calibration_annotation_reference_contract():
         assert [window.workspace_tabs.tabText(i) for i in range(window.workspace_tabs.count())] \
             == ["校准", "标注", "参考"]
         assert [window.registration_tabs.tabText(i) for i in range(window.registration_tabs.count())] \
-            == ["辅助找坑", "已知地名取点"]
+            == ["辅助找坑"]
         assert window.registration_tabs.currentWidget() is window.crater_tab
         assert window.reference_tabs.count() == 2
         # Both assistance paths remain inside the calibration scroll area.
@@ -48,10 +48,10 @@ def test_crater_confirmation_bar_is_pinned_outside_the_scrolling_content():
         window.ui_set_manual_section_expanded(True)
         application.processEvents()
         assert panel.isVisible()
-        window.registration_tabs.setCurrentWidget(window.manual_tab)
+        window.ui_manual_pick_toggle.setChecked(True)
         application.processEvents()
         assert not panel.isVisible()
-        window.registration_tabs.setCurrentWidget(window.crater_tab)
+        window.ui_manual_pick_toggle.setChecked(False)
         window.workspace_tabs.setCurrentIndex(1)
         application.processEvents()
         assert not panel.isVisible()
@@ -205,11 +205,9 @@ def test_manual_calibration_section_collapsed_by_default_with_expand_hook():
         assert not window.manual_section_block.isVisible()
         # app.py revealing the confirmation bar (辅助找坑 review) expands the
         # section in the same moment, keeping controls and bar consistent.
-        # Re-entering the review tab is the real app.py path: it re-evaluates
-        # the bar via review_page_changed, and the section follows.
+        # The common review entry expands assistance and restores the footer.
         assert not window.crater_action_panel.isVisible()
-        window.registration_tabs.setCurrentWidget(window.manual_tab)
-        window.registration_tabs.setCurrentWidget(window.crater_tab)
+        window.show_crater_review()
         application.processEvents()
         assert window.crater_action_panel.isVisible()
         assert window.ui_manual_section_expanded() is True
@@ -263,8 +261,7 @@ def test_crater_review_keeps_search_in_the_page_and_context_in_the_footer():
         # 真实路径：用户展开入口后进入复核；页签顺序可能辅助找坑在前，
         # 两种状态都归位到复核页签。
         window.ui_set_manual_section_expanded(True)
-        window.registration_tabs.setCurrentWidget(window.manual_tab)
-        window.registration_tabs.setCurrentWidget(window.crater_tab)
+        window.show_crater_review()
         application.processEvents()
         assert window.crater_action_panel.isVisible()
         for widget in (window.crater_list, window.crater_overlay_toggle,

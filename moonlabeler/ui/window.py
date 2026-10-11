@@ -8,7 +8,7 @@ workspace_tabs indices: calibration=0, annotation=1, reference=2.
 
 Layout contract notes:
 - self.scroll is the calibration page's QScrollArea; feature_search must stay
-  a descendant of it (nasa_failed calls scroll.ensureWidgetVisible).
+  a descendant of it, alongside the common reference-point controls.
 - self.crater_action_panel lives in the calibration page's fixed footer (not
   inside the scroll), so app.py's show/hide keeps the confirmation controls
   reachable while the detector settings scroll.
@@ -22,7 +22,7 @@ Layout contract notes:
 Do not import app.py here (it imports this mixin).
 """
 from pathlib import Path
-from PySide6.QtCore import Qt, QDateTime, QEvent, QTimer, QTime, QTimeZone
+from PySide6.QtCore import Qt, QDate, QDateTime, QEvent, QTimer, QTime, QTimeZone
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QSplitter, QTableWidget, QHeaderView, QListWidget, QAbstractItemView,
     QListView, QTabWidget, QSizePolicy,
 )
+from .capture import CaptureField
 
 
 class WidePopupComboBox(QComboBox):
@@ -96,6 +97,19 @@ class WindowUiMixin:
         since the button itself lives inside it)."""
         self.ui_set_manual_section_expanded(True)
 
+    def ui_reset_for_new_photo(self):
+        self.ui_crater_scroll_timer.stop()
+        self.ui_reference_scroll_timer.stop()
+        self.ui_reference_scroll_target = None
+        self.workspace_tabs.setCurrentIndex(0)
+        self.registration_tabs.setCurrentWidget(self.crater_tab)
+        for toggle in (self.manual_section_toggle, self.ui_reference_toggle,
+                       self.ui_manual_pick_toggle, self.ui_crater_tools_toggle,
+                       self.crater_settings_toggle):
+            toggle.setChecked(False)
+        self.scroll.verticalScrollBar().setValue(0)
+        self.review_page_changed()
+
     def ui_size_review_list(self, widget, maximum_rows):
         count = widget.count()
         widget.setVisible(count > 0)
@@ -124,24 +138,14 @@ class WindowUiMixin:
             name, Qt.TextElideMode.ElideRight, max(120, self.crater_action_panel.width()-20)))
         self.ui_crater_name.setToolTip(name)
         count = len(self.project.anchors)
-        self.crater_finish_button.setText(f"查看参考点（{count}）并继续配准" if count else "查看参考点并继续配准")
+        self.crater_finish_button.setText(f"查看参考点（{count}）" if count else "查看参考点")
         self.ui_refresh_crater_hits_view()
         self.ui_update_registration_height()
 
     def ui_update_registration_height(self, *args):
-        if not hasattr(self, 'crater_action_panel'):
-            return
-        height = 16777215
-        if self.registration_tabs.currentWidget() is self.crater_tab:
-            # QTabWidget otherwise reserves the much taller manual-points page,
-            # leaving blank space and scrolling the detector out of sight.
-            layout = self.crater_tab.layout()
-            height = self.crater_tab.sizeHint().height()
-            if layout.hasHeightForWidth():
-                height = max(height, layout.totalHeightForWidth(self.crater_tab.width()))
-            height += self.registration_tabs.tabBar().sizeHint().height() + 4
-        if self.registration_tabs.maximumHeight() != height:
-            self.registration_tabs.setMaximumHeight(height)
+        # The former second page has been removed. The one remaining page can
+        # use Qt's natural layout height, including expanded reference folds.
+        self.registration_tabs.setMaximumHeight(16777215)
 
     def ui_scroll_to_crater_controls(self):
         self.ui_crater_scroll_timer.start(0)
@@ -149,9 +153,32 @@ class WindowUiMixin:
     def ui_reveal_crater_controls(self):
         if self.crater_action_panel.isVisible() and self.registration_tabs.currentWidget() is self.crater_tab:
             control = self.crater_search if self.crater_candidates else self.crater_button
-            # Scroll the full frame, not Qt's input cursor / item-view focus rect.
-            center = control.mapTo(self.scroll.widget(), control.rect().center())
-            self.scroll.ensureVisible(center.x(), center.y(), 0, control.height()//2+12)
+            self.ui_reveal_control(control)
+
+    def ui_reveal_control(self, control):
+        # Scroll the full frame, not Qt's input cursor / item-view focus rect.
+        center = control.mapTo(self.scroll.widget(), control.rect().center())
+        self.scroll.ensureVisible(center.x(), center.y(), 0, control.height()//2+12)
+
+    def ui_scroll_to_reference_points(self, control):
+        self.ui_reference_scroll_target = control
+        self.ui_reference_scroll_timer.start(0)
+
+    def ui_reveal_reference_controls(self):
+        control = self.ui_reference_scroll_target
+        if control is None:
+            return
+        if not self.ui_reference_block.isVisible() or self.workspace_tabs.currentIndex() != 0:
+            self.ui_reference_scroll_target = None
+            return
+        if self.ui_reference_block.height() < self.ui_reference_block.sizeHint().height():
+            return
+        # The fold's Resize event schedules another pass if Qt is still
+        # expanding its parent. Ordinary resizing/typing never starts a scroll.
+        self.ui_reveal_control(control)
+        top = control.mapTo(self.scroll.viewport(), control.rect().topLeft()).y()
+        if 0 <= top and top+control.height() <= self.scroll.viewport().height():
+            self.ui_reference_scroll_target = None
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -166,6 +193,47 @@ class WindowUiMixin:
         else:
             self.capture_time_toggle.setText(
                 f"具体时间 · UTC {self.capture_time.time().toString('HH:mm:ss')}")
+
+    def ui_sync_capture_fields(self):
+        day, time = self.date.date(), self.date.time()
+        for field, value in ((self.ui_year, day.year()), (self.ui_month, day.month()),
+                             (self.ui_day, day.day()), (self.ui_hour, time.hour()),
+                             (self.ui_minute, time.minute())):
+            text = f'{value:0{field.digits}d}'
+            if field.text() != text:
+                field.setText(text)
+        self.ui_capture_error.hide()
+
+    def ui_edit_capture_date(self, *args):
+        fields = (self.ui_year, self.ui_month, self.ui_day)
+        if any(len(field.text()) != field.digits for field in fields):
+            return
+        day = QDate(*(int(field.text()) for field in fields))
+        if not day.isValid() or not self.date.minimumDate() <= day <= self.date.maximumDate():
+            self.ui_capture_error.setText('日期无效，请检查年月日')
+            self.ui_capture_error.show()
+            return
+        self.ui_capture_error.hide()
+        self.date.setDate(day)
+
+    def ui_edit_capture_time(self, *args):
+        if len(self.ui_hour.text()) != 2 or len(self.ui_minute.text()) != 2:
+            return
+        time = QTime(int(self.ui_hour.text()), int(self.ui_minute.text()), self.date.time().second())
+        if time.isValid():
+            self.date.setTime(time)
+
+    def ui_capture_inputs_valid(self):
+        fields = (self.ui_year, self.ui_month, self.ui_day, self.ui_hour, self.ui_minute)
+        valid = all(len(field.text()) == field.digits and field.minimum <= int(field.text()) <= field.maximum
+                    for field in fields)
+        if valid:
+            day = QDate(*(int(field.text()) for field in fields[:3]))
+            valid = day.isValid() and self.date.minimumDate() <= day <= self.date.maximumDate()
+        if not valid:
+            self.ui_capture_error.setText('请完整填写有效的日期和 UTC 时分')
+            self.ui_capture_error.show()
+        return valid
 
     def ui_reconcile_confirm_bar(self, expanded):
         """While 辅助找坑 review is active, the fixed confirmation bar must not
@@ -183,10 +251,14 @@ class WindowUiMixin:
                                                             getattr(self, "crater_action_panel", None)):
             if not self.manual_section_toggle.isChecked():
                 self.manual_section_toggle.setChecked(True)
-            if watched is self.crater_action_panel:
-                self.ui_scroll_to_crater_controls()
+            if watched is self.cancel_pick_button:
+                self.ui_manual_pick_toggle.setChecked(True)
         if watched is getattr(self, 'crater_tab', None) and event.type() in (QEvent.Type.LayoutRequest, QEvent.Type.Resize):
             self.ui_update_registration_height()
+        if (watched is getattr(self, 'ui_reference_block', None)
+                and event.type() in (QEvent.Type.LayoutRequest, QEvent.Type.Resize)
+                and getattr(self, 'ui_reference_scroll_target', None) is not None):
+            self.ui_reference_scroll_timer.start(0)
         return super().eventFilter(watched, event)
 
     def ui_collapsible(self, title, expanded=False):
@@ -320,22 +392,54 @@ class WindowUiMixin:
         group = QGroupBox("拍摄条件")
         self.geometry_group = group
         form = self.ui_form(group)
-        self.date = QDateTimeEdit(QDateTime.currentDateTimeUtc())
+        self.date = QDateTimeEdit(QDateTime.currentDateTimeUtc(), group)
         self.date.setTimeZone(QTimeZone(b"UTC"))
         self.date.setDateTime(QDateTime.currentDateTimeUtc())
         self.date.setDisplayFormat("yyyy-MM-dd")
         self.date.setTime(QTime(15, 0))
         self.date.setToolTip("默认 UTC 15:00；展开“具体时间”可修改。修改日期或收起设置不会重置已选时间。")
         self.date.setCalendarPopup(True)
-        form.addRow("拍摄日期", self.date)
+        self.date.hide()  # The timestamp model also retains project-loading APIs.
+        date_inputs = QWidget()
+        date_row = QHBoxLayout(date_inputs)
+        date_row.setContentsMargins(0, 0, 0, 0)
+        date_row.setSpacing(5)
+        self.ui_year = CaptureField(4, self.date.minimumDate().year(), self.date.maximumDate().year(), '年')
+        self.ui_month = CaptureField(2, 1, 12, '月')
+        self.ui_day = CaptureField(2, 1, 31, '日')
+        self.ui_hour = CaptureField(2, 0, 23, 'UTC 时')
+        self.ui_minute = CaptureField(2, 0, 59, '分')
+        self.ui_year.next_field = self.ui_month
+        self.ui_month.next_field = self.ui_day
+        self.ui_day.next_field = self.ui_hour
+        self.ui_hour.next_field = self.ui_minute
+        for field, suffix, stretch in ((self.ui_year, '年', 2), (self.ui_month, '月', 1), (self.ui_day, '日', 1)):
+            date_row.addWidget(field, stretch)
+            date_row.addWidget(QLabel(suffix))
+            field.textEdited.connect(self.ui_edit_capture_date)
+            field.editingFinished.connect(self.ui_edit_capture_date)
+        form.addRow('拍摄日期', date_inputs)
+        self.ui_capture_error = self.ui_note('', 'statusLabel')
+        self.ui_capture_error.hide()
+        form.addRow(self.ui_capture_error)
         self.capture_time_toggle, self.capture_time_block, time_box = self.ui_collapsible("具体时间 · UTC 15:00:00")
-        self.capture_time = QTimeEdit(QTime(15, 0))
+        self.capture_time = QTimeEdit(QTime(15, 0), self.capture_time_block)
         # 时:分 keeps typed entry short — 两位小时后自动跳到分钟，无需点击定位或删除；
         # 秒保留默认或工程原值，仍随 time() 一起读写。
         self.capture_time.setDisplayFormat("HH:mm")
         self.capture_time.setToolTip("输入 UTC 时:分；秒保留默认或工程原值。北京时间需减 8 小时，注意日期跨天。")
         time_form = self.ui_form()
-        time_form.addRow("时间（UTC）", self.capture_time)
+        self.capture_time.hide()
+        time_inputs = QWidget()
+        time_row = QHBoxLayout(time_inputs)
+        time_row.setContentsMargins(0, 0, 0, 0)
+        time_row.setSpacing(5)
+        for field, suffix in ((self.ui_hour, '时'), (self.ui_minute, '分')):
+            time_row.addWidget(field, 1)
+            time_row.addWidget(QLabel(suffix))
+            field.textEdited.connect(self.ui_edit_capture_time)
+            field.editingFinished.connect(self.ui_edit_capture_time)
+        time_form.addRow("时间（UTC）", time_inputs)
         time_box.addLayout(time_form)
         self.reset_capture_time = QPushButton("恢复默认 15:00:00 UTC")
         self.reset_capture_time.clicked.connect(lambda: self.date.setTime(QTime(15, 0)))
@@ -344,8 +448,10 @@ class WindowUiMixin:
         form.addRow(self.capture_time_block)
         self.capture_time.timeChanged.connect(self.date.setTime)
         self.date.dateTimeChanged.connect(self.sync_capture_time)
+        self.date.dateTimeChanged.connect(self.ui_sync_capture_fields)
         self.capture_time_toggle.toggled.connect(self.ui_update_time_summary)
         self.date.dateTimeChanged.connect(self.geometry_changed)
+        self.ui_sync_capture_fields()
         self.topocentric = QCheckBox("使用拍摄地点")
         self.topocentric.toggled.connect(self.geometry_changed)
         form.addRow(self.topocentric)
@@ -385,7 +491,7 @@ class WindowUiMixin:
         # is the hook app.py uses to open it when a manual pick starts or after
         # identification fails. The toggle below stays visible as the entry point.
         self.manual_section_toggle, self.manual_section_block, group_box = \
-            self.ui_collapsible("辅助校准 · 辅助找坑 / 已知地名取点")
+            self.ui_collapsible("辅助找坑与参考点")
         layout.addWidget(self.manual_section_toggle)
         layout.addWidget(self.manual_section_block)
         self.registration_tabs = QTabWidget()
@@ -393,12 +499,13 @@ class WindowUiMixin:
         self.registration_tabs.setDocumentMode(True)
         self.registration_tabs.tabBar().setDrawBase(False)
         self.registration_tabs.tabBar().setElideMode(Qt.TextElideMode.ElideNone)
-        manual = QWidget()
+        self.ui_manual_pick_toggle, self.ui_manual_pick_block, box = self.ui_collapsible("手动补点")
+        manual = self.ui_manual_pick_block
         automatic = QWidget()
         terrain = QWidget()
         craters = QWidget()
         self.registration_tabs.addTab(craters, "辅助找坑")
-        self.registration_tabs.addTab(manual, "已知地名取点")
+        self.registration_tabs.tabBar().hide()
         self.crater_tab = craters
         self.crater_tab.installEventFilter(self)
         self.manual_tab = manual
@@ -431,10 +538,7 @@ class WindowUiMixin:
         auto_box.addStretch()
 
         # 地形点（手动地形参考点）
-        box = QVBoxLayout(manual)
-        box.setContentsMargins(0, 6, 0, 0)
-        box.setSpacing(8)
-        box.addWidget(self.ui_note("选 3–6 个已知坑，分散取点，避免共线。"))
+        box.addWidget(self.ui_note("没有合适候选时，选择地名后在照片中取点。"))
         box.addWidget(QLabel("1  选择地名"))
         self.feature_search = QLineEdit()
         self.feature_search.setPlaceholderText("搜索已知地形：哥白尼 / Copernicus")
@@ -446,7 +550,7 @@ class WindowUiMixin:
         self.feature_list.setMaximumHeight(120)
         self.feature_list.itemDoubleClicked.connect(lambda item: self.start_pick())
         box.addWidget(self.feature_list, 1)
-        box.addWidget(QLabel("2  标记坑中心"))
+        box.addWidget(QLabel("2  标记地形中心"))
         self.manual_guide = self.ui_note("请打开照片", "statusStrong")
         box.addWidget(self.manual_guide)
         self.pick_button = QPushButton("选择地名后取点")
@@ -458,9 +562,14 @@ class WindowUiMixin:
         self.cancel_pick_button.clicked.connect(self.cancel_pick)
         self.cancel_pick_button.hide()
         box.addWidget(self.cancel_pick_button)
-        box.addWidget(QLabel("3  校准"))
+        self.ui_reference_toggle, self.ui_reference_block, points_box = self.ui_collapsible("参考点与配准")
+        self.ui_reference_scroll_target = None
+        self.ui_reference_scroll_timer = QTimer(self)
+        self.ui_reference_scroll_timer.setSingleShot(True)
+        self.ui_reference_scroll_timer.timeout.connect(self.ui_reveal_reference_controls)
+        self.ui_reference_block.installEventFilter(self)
         self.anchor_count = QLabel("0 个有效参考点 · 最少 3 个")
-        box.addWidget(self.anchor_count)
+        points_box.addWidget(self.anchor_count)
         self.anchor_table = QTableWidget(0, 3)
         self.anchor_table.setHorizontalHeaderLabels(["使用", "地形", "偏差 px"])
         self.anchor_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -475,7 +584,7 @@ class WindowUiMixin:
         self.anchor_table.itemChanged.connect(self.anchor_enabled_changed)
         self.anchor_table.cellDoubleClicked.connect(self.repick_anchor)
         self.anchor_table.setToolTip("编号对应照片上的十字；双击重选，取消勾选停用。拟合偏差只表示参考点的一致性。")
-        box.addWidget(self.anchor_table, 1)
+        points_box.addWidget(self.anchor_table, 1)
         row = QHBoxLayout()
         remove = QPushButton("移除参考点")
         remove.clicked.connect(self.remove_anchor)
@@ -483,23 +592,24 @@ class WindowUiMixin:
         clear.clicked.connect(self.clear_anchors)
         row.addWidget(remove)
         row.addWidget(clear)
-        box.addLayout(row)
-        self.solve_button = QPushButton("完成校准并生成标注")
+        points_box.addLayout(row)
+        self.solve_button = QPushButton("按参考点手动校准")
         self.solve_button.setProperty("primary", True)
         self.solve_button.clicked.connect(self.solve_manual)
-        box.addWidget(self.solve_button)
         self.guided_identify_button = QPushButton("用参考点自动配准")
         self.guided_identify_button.clicked.connect(self.identify_photo)
         self.guided_identify_button.setToolTip("确认一两个已知点后，自动搜索附近地形；周围图像仍需通过验证。")
-        box.addWidget(self.guided_identify_button)
+        self.guided_identify_button.setProperty("primary", True)
+        points_box.addWidget(self.guided_identify_button)
+        points_box.addWidget(self.solve_button)
         self.registration_status = QLabel("")
         self.registration_status.setWordWrap(True)
         self.registration_status.setObjectName("statusStrong")
-        box.addWidget(self.registration_status)
-        box.addWidget(self.ui_note("双击重选 · 取消勾选停用"))
+        points_box.addWidget(self.registration_status)
+        points_box.addWidget(self.ui_note("双击重选 · 取消勾选停用"))
         toggle, block, advanced = self.ui_collapsible("高级 · 镜像与月面几何")
-        box.addWidget(toggle)
-        box.addWidget(block)
+        points_box.addWidget(toggle)
+        points_box.addWidget(block)
         mirror_form = self.ui_form()
         self.mirror = self.ui_combo()
         self.mirror.addItems(["自动判断镜像（至少三点）", "不镜像", "镜像"])
@@ -513,10 +623,18 @@ class WindowUiMixin:
         advanced.addWidget(self.geometry_status)
         self.feature_list.currentItemChanged.connect(self.manual_selection_changed)
         self.mirror.currentIndexChanged.connect(self.update_manual_guide)
-        box.addStretch()
 
         # 疑似坑（检测与确认）
         self.build_crater_controls(craters)
+        crater_box = craters.layout()
+        crater_box.takeAt(crater_box.count()-1)  # Replace the trailing stretch.
+        for widget in (self.ui_reference_toggle, self.ui_reference_block,
+                       self.ui_manual_pick_toggle, self.ui_manual_pick_block):
+            crater_box.addWidget(widget)
+        crater_box.addStretch()
+        for toggle in (self.ui_reference_toggle, self.ui_manual_pick_toggle):
+            toggle.toggled.connect(self.ui_update_registration_height)
+            toggle.toggled.connect(self.review_page_changed)
         self.registration_tabs.currentChanged.connect(self.registration_page_changed)
         self.registration_tabs.currentChanged.connect(self.ui_update_registration_height)
         self.workspace_tabs.currentChanged.connect(self.review_page_changed)
@@ -702,8 +820,7 @@ class WindowUiMixin:
         self.ui_crater_scroll_timer = QTimer(self)
         self.ui_crater_scroll_timer.setSingleShot(True)
         self.ui_crater_scroll_timer.timeout.connect(self.ui_reveal_crater_controls)
-        # Showing either widget is app.py's way of entering a manual flow;
-        # the section opens with them (see eventFilter).
+        # The section follows the business layer's explicit review/pick state.
         for review_widget in (self.cancel_pick_button, self.crater_action_panel):
             review_widget.installEventFilter(self)
         self.manual_section_toggle.toggled.connect(self.ui_reconcile_confirm_bar)
@@ -838,7 +955,7 @@ class WindowUiMixin:
         # silently preselects that result and opens a popup over confirmation.
         self.crater_feature = QListWidget()
         self.crater_feature.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.crater_feature.setToolTip("点击地名后确认。这里只列环形山；月溪、山脉等在“已知地名取点”中选择。")
+        self.crater_feature.setToolTip("点击地名后确认。这里只列环形山；月溪、山脉等在“手动补点”中选择。")
         self.crater_feature.currentItemChanged.connect(self.update_crater_buttons)
         self.crater_feature.hide()
         box.addWidget(self.crater_feature)

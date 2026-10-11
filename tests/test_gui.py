@@ -358,7 +358,7 @@ def test_manual_registration_of_partial_lunar_image_without_nasa(tmp_path, monke
     window.solve_manual()
     assert not errors
     assert np.allclose(window.project.matrix,matrix,atol=1e-6)
-    assert window.registration_tabs.currentWidget() is window.manual_tab
+    assert window.registration_tabs.currentWidget() is window.crater_tab
     assert window.workspace_tabs.currentIndex()==1
     assert '镜像' in window.registration_status.text()
     # Failed NASA operation must not invalidate already valid registration.

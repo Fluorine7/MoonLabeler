@@ -33,10 +33,6 @@ Lommel–Seeliger 使用 `cos(i) / (cos(i) + cos(e))`；Lambert 使用 `max(cos(
 
 整月盘纹理配准使用 **NASA LRO / LROC 团队**的全球纹理图。致谢 NASA Scientific Visualization Studio、**Ernie Wright（USRA）**、**Noah Petro（NASA/GSFC）**及 LROC / LOLA 团队，来源为 [CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/)。源码内置的 2048×1024 JPEG 经第三方镜像重压缩，保留原分辨率；原始 URL、固定镜像提交和处理说明见 [数据来源记录](moonlabeler/data/moon_albedo_2k.provenance.json)。它用于视觉配准，不作为定量测光数据。当前用双向 SIFT、相似变换 RANSAC 和月盘范围检查恢复地图到照片的位置，不将纹理点虚构为地名。
 
-标签布局借鉴了 **Andres del Pozo、Juan Conejero（PTeam）** 的 PixInsight **AnnotateImage 2.3.3**（本机 2026-09-15 发布源码）。研究了 Entity.js 中的 16 方位候选位置与间距优化，以及 AnnotationEngine.js 中的迭代移动、重新插入和拥挤元素剔除。MoonLabeler 对月面标签独立实现了候选布局，并加入地形中心、引线交叉避让和用户固定位置；没有复制上述 JavaScript 源码。
-
-本机参考文件：/Applications/PixInsight/src/scripts/AnnotateImage/Entity.js、AnnotationEngine.js 和 Layer.js。
-
 - 月面地名：[USGS / IAU Planetary Nomenclature GIS](https://planetarynames.wr.usgs.gov/GIS_Downloads)。
 - 中文地名：[国家天文科学数据中心 · 天文学名词](https://nadc.china-vo.org/astrodict/)，致谢中国天文学会天文学名词审定委员会、词表编订者和数据中心。908 对源词条与链接保存于 `moonlabeler/data/chinese_names.json`；对照原名并去掉环形山类别后缀用于紧凑标注，卫星坑按主坑译名加字母派生。词条出版与审定状态以原网站为准，并不声称覆盖所有月球地名。未收录者保留官方英文名称。
 - 星历与月球姿态：[JPL DE421](https://ssd.jpl.nasa.gov/planets/eph_export.html)，通过 [Skyfield 月面参考系接口](https://rhodesmill.org/skyfield/planetary.html)计算。
@@ -51,7 +47,6 @@ MoonLabeler is authored by **Fluorine Zhu** and released under **GNU GPL version
 
 - **Jim Mosher and Henrik Bondo — LTVT:** Their work inspired the known-terrain calibration and DEM lighting workflows. MoonLabeler independently implements these ideas in Python / Qt; it does not include LTVT Delphi source. See the [LTVT archive](https://github.com/pavolgaj/ltvt) and the calibration and DEM references above.
 - **Ram Maruboina — Lunar Crater Detector:** Parts of the OpenCV preprocessing, ellipse-fitting, and Hough-circle approach were adapted from the fixed MIT-licensed version linked above. The original copyright and full MIT permission notice are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- **Andres del Pozo, Juan Conejero, and PTeam — PixInsight AnnotateImage:** The candidate-position and spacing strategies informed our independent lunar label layout. No AnnotateImage JavaScript is distributed in this repository.
 - **C. Akinlar, C. Topal, and OpenCV contributors:** EdgeDrawing / EDCircles provides partial-edge grouping and ellipse detection. This is image geometry detection, not lunar place-name identification.
 - **NASA SVS, Ernie Wright, Noah Petro, LRO, LROC, and LOLA teams:** Lunar textures, elevation data, and visualization references. The bundled texture's canonical source, fixed mirror, and JPEG recompression provenance are recorded with the data.
 - **USGS / IAU planetary nomenclature contributors:** Terrain names, positions, categories, and diameters.
