@@ -102,6 +102,9 @@ class MatchResult:
     rms_px: float
     coverage: float
     mirrored: bool
+    # RANSAC inliers in the original, unreflected images' pixel coordinates.
+    source_points: np.ndarray | None = None
+    target_points: np.ndarray | None = None
 
 
 def registration_candidates(reference, photograph, *, ratio_threshold=.75,
@@ -152,12 +155,17 @@ def registration_candidates(reference, photograph, *, ratio_threshold=.75,
         rms = float(np.sqrt(np.mean(error ** 2)) / ps)
         if rms > 4 / ps:
             continue
+        source_points = src[inliers].astype(float)
+        target_points = dst[inliers].astype(float) / ps
         if mirrored:
             reflection = np.array([[-1., 0., ref.shape[1]-1], [0., 1., 0.], [0., 0., 1.]])
             matrix = (np.vstack((matrix, [0., 0., 1.])) @ reflection)[:2]
+            source_points[:, 0] = ref.shape[1]-1-source_points[:, 0]
+        source_points /= rs
         matrix[:, :2] *= rs / ps
         matrix[:, 2] /= ps
-        candidates.append(MatchResult(matrix, count, len(good), rms, coverage, mirrored))
+        candidates.append(MatchResult(matrix, count, len(good), rms, coverage, mirrored,
+                                      source_points, target_points))
     if not candidates:
         raise ValueError("没有足够可靠的匹配。请核对拍摄时间，或用至少三处已知地形手动配准。")
     return candidates

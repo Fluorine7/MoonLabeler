@@ -38,7 +38,7 @@ def _predict(params, geometry, matrix, lat, lon):
     return transform_points(matrix, points) @ _camera(params).T + params[4:6]
 
 
-def _fit(geometry, matrix, lat, lon, target, free_view):
+def _fit(geometry, matrix, lat, lon, target, free_view, view_bound_deg=1.5):
     params = np.zeros(6)
     free = np.arange(6) if free_view else np.arange(2, 6)
     steps = np.array([1e-4, 1e-4, 1e-5, 1e-5, .001, .001])
@@ -61,7 +61,7 @@ def _fit(geometry, matrix, lat, lon, target, free_view):
             return None
         proposal = params.copy()
         proposal[free] -= delta
-        proposal[:2] = np.clip(proposal[:2], -1.5, 1.5)
+        proposal[:2] = np.clip(proposal[:2], -view_bound_deg, view_bound_deg)
         proposal[2:4] = np.clip(proposal[2:4], -.1, .1)
         if cost(np.linalg.norm(_predict(proposal, geometry, matrix, lat, lon)-target, axis=1)) < cost(errors):
             params = proposal
@@ -75,11 +75,13 @@ def _fit(geometry, matrix, lat, lon, target, free_view):
     return params
 
 
-def refine_view(geometry, matrix, source_pixels, target_pixels, image_shape):
+def refine_view(geometry, matrix, source_pixels, target_pixels, image_shape, *, max_view_offset_deg=1.25):
     """Return a validated six-parameter fit, or None to retain the original.
 
     Inputs are independently matched reference/photo pixels at a common working
     resolution. Repeated keypoint orientations must already be deduplicated.
+    A caller increasing the default direction bound must supply an additional
+    independent validation, such as the photographed long outer limb.
     """
     source, target = np.asarray(source_pixels, float), np.asarray(target_pixels, float)
     if source.shape != target.shape or source.ndim != 2 or source.shape[1] != 2:
@@ -97,8 +99,9 @@ def refine_view(geometry, matrix, source_pixels, target_pixels, image_shape):
     cell_xy = np.clip((source/np.array([w, h])*3).astype(int), 0, 2)
     cells = cell_xy[:, 0] + 3*cell_xy[:, 1]
     rms = lambda residual: float(np.sqrt(np.mean(np.sum(residual**2, axis=1))))
-    fit = _fit(geometry, matrix, lat, lon, target, True)
-    if fit is None or np.linalg.norm(fit[:2]) > 1.25:
+    bound = max(1.5, max_view_offset_deg)
+    fit = _fit(geometry, matrix, lat, lon, target, True, bound)
+    if fit is None or np.linalg.norm(fit[:2]) > max_view_offset_deg:
         return None
     folds = []
     for cell in np.unique(cells):
@@ -106,7 +109,7 @@ def refine_view(geometry, matrix, source_pixels, target_pixels, image_shape):
         if hold.sum() < 3 or (~hold).sum() < 20:
             continue
         baseline = _fit(geometry, matrix, lat[~hold], lon[~hold], target[~hold], False)
-        candidate = _fit(geometry, matrix, lat[~hold], lon[~hold], target[~hold], True)
+        candidate = _fit(geometry, matrix, lat[~hold], lon[~hold], target[~hold], True, bound)
         if baseline is None or candidate is None or np.linalg.norm(candidate[:2]-fit[:2]) > .35:
             return None
         before = rms(_predict(baseline, geometry, matrix, lat[hold], lon[hold])-target[hold])

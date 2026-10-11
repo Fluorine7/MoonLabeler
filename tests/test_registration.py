@@ -91,6 +91,24 @@ def test_auto_rejects_blank_image():
         auto_register(image,image)
 
 
+@pytest.mark.parametrize('mirror', [1, -1])
+def test_match_inliers_use_original_coordinates_after_resize_and_reflection(mirror):
+    rng = np.random.default_rng(61)
+    texture = rng.integers(0, 256, (600, 600), dtype=np.uint8)
+    texture = cv2.GaussianBlur(texture, (5, 5), 1.)
+    reference = cv2.resize(texture, (2400, 2400))
+    expected = np.array([[.72*mirror, 0., 460. if mirror == 1 else 2187.28],
+                         [0., .72, 320.]])
+    photograph = cv2.warpAffine(reference, expected, (3000, 2600))
+    match = auto_register(reference, photograph)
+    assert match.mirrored == (mirror == -1)
+    assert len(match.source_points) == len(match.target_points) == match.inliers
+    error = np.linalg.norm(transform_points(expected, match.source_points)-match.target_points, axis=1)
+    assert np.median(error) < 1.5
+    actual = np.linalg.norm(transform_points(match.matrix, match.source_points)-match.target_points, axis=1)
+    assert np.sqrt(np.mean(actual**2)) == pytest.approx(match.rms_px)
+
+
 def test_reference_alpha_circle_rejects_rectangular_canvas():
     rgba = np.zeros((500,500,4),np.uint8)
     cv2.circle(rgba[:,:,3].copy(),(250,250),200,255,-1)

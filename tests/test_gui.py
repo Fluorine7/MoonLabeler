@@ -587,6 +587,43 @@ def test_one_click_recognizes_low_contrast_whole_moon(tmp_path):
         window.close()
 
 
+def test_one_click_whole_moon_refinement_survives_project_and_png_export(tmp_path):
+    import time
+    source = Path(__file__).parents[1]
+    photo = source/'230603-2.jpg'
+    if not photo.exists() or not (source/'.cache/ephemeris/de421.bsp').exists():
+        pytest.skip('Local user photograph and JPL cache required')
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    errors = []
+    window.error = errors.append
+    try:
+        window.open_image(str(photo))
+        window.date.setDateTime(QDateTime.fromString('2023-06-03T15:00:00Z', Qt.DateFormat.ISODate))
+        window.identify_button.click()
+        for _ in range(600):
+            application.processEvents()
+            if not window.busy:
+                break
+            time.sleep(.05)
+        assert not window.busy and not errors
+        refinement = window.project.identification['refinement']
+        assert refinement['limb_after_px'] < refinement['limb_before_px']*.4
+        assert 1245 < window.project.matrix[1, 2] < 1265
+        assert window.project.geometry.to_dict() != refinement['base_geometry']
+        saved = tmp_path/'corrected-full-moon.moonlabel'
+        window.project.save(saved)
+        loaded = Project.load(saved)
+        assert loaded.identification['refinement'] == refinement
+        assert loaded.geometry.to_dict() == window.project.geometry.to_dict()
+        assert np.allclose(loaded.matrix, window.project.matrix)
+        window.render_png(tmp_path/'corrected-full-moon.png')
+        assert Image.open(tmp_path/'corrected-full-moon.png').size == (3486, 2466)
+    finally:
+        window.dirty = False
+        window.close()
+
+
 def test_one_click_recognizes_partial_photo_with_satellite_crater_chain(tmp_path):
     import pytest
     import time
