@@ -1,9 +1,13 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.1** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.2** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
+
+0.7.2：修复小月盘被大片黑边包围时的识别失败。对孤立的小亮区裁取计算窗口，保留原有纹理及几何验证，结果换回完整原图坐标；原图、保存和导出尺寸不变。已用 DWARF 实拍验证。文件名时区规则不变，本地时间仍需换算为 UTC。
+
+0.7.2 fixes recognition of small lunar disks surrounded by large black margins. A bounded search window preserves texture and geometry validation, then restores original-image coordinates. Source pixels, saved projects and export dimensions are unchanged. Verified on a DWARF photograph; filename timezone rules are unchanged and local capture times still require conversion to UTC.
 
 0.7.1：增加受限的手机目镜后畸变校正。已有可靠纹理匹配、但月缘检查失败时才尝试；需同时通过分区留出与真实受光月缘验证。原图不重采样，文字、坑缘和导出共用校正坐标。已验证一张实拍，不保证所有手机、目镜组合或局部照片都能识别。
 

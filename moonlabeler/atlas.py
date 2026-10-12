@@ -125,8 +125,57 @@ def _eyepiece_or_raise(image, geometry, projection, match, message):
         raise IdentificationError(message) from None
 
 
+def _compact_lunar_field(image):
+    """Find a small isolated bright field; never crop ordinary or partial fields.
+
+    This is only a search window, not a lunar-limb measurement. Texture and
+    geometry validation still establish whether the object is the Moon.
+    """
+    height, width = image.shape[:2]
+    factor = min(1., 800/max(height, width))
+    small = cv2.resize(image, (round(width*factor), round(height*factor)),
+                       interpolation=cv2.INTER_AREA)
+    gray = cv2.cvtColor(small, cv2.COLOR_RGB2GRAY) if small.ndim == 3 else small
+    mask = (gray > 30).astype(np.uint8)
+    count, _, stats, _ = cv2.connectedComponentsWithStats(mask)
+    if count < 2:
+        return None
+    x, y, w, h, area = stats[1+np.argmax(stats[1:, cv2.CC_STAT_AREA])]
+    sh, sw = gray.shape
+    # Refuse multiple bright regions, clipped objects, specks and large fields.
+    if (area < .005*sw*sh or area < .95*mask.sum()
+            or w*h > .10*sw*sh or max(w, h) > .45*min(sw, sh)
+            or not .5 < w/h < 2 or min(w, h)/factor < 160
+            or x <= 1 or y <= 1 or x+w >= sw-1 or y+h >= sh-1):
+        return None
+    pad = .15*max(w, h)
+    lower = np.maximum(np.floor((np.array([x, y])-pad)/factor).astype(int), 0)
+    upper = np.minimum(np.ceil((np.array([x+w, y+h])+pad)/factor).astype(int), [width, height])
+    return image[lower[1]:upper[1], lower[0]:upper[0]], lower
+
+
 def identify_from_atlas(image, geometry):
     """No supplied region, camera angle, mirror, scale or feature names."""
+    compact = _compact_lunar_field(image)
+    if compact is not None:
+        field, origin = compact
+        try:
+            result = _identify_atlas_field(field, geometry)
+        except IdentificationError:
+            pass  # Preserve the full-frame search if the isolated field fails.
+        else:
+            # All public coordinates remain in the untouched original image.
+            result.matrix[:, 2] += origin
+            if result.lens_distortion is not None:
+                result.lens_distortion = dict(result.lens_distortion)
+                result.lens_distortion['center'] = (
+                    np.asarray(result.lens_distortion['center'])+origin).tolist()
+            result.method += " / compact lunar field"
+            return result
+    return _identify_atlas_field(image, geometry)
+
+
+def _identify_atlas_field(image, geometry):
     reference, projection = render_atlas(geometry)
     match = auto_register(reference, image)
     # The map search has no user-supplied region, so require more evidence than
