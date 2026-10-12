@@ -1,9 +1,13 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.2** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.3** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
+
+0.7.3：小月盘的计算窗口允许排除边框附近、窗口外的成行文字，避免较大图注阻止识别。原图水印不修改；第二个明显目标、内部文字和孤立的大标志仍保守处理。已验证 DWARF 实拍添加图注后的变体，以及横向、纵向边框文字。背景亮度处理不变。
+
+0.7.3 lets compact-disk window selection disregard small, aligned border-caption components outside the search window. Source watermarks remain untouched; substantial secondary objects, interior text and isolated large logos remain subject to conservative checks. Tested with a captioned DWARF photograph and horizontal/vertical border-text fixtures. Background-brightness handling is unchanged.
 
 0.7.2：修复小月盘被大片黑边包围时的识别失败。对孤立的小亮区裁取计算窗口，保留原有纹理及几何验证，结果换回完整原图坐标；原图、保存和导出尺寸不变。已用 DWARF 实拍验证。文件名时区规则不变，本地时间仍需换算为 UTC。
 

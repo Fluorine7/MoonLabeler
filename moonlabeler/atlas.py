@@ -125,6 +125,50 @@ def _eyepiece_or_raise(image, geometry, projection, match, message):
         raise IdentificationError(message) from None
 
 
+def _border_caption_area(stats, main, shape):
+    """Count small glyph-like components in border rows outside the search ROI.
+
+    No pixels are erased. A second substantial object, interior markings, or
+    an isolated logo do not qualify as a caption. Ambiguous cases keep the
+    original foreground-dominance requirement.
+    """
+    x, y, w, h, area = stats[main]
+    pad = .15*max(w, h)
+    sx, sy, sw, sh, sa = stats.T
+    outside = ((sx+sw < x-pad) | (sx > x+w+pad)
+               | (sy+sh < y-pad) | (sy > y+h+pad))
+    small = (outside & (sa < .03*area) & (sw < .30*min(w, h))
+             & (sh < .30*min(w, h)))
+    small[0] = False  # Connected-component background is not a glyph.
+    ignored = set()
+    # Horizontal captions along top/bottom, and their rotated counterparts.
+    for vertical in (False, True):
+        px, py, pw, ph = (sy, sx, sh, sw) if vertical else (sx, sy, sw, sh)
+        extent = shape[1] if vertical else shape[0]
+        border = (py+ph < .15*extent) | (py > .85*extent)
+        indices = np.flatnonzero(small & border & (ph < .22*min(w, h)))
+        # Bound work for noisy borders; conservative fallback to full-frame.
+        if len(indices) > 256:
+            continue
+        for seed in indices:
+            aligned = indices[(np.abs(py[indices]+ph[indices]/2-py[seed]-ph[seed]/2)
+                               < .5*ph[seed])
+                              & (ph[indices] >= .5*ph[seed])
+                              & (ph[indices] <= 2*ph[seed])]
+            aligned = aligned[np.argsort(px[aligned])]
+            groups = np.split(aligned, np.flatnonzero(
+                px[aligned[1:]]-px[aligned[:-1]]-pw[aligned[:-1]] > 3*ph[seed])+1)
+            for group in groups:
+                if len(group) < 4:
+                    continue
+                span = max(px[group]+pw[group])-min(px[group])
+                height = max(py[group]+ph[group])-min(py[group])
+                if span >= 3*height and sa[group].sum() >= .06*span*height:
+                    ignored.update(group.tolist())
+    removed = int(sa[list(ignored)].sum()) if ignored else 0
+    return removed if removed <= .30*area else 0
+
+
 def _compact_lunar_field(image):
     """Find a small isolated bright field; never crop ordinary or partial fields.
 
@@ -140,14 +184,20 @@ def _compact_lunar_field(image):
     count, _, stats, _ = cv2.connectedComponentsWithStats(mask)
     if count < 2:
         return None
-    x, y, w, h, area = stats[1+np.argmax(stats[1:, cv2.CC_STAT_AREA])]
+    main = 1+np.argmax(stats[1:, cv2.CC_STAT_AREA])
+    x, y, w, h, area = stats[main]
     sh, sw = gray.shape
     # Refuse multiple bright regions, clipped objects, specks and large fields.
-    if (area < .005*sw*sh or area < .95*mask.sum()
+    if (area < .005*sw*sh
             or w*h > .10*sw*sh or max(w, h) > .45*min(sw, sh)
             or not .5 < w/h < 2 or min(w, h)/factor < 160
             or x <= 1 or y <= 1 or x+w >= sw-1 or y+h >= sh-1):
         return None
+    foreground = int(mask.sum())
+    if area < .95*foreground:
+        foreground -= _border_caption_area(stats, main, gray.shape)
+        if area < .95*foreground:
+            return None
     pad = .15*max(w, h)
     lower = np.maximum(np.floor((np.array([x, y])-pad)/factor).astype(int), 0)
     upper = np.minimum(np.ceil((np.array([x+w, y+h])+pad)/factor).astype(int), [width, height])

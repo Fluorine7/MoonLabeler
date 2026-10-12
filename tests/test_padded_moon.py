@@ -62,7 +62,49 @@ def test_failed_compact_search_falls_back_to_full_frame(monkeypatch):
     assert len(calls) == 2 and calls[-1] == image.shape
 
 
-def test_dwarf_small_moon_registers_in_original_canvas_coordinates():
+@pytest.mark.parametrize('top', [False, True])
+@pytest.mark.parametrize('rotation', [0, 1])
+def test_border_caption_does_not_hide_compact_moon(top, rotation):
+    from moonlabeler.atlas import _compact_lunar_field
+    image = padded_disk()
+    captioned = image.copy()
+    cv2.putText(captioned, 'DWARF Moon 2025', (80, 80 if top else 950),
+                cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 5)
+    image = np.rot90(image, rotation).copy()
+    captioned = np.rot90(captioned, rotation).copy()
+    expected, origin = _compact_lunar_field(image)
+    result = _compact_lunar_field(captioned)
+    assert result is not None
+    assert np.array_equal(result[0], expected)
+    assert np.array_equal(result[1], origin)
+
+
+def test_border_caption_does_not_license_discarding_another_moon():
+    from moonlabeler.atlas import _compact_lunar_field
+    image = padded_disk()
+    cv2.circle(image, (200, 100), 65, (170, 170, 170), -1)
+    cv2.putText(image, 'DWARF Moon 2025', (80, 950),
+                cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 5)
+    assert _compact_lunar_field(image) is None
+
+
+def test_interior_caption_is_not_silently_discarded():
+    from moonlabeler.atlas import _compact_lunar_field
+    image = padded_disk()
+    cv2.putText(image, 'DWARF Moon 2025', (80, 350),
+                cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 5)
+    assert _compact_lunar_field(image) is None
+
+
+def test_large_isolated_border_logo_is_not_assumed_to_be_text():
+    from moonlabeler.atlas import _compact_lunar_field
+    image = padded_disk()
+    cv2.rectangle(image, (80, 50), (200, 100), (255, 255, 255), -1)
+    assert _compact_lunar_field(image) is None
+
+
+@pytest.mark.parametrize('caption', [False, True])
+def test_dwarf_small_moon_registers_in_original_canvas_coordinates(caption):
     from moonlabeler.atlas import identify_from_atlas
     from moonlabeler.geometry import compute_geometry
     from moonlabeler.sources import read_image
@@ -73,6 +115,9 @@ def test_dwarf_small_moon_registers_in_original_canvas_coordinates():
     # Photographer confirms filename uses Beijing time; UTC crosses midnight.
     geometry = compute_geometry(datetime(2025, 1, 11, 16, 38, 40, 435000, tzinfo=timezone.utc), root/'.cache/ephemeris')
     image = read_image(path)
+    if caption:
+        cv2.putText(image, 'DWARF Moon 2025', (100, image.shape[0]-100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 255, 255), 6)
     result = identify_from_atlas(image, geometry)
     assert result.image_inliers > 300
     assert result.rms_px < 1.5
