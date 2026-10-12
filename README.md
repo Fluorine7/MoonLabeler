@@ -1,9 +1,13 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.3** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.4** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
+
+0.7.4：标签仅在按住 Cmd（macOS）或 Ctrl（Windows/Linux）并拖动时移动；普通拖动平移画面，双击仍可改名。标注页和悬停提示显示对应按键。
+
+0.7.4 requires Cmd (macOS) or Ctrl (Windows/Linux) while dragging to move a label. Ordinary drags pan the image; double-click still edits the text. The annotation panel and tooltips show the platform-specific modifier.
 
 0.7.3：小月盘的计算窗口允许排除边框附近、窗口外的成行文字，避免较大图注阻止识别。原图水印不修改；第二个明显目标、内部文字和孤立的大标志仍保守处理。已验证 DWARF 实拍添加图注后的变体，以及横向、纵向边框文字。背景亮度处理不变。
 
@@ -37,7 +41,7 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 - 辅助找坑、名称确认和参考点配准合并在同一流程；手动补点默认折叠，识别失败保留当前候选和参考点。
 - 疑似坑检测：本地 OpenCV 检测圆形 / 椭圆坑缘，支持修正中心与导出 CSV。
 - 照片画布在左、紧凑检查器在右；低频参数折叠，候选坑确认操作固定在页脚。
-- 标注布局：哥白尼、第谷、柏拉图等常见重要地形先占位，普通标签及其中心不抢占这些位置；必要时对重要标签有限扩大引线范围。自动避让标签、地形中心和引线；拖动标签或双击改名。
+- 标注布局：哥白尼、第谷、柏拉图等常见重要地形先占位，普通标签及其中心不抢占这些位置；必要时对重要标签有限扩大引线范围。自动避让标签、地形中心和引线；按住 Cmd（macOS）或 Ctrl（Windows/Linux）拖动标签，双击改名。
 - 候选选择综合投影大小、坑缘与周围地表对比及区域分布；主地形优先于附属字母坑，避让后从其余候选补位，数量上限约束最终显示结果。
 - 按投影视直径分大、中、小三档字号，默认短边的 **1.8% / 1.5% / 1.2%**；“字号递减”默认每档减 **0.3 个百分点**，设为 0 则统一字号。新照片的标签上限为 **200**。
 - 默认近白色文字与深色描边；大环形山默认用平滑椭圆，可选坑缘轮廓，小坑使用短引线。
@@ -132,7 +136,7 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 - Candidate detection, name confirmation and reference-point registration share one workflow. Manual point placement is a collapsed fallback; failures retain confirmed points and the current candidate workflow.
 - Local OpenCV crater-rim candidate detection, center correction, and CSV export.
 - Photo-first layout with a compact right-hand inspector, collapsible advanced settings, and a pinned crater-confirmation panel.
-- Automatic label placement with collision avoidance, draggable labels, and editable names.
+- Automatic label placement with collision avoidance, Cmd/Ctrl-drag label positioning, and double-click name editing; ordinary drags pan the image.
 - Candidate ranking considers apparent size, rim/background contrast and regional coverage. Named formations precede lettered satellites; reserves fill layout omissions until the final display limit is reached.
 - Three font tiers based on projected apparent diameter, defaulting to **1.8% / 1.5% / 1.2%** of the image's shorter dimension. **字号递减** (Font decrement) subtracts **0.3 percentage points** per tier; set it to 0 for uniform text. The default display limit is **200** labels.
 - Near-white annotations with dark text outlines; projected reference outlines for large craters and short leaders for small craters.

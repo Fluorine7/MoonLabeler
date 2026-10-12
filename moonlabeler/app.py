@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 from . import __version__
 from .capture_time import winjupos_capture_time
 from .ui.theme import STYLE
-from .ui.window import WindowUiMixin
+from .ui.window import WindowUiMixin, LABEL_DRAG_HINT
 from .ui.compute import ComputeDialog
 from . import compute
 from .craters import DetectionOptions, detect_craters, detect_crater_rims
@@ -121,6 +121,16 @@ class Canvas(QGraphicsView):
         if event.mimeData().hasUrls() and event.mimeData().urls()[0].isLocalFile():
             event.acceptProposedAction()
 
+    def mouseDoubleClickEvent(self, event):
+        # Plain presses on labels pass through to hand-panning. Keep explicit
+        # double-click editing even though those presses don't grab the item.
+        item = self.itemAt(event.position().toPoint())
+        if not self.picking and event.button() == Qt.MouseButton.LeftButton and isinstance(item, Annotation):
+            item.edit(item.feature)
+            event.accept()
+        else:
+            super().mouseDoubleClickEvent(event)
+
     def dragMoveEvent(self, event):
         event.acceptProposedAction()
 
@@ -141,10 +151,11 @@ class Annotation(QGraphicsItem):
         self.font.setPixelSize(self.font_size)
         self.path = QPainterPath()
         self.path.addText(0, self.font_size, self.font, text)
-        self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
-                      QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+        self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                       QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
+        self._drag_offset = None
         self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setToolTip(f"{LABEL_DRAG_HINT} · 双击编辑文字")
         self.setZValue(20)
         self.line = QGraphicsLineItem()
         self.line.setPen(QPen(QColor(self.color), max(1.2, self.font_size*.035)))
@@ -186,6 +197,34 @@ class Annotation(QGraphicsItem):
 
     def mouseDoubleClickEvent(self, event):
         self.edit(self.feature)
+        event.accept()
+
+    def mousePressEvent(self, event):
+        self._drag_offset = None
+        # Qt ControlModifier is Command on macOS, Ctrl on Windows/Linux:
+        # https://doc.qt.io/qt-6/macos-issues.html#special-keys
+        if event.button() == Qt.MouseButton.LeftButton and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            self._drag_offset = event.scenePos()-self.pos()
+            self.scene().clearSelection()
+            self.setSelected(True)
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            event.accept()
+        else:
+            event.ignore()  # Let ScrollHandDrag pan, even over a label.
+
+    def mouseMoveEvent(self, event):
+        if (self._drag_offset is not None and event.buttons() & Qt.MouseButton.LeftButton
+                and event.modifiers() & Qt.KeyboardModifier.ControlModifier):
+            self.setPos(event.scenePos()-self._drag_offset)
+        else:
+            # Releasing the modifier ends this drag; don't jump if re-pressed.
+            self._drag_offset = None
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+        event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_offset = None
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
         event.accept()
 
 
@@ -289,7 +328,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.displayed_font_percent = self.font_size.value()
         self.displayed_font_step_percent = self.ui_font_step.value()
         self.update_manual_guide()
-        self.statusBar().showMessage("滚轮缩放 · 拖动平移")
+        self.statusBar().showMessage(f"滚轮缩放 · 拖动平移 · {LABEL_DRAG_HINT}")
         self.empty_hint = self.canvas.scene().addText("打开或拖入照片", QFont("PingFang SC", 20))
         self.empty_hint.setDefaultTextColor(QColor("#718399"))
         self.empty_hint.setPos(70, 100)
@@ -1706,7 +1745,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             "手动补点：展开“手动补点”，搜索地名，点击取点按钮，再点照片中同一个坑的完整坑缘中心。不要点亮斑或阴影中心。取 3–6 个分散、不共线的点，再完成校准。\n"
             "Esc 取消取点；双击参考点行重选，取消勾选停用。橙色行需核对。\n\n"
             "月溪、山脉等在“手动补点”中选择。\n\n"
-            "标注：改设置后点击“重新生成标注”。拖动标签调整位置，双击编辑文字。字号按照片短边计算，按视直径分大、中、小三档；字号递减设为 0 则统一字号。可保存工程或导出 PNG / SVG。\n\n"
+            f"标注：改设置后点击“重新生成标注”。{LABEL_DRAG_HINT}调整位置，双击编辑文字。不按修饰键时拖动只平移画面。字号按照片短边计算，按视直径分大、中、小三档；字号递减设为 0 则统一字号。可保存工程或导出 PNG / SVG。\n\n"
             "DEM：导入或下载高程数据，选择区域生成光照参考。基础采样约 1.9 km；不适用于近月缘区域。\n\n"
             "坑缘圈是目录投影参考，可能偏离实际坑缘。拟合残差只表示一致性；模型和数据来源详见 README。")
 

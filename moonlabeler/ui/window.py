@@ -22,6 +22,7 @@ Layout contract notes:
 Do not import app.py here (it imports this mixin).
 """
 from pathlib import Path
+import sys
 from PySide6.QtCore import Qt, QDate, QDateTime, QEvent, QTimer, QTime, QTimeZone
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
@@ -32,6 +33,8 @@ from PySide6.QtWidgets import (
     QListView, QTabWidget, QSizePolicy,
 )
 from .capture import CaptureField
+
+LABEL_DRAG_HINT = f"按住 {'Cmd' if sys.platform == 'darwin' else 'Ctrl'} 拖动标签"
 
 
 class WidePopupComboBox(QComboBox):
@@ -819,7 +822,7 @@ class WindowUiMixin:
         restore = QPushButton("恢复名称与默认位置")
         restore.clicked.connect(self.reset_labels)
         apply_box.addWidget(restore)
-        apply_box.addWidget(self.ui_note("拖动调整位置 · 双击编辑文字"))
+        apply_box.addWidget(self.ui_note(f"{LABEL_DRAG_HINT} · 双击编辑文字"))
         self.language.setToolTip("中文译名未收录时显示官方原名。")
         # The label list absorbs any surplus page height on tall windows.
         labels_layout.addWidget(group, 1)
@@ -871,7 +874,8 @@ class WindowUiMixin:
         header_box.setSpacing(12)
         self.canvas_title = QLabel("月面照片")
         self.canvas_title.setObjectName("canvasTitle")
-        self.canvas_details = QLabel("滚轮缩放 · 拖动空白处平移")
+        self.canvas_details = QLabel("滚轮缩放 · 拖动平移")
+        self.canvas.setToolTip(f"滚轮缩放 · 拖动平移\n{LABEL_DRAG_HINT} · 双击编辑文字")
         self.canvas_details.setObjectName("canvasDetails")
         header_box.addWidget(self.canvas_title)
         header_box.addStretch()
