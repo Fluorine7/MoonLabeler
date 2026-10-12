@@ -1,13 +1,13 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.3** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.4** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
 
-0.6.3：加速自动识别中的坑群索引构建，保持候选顺序与匹配验证条件；清理 UI 拆分后遗留的未使用导入和辅助函数。高程参考仍是复杂局部图的主要耗时来源。
+0.6.4：新增 Apple 芯片可选 Metal GPU 高程参考加速，保留 CPU 精确投影、临界像素复核及不可用时的 CPU 回退。
 
-0.6.3 speeds up crater-pattern index construction while preserving candidate order and match validation. Unused imports and a UI helper left over from the UI split were removed. Terrain references remain the main cost for difficult close-ups.
+0.6.4 adds optional Metal GPU terrain-reference acceleration on Apple silicon, retaining CPU projection, boundary-pixel checks and a CPU fallback when acceleration is unavailable.
 
 [中文使用说明](README.zh-CN.md) · [Acknowledgements / 致谢](ACKNOWLEDGEMENTS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 
@@ -59,6 +59,8 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 python -m moonlabeler
 ```
+
+Apple 芯片可选 GPU 加速：在项目目录运行 `.venv/bin/python -m pip install ".[apple-gpu]"`。安装后自动使用 MLX / Metal 生成自动识别所需的高程阴影参考；首次运行包含内核编译。精确投影、SIFT 匹配、配准精修和标注仍使用 CPU。MLX 及所需 macOS 版本以可安装的上游 wheel 为准；未安装、无 Metal 设备或 GPU 执行失败时自动使用 CPU。需要对照时可运行 `MOONLABELER_COMPUTE=cpu .venv/bin/python -m moonlabeler` 强制使用 CPU。
 
 FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打开示例”** 测试内置的合成工程；它用于演示编辑与校准流程，不用于证明实拍识别准确率。
 
@@ -115,6 +117,8 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 - Editable `.moonlabel` projects, original-size PNG export, SVG export, and a separate LOLA DEM lighting-reference tool.
 
 ### Installation and usage
+
+For optional Apple silicon GPU acceleration, run `.venv/bin/python -m pip install ".[apple-gpu]"` in the project directory. Automatic identification then uses MLX / Metal for coarse terrain/shadow references; the first run includes kernel compilation. Projection, SIFT matching, pose refinement and labels remain on the CPU. Supported macOS versions depend on available upstream MLX wheels. Missing MLX, unavailable Metal or GPU runtime failures fall back to CPU. Set `MOONLABELER_COMPUTE=cpu` before launch to force the CPU path.
 
 The font tiers use projected equivalent-area diameter: large at **2%** or more of the image's short side, medium at **0.8%–2%**, and small below **0.8%**. This includes foreshortening and the camera transform; filtering the catalogue does not change a formation's tier. Rilles and other long terrain use catalogue extent. Tier sizes drive collision bounds, PNG and SVG together and are saved in projects. Older projects keep their uniform text; to enable tiers, set the maximum size to **1.8%**, decrement to **0.3%**, then regenerate. The calculation is batched and does not rerun recognition or read elevation data.
 

@@ -142,6 +142,23 @@ class ElevationMap:
         return normal/np.linalg.norm(normal, axis=1)[:, None]
 
 
+def shade_atlas_points(dem, geometry, latitude, longitude):
+    """CPU reference shading, also used to resolve Metal rounding boundaries."""
+    radial = surface_vectors(latitude, longitude)
+    height = dem.sample(latitude, longitude)
+    normal = dem.normals(latitude, longitude)
+    incidence = np.maximum(normal @ geometry.sun, 0)
+    emission = np.maximum(normal @ geometry.observer, 0)
+    valid = np.isfinite(height) & np.isfinite(normal).all(axis=1)
+    lit = valid & (incidence > 0) & (emission > 0)
+    light = np.sqrt(np.clip(2*incidence/(incidence+emission+1e-8), 0, 1))
+    light[~lit] = 0
+    if lit.any():
+        hidden = terrain_shadow(dem, radial[lit], height[lit], geometry.sun, steps=12)
+        light[np.flatnonzero(lit)[hidden]] = 0
+    return (np.nan_to_num(light)*220).astype(np.float32).astype(np.uint8)
+
+
 def terrain_shadow(dem, radial, height, sun, steps=32, maximum_km=80.):
     """Sample terrain along the Sun ray. Unknown terrain does not invent shadows."""
     position = radial*(MOON_RADIUS_KM+height)[:, None]

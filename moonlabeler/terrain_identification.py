@@ -13,13 +13,20 @@ import math
 import cv2
 import numpy as np
 
-from .geometry import surface_vectors
 from .identification import IdentificationError, IdentificationResult
 from .registration import auto_register, transform_points, prepare_registration_photo
-from .terrain import ElevationMap, download_basic_dem, terrain_shadow
+from .terrain import ElevationMap, download_basic_dem, shade_atlas_points
 
 
 def render_terrain_atlas(dem, geometry, size=4000):
+    from .terrain_metal import try_render
+    accelerated = try_render(dem, geometry, size)
+    if accelerated is not None:
+        return accelerated
+    return _render_terrain_atlas_cpu(dem, geometry, size)
+
+
+def _render_terrain_atlas_cpu(dem, geometry, size=4000):
     """Render the visible sphere in strips; keep DEM sampling memory bounded."""
     scale, center = size*.47, (size-1)/2
     reference = np.zeros((size, size), np.uint8)
@@ -29,21 +36,8 @@ def render_terrain_atlas(dem, geometry, size=4000):
         lat, lon, disk = geometry.unproject(points)
         indices = np.flatnonzero(disk)
         latitude, longitude = lat[indices], lon[indices]
-        radial = surface_vectors(latitude, longitude)
-        height = dem.sample(latitude, longitude)
-        normal = dem.normals(latitude, longitude)
-        incidence = np.maximum(normal @ geometry.sun, 0)
-        emission = np.maximum(normal @ geometry.observer, 0)
-        valid = np.isfinite(height) & np.isfinite(normal).all(axis=1)
-        lit = valid & (incidence > 0) & (emission > 0)
-        light = np.sqrt(np.clip(2*incidence/(incidence+emission+1e-8), 0, 1))
-        light[~lit] = 0
-        if lit.any():
-            hidden = terrain_shadow(dem, radial[lit], height[lit], geometry.sun, steps=12)
-            light[np.flatnonzero(lit)[hidden]] = 0
-        slab = np.zeros(x.size, np.float32)
-        slab[indices] = np.nan_to_num(light)*220
-        reference[first:first+x.shape[0]] = slab.reshape(x.shape).astype(np.uint8)
+        slab = reference[first:first+x.shape[0]].reshape(-1)
+        slab[indices] = shade_atlas_points(dem, geometry, latitude, longitude)
     return reference, np.array([[scale, 0., center], [0., scale, center]])
 
 

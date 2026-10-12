@@ -74,3 +74,4 @@ Dependencies are installed separately, not vendored into this repository. Their 
 - Skyfield — [Skyfield license](https://github.com/skyfielders/python-skyfield/blob/master/LICENSE).
 - PyShp — [PyShp license](https://github.com/GeospatialPython/pyshp/blob/master/LICENSE.TXT).
 - Astropy (optional FITS support) — [Astropy license](https://github.com/astropy/astropy/blob/main/LICENSE.rst).
+- MLX / MLX Metal (optional Apple silicon GPU acceleration) — Copyright © 2023 Apple Inc., [MIT license](https://github.com/ml-explore/mlx/blob/main/LICENSE). The terrain kernel is MoonLabeler code; MLX supplies Metal compilation and execution.
