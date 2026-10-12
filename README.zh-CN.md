@@ -1,6 +1,6 @@
 # MoonLabeler 中文使用说明
 
-作者：**Fluorine Zhu** · **GPL-3.0-or-later** · [English / 项目主页](README.md)
+作者：**Fluorine Zhu** · **GPL-3.0-or-later** · [English / 项目主页](README.md) · [更新历史](UPDATE_HISTORY.md)
 
 在自己的月面照片上配准地形、编辑名称并导出标注。采用 Python / Qt，支持局部月面和镜像照片。
 
