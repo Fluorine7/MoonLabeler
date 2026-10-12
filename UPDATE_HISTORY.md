@@ -2,6 +2,10 @@
 
 [README / 项目主页](README.md) · [中文使用说明](README.zh-CN.md)
 
+按版本从新到旧排列。0.4.4 及以后的记录依据 Git 中保存的版本、对应改动和开发记录整理；更早的原型见文末。当前 Git 未保存独立的 0.5.0 版本，参考点辅助自动配准的首个可核验版本为 0.5.1。
+
+Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
+
 ## 0.7.4
 
 标签仅在按住 Cmd（macOS）或 Ctrl（Windows/Linux）并拖动时移动；普通拖动平移画面，双击仍可改名。画布顶部和悬停提示显示对应按键。
@@ -31,3 +35,147 @@ MoonLabeler 0.7.1 adds a guarded afocal-phone distortion fallback after a strong
 中文地名优先采用 LPND 资料；加入可选 wgpu 跨平台 GPU 后端，使用 Metal / Vulkan / DirectX 12 生成高程阴影参考。“计算设置”简化为自动与仅 CPU，并显示可用设备。已实测 Apple M5 Pro；NVIDIA、AMD、Intel 的硬件与驱动兼容性仍需对应机器验证。
 
 MoonLabeler 0.7.0 prioritizes contributor-supplied LPND Chinese names and adds optional cross-platform wgpu terrain shading through Metal / Vulkan / DirectX 12. Compute settings offer Auto and CPU-only, with the detected device shown. Tested on Apple M5 Pro; NVIDIA, AMD and Intel hardware/driver compatibility still requires native validation.
+
+## 0.6.6
+
+增加可选 wgpu 跨平台 GPU 高程阴影参考后端，通过 Metal、Vulkan 或 DirectX 12 调用可用设备。统一计算后端选择，保留 CPU 抽样复核、失败回退及旧 Apple MLX 后端兼容；精确投影、特征匹配和标注仍使用 CPU。
+
+Added optional cross-platform wgpu terrain-shadow acceleration through Metal, Vulkan or DirectX 12. Unified backend selection while retaining CPU spot checks, failure fallback and compatibility with the earlier Apple MLX backend. Precise projection, feature matching and annotations remain on CPU.
+
+## 0.6.5
+
+增加顶部“计算设置”，当时提供自动、仅 CPU 和 Apple GPU 模式，并显示可用设备。设置保存在本机，下次计算生效，不随照片工程传递；环境变量可覆盖界面设置。
+
+Added the toolbar's Compute settings dialog, initially offering Auto, CPU-only and Apple GPU modes with device availability. Preferences persist locally and apply to subsequent jobs independently of photo projects; environment variables can override them.
+
+## 0.6.4
+
+首次加入 Apple 芯片可选 MLX / Metal GPU 加速，用于生成高程阴影参考。保留 CPU 精确投影、临界像素复核，以及 GPU 不可用或执行失败时的 CPU 回退。
+
+Introduced optional MLX / Metal acceleration on Apple silicon for terrain-shadow references, retaining precise CPU projection, boundary-pixel checks and CPU fallback when the GPU is unavailable or fails.
+
+## 0.6.3
+
+优化自动识别中的坑群索引构建，保留候选顺序和匹配验证条件。清理 UI 拆分后遗留的未使用导入与辅助函数。
+
+Optimized crater-pattern index construction without changing candidate order or match validation. Removed unused imports and a helper left over from the UI split.
+
+## 0.6.2
+
+减少标签布局中的重复空间查询和无效碰撞检查。以已有布局结果做回归对照，保留重要目标优先级和原有排版规则。
+
+Reduced redundant spatial queries and unnecessary collision checks during label layout. Regression comparisons against existing layouts preserve landmark priorities and placement rules.
+
+## 0.6.1
+
+哥白尼、第谷、柏拉图等常见重要目标优先占用标签空间，普通标签及地形中心向它们让位。重要标签在紧凑位置均不可用时，可有限扩大引线范围；保留用户手动位置、隐藏选择和数量上限。
+
+Common important landmarks such as Copernicus, Tycho and Plato reserve label space before ordinary labels and terrain centers. A bounded wider leader search is allowed when compact positions fail, while manual positions, explicit hiding and the final label budget remain respected.
+
+## 0.6.0
+
+增加可选阿波罗与嫦娥着陆点图层，默认关闭。使用独立的浅青色、小档字号、十字与短引线；位置及来源随源码提供，工程保存和 PNG / SVG 导出使用相同样式。
+
+Added an optional Apollo and Chang'e landing-site layer, disabled by default. Sites use a separate pale-cyan color, the smallest font tier, cross markers and short leaders. Bundled coordinates retain provenance; projects and PNG / SVG exports share the same styling.
+
+## 0.5.11
+
+改进高倍单坑照片的大坑候选检测，增加长弧椭圆提案及整圈边缘方向验证，大半径搜索使用较低工作分辨率。加入 WinJUPOS 文件名 UTC 时间导入，支持十分之一分钟与常见处理后缀。
+
+Improved large-crater candidates in close-up photographs using long-arc ellipse proposals and rim-direction validation, with lower working resolution for large-radius searches. Added UTC capture-time import from WinJUPOS filenames, including tenths of a minute and common processing suffixes.
+
+## 0.5.10
+
+改进北极复杂地形的识别：几何与细节证据充分时，允许受限的高程精修结果通过联合验证。每轮分块搜索复用照片特征，阴影射线在遮挡或已离开地形范围时提前停止，减少重复计算。
+
+Improved difficult northern-terrain recognition through a guarded joint geometry/detail validation route for refined results. Tile searches reuse photograph features, and shadow rays terminate once occluded or clear of terrain, reducing repeated computation.
+
+## 0.5.9
+
+修复部分模糊极区和拼接照片被过早拒绝的问题。粗匹配仅用于提名区域，必须重新取得分散对应点并通过高程、纹理和留出验证；排除照片自身的黑色拼接空白，同时保留坑内阴影检查。
+
+Fixed premature rejection of some blurred polar and mosaic photographs. Coarse matches only nominate regions; fresh distributed correspondences must pass relief-aware, texture and held-out checks. Empty mosaic borders are excluded while internal crater shadows remain validated.
+
+## 0.5.8
+
+修复整月盘纹理配准在月缘附近的投影偏移。使用分散对应点精修整体视角，按实际月面范围计算验证覆盖，并以实拍长月缘独立检查中心和比例；原始星历与验证记录保存在工程中。
+
+Fixed atlas-projection drift near the lunar limb. Distributed correspondences refine the global view, coverage is measured over the observed lunar field, and a long photographed limb independently checks center and scale. Original ephemeris geometry and validation records are saved in projects.
+
+## 0.5.7
+
+按投影视直径划分大、中、小三档文字，默认短边的 1.8% / 1.5% / 1.2%。增加“字号递减”设置，统一用于文字边界、避让、PNG 与 SVG，保留旧工程的统一字号兼容。
+
+Added three font tiers based on projected apparent diameter, defaulting to 1.8% / 1.5% / 1.2% of the image's short side. The font-decrement control drives text bounds, collision avoidance, PNG and SVG consistently while preserving older projects' uniform typography.
+
+## 0.5.6
+
+年月日及 UTC 时分拆为独立输入框，保留输入满位后跳到下一框的操作。合并辅助找坑、地名确认与参考点配准流程，手动补点默认折叠；失败保留当前候选与参考点，打开新照片回到校准页并收起辅助内容。
+
+Split capture date and UTC time into separate year, month, day, hour and minute fields with automatic focus advance. Unified candidate detection, name confirmation and reference-point registration, with manual placement collapsed by default. Failures retain candidates and points; opening a new image returns to Calibration and collapses assistance.
+
+## 0.5.5
+
+在紧凑的固定确认栏中持续显示当前候选编号、位置及所选地名。缩小候选列表和名称列表的占用，减少滚动时丢失当前确认对象的问题。
+
+Kept the current candidate number, position and chosen name visible in a compact pinned confirmation footer. Reduced candidate/name list space so scrolling does not obscure the object being confirmed.
+
+## 0.5.4
+
+集成紧凑的日期、时间和候选坑复核界面。增加候选轮廓显示选项，并调整确认面板布局；检测辅助图层与导出标注保持独立。
+
+Integrated compact capture-time controls and crater-candidate review UI. Added a candidate-outline display option and revised confirmation-panel layout while keeping review overlays separate from exported annotations.
+
+## 0.5.3
+
+修复参考点搜索、竞争区域判断、工程加载与照片读取中的问题。非法工程不再替换当前编辑内容；透明图按黑底合成，16 位 RGB TIFF 保留原精度后拉伸显示，同时完善下载和启动失败处理。
+
+Fixed reference-guided search, competing-region checks, project loading and image import. Invalid projects preserve the current editing state; transparent images use a black background, and 16-bit RGB TIFF retains source precision before display stretching. Improved download and launcher failure handling.
+
+## 0.5.2
+
+高程后备识别在粗匹配已有充分证据、但最终明暗检查未通过时，先尝试含地形高度的局部精修。合并重叠分块的重复候选，限制精修区域数量，再执行原有最终验证。
+
+The terrain fallback attempts relief-aware local refinement when a coarse match has sufficient evidence but fails the final lighting check. Duplicate overlapping-tile poses are merged, refinement attempts are bounded, and the existing final validation is reapplied.
+
+## 0.5.1
+
+确认一两个已知地形点后，可用周围纹理辅助自动搜索比例、旋转和镜像，并验证所有参考点。增加“用参考点自动配准”，辅助找坑调整为优先入口；窗口标题加入作者署名，失败保留参考点和已有配准。
+
+One or two confirmed terrain points can guide automatic scale, rotation and reflection search, with surrounding texture and all reference points validating the result. Added Register automatically using reference points, placed candidate detection first in the assistance workflow, and added author credit to the window title. Failures preserve points and existing registration.
+
+## 0.4.8
+
+环形山名称确认改为直接可见的列表，修复 Hadley C 等单个搜索结果难以选中的问题。搜索清除旧选择，Enter 可选择首项，明确选择后再确认名称与候选中心。
+
+Replaced crater-name confirmation popups with an explicit visible list, fixing single-result selection such as Hadley C. Searching clears the old choice; Enter selects the first result, and confirmation pairs the chosen name with the candidate center.
+
+## 0.4.7
+
+综合投影大小、坑缘对比和区域分布选择标注，主地形优先于附属字母坑。避让后从其余候选补位，数量上限约束最终显示结果；通过空间索引优化布局计算，并集成改进后的下拉菜单与折叠设置。
+
+Annotation selection considers projected size, rim contrast and regional distribution, with named formations ahead of lettered satellites. Reserve candidates refill layout omissions up to the final label limit. Spatial indexing accelerates layout; improved dropdowns and collapsible settings were integrated.
+
+## 0.4.6
+
+局部坑群识别后使用小型 LOLA DEM 精修相机与观测方向，坑缘投影考虑地形高度。增加“椭圆 / 坑缘轮廓（手绘风）”选项，默认平滑椭圆；小坑使用短引线，轮廓与设置随工程保存并用于导出。
+
+Local crater-pattern recognition gained camera/view refinement using a small LOLA DEM, with terrain height included in rim projection. Added Ellipse / Rim contour styles, defaulting to smooth ellipses; small craters retain short leaders. Contours and styling persist in projects and exports.
+
+## 0.4.5
+
+集成右侧检查器与校准、标注、参考三页 UI，梳理“选地名 → 标记中心 → 校准”的手动流程。加入小型高程阴影参考后备搜索和受空间留出验证约束的视角精修；具体 UTC 时间放入默认折叠设置，并完善 moonlib 参考代码致谢。
+
+Integrated a right-hand inspector with Calibration, Annotation and Reference pages, and clarified the select-name → mark-center → calibrate workflow. Added a small terrain-shadow fallback and spatially validated view refinement. Exact UTC controls became collapsed by default, and acknowledgements credited the moonlib reference code.
+
+## 0.4.4
+
+首个保存在公开 Git 仓库中的 GPL-3.0-or-later 版本。支持 LROC 纹理、月盘轮廓及坑群目录配准，手动参考点校准、疑似坑检测、标签避让、工程保存和 PNG / SVG 导出；字号按原图短边缩放，并提供中文译名、近白文字和大坑参考轮廓。
+
+The first GPL-3.0-or-later version preserved in the public Git repository. It includes LROC texture, lunar-limb and crater-pattern registration; manual reference calibration; candidate detection; collision-aware labels; saved projects; and PNG / SVG export, with image-relative font sizing, Chinese names, near-white text and large-crater reference outlines.
+
+## 早期原型 / Earlier prototypes（0.4.4 以前 / before 0.4.4）
+
+早期 0.2.x 至 0.4.3 原型围绕照片载入、NASA 时刻参考图、局部月面参考点、疑似坑检测与自动配准逐步开发，同时改进中文地名、字号比例、标签布局和大坑轮廓。这一阶段尚未保留逐版本 Git 快照，不能可靠恢复每个小版本的完整改动与发布时间，因此合并概述。
+
+Early 0.2.x–0.4.3 prototypes developed image loading, NASA time-specific references, local terrain points, crater candidates and automatic registration, alongside Chinese names, relative font sizing, label layout and large-crater outlines. Per-version Git snapshots were not retained, so complete changes and release dates for individual prototypes cannot be reliably reconstructed and are summarized together.
