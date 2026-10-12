@@ -5,9 +5,9 @@
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
 
-0.7.4：标签仅在按住 Cmd（macOS）或 Ctrl（Windows/Linux）并拖动时移动；普通拖动平移画面，双击仍可改名。标注页和悬停提示显示对应按键。
+0.7.4：标签仅在按住 Cmd（macOS）或 Ctrl（Windows/Linux）并拖动时移动；普通拖动平移画面，双击仍可改名。画布顶部和悬停提示显示对应按键。
 
-0.7.4 requires Cmd (macOS) or Ctrl (Windows/Linux) while dragging to move a label. Ordinary drags pan the image; double-click still edits the text. The annotation panel and tooltips show the platform-specific modifier.
+0.7.4 requires Cmd (macOS) or Ctrl (Windows/Linux) while dragging to move a label. Ordinary drags pan the image; double-click still edits the text. The canvas header and tooltips show the platform-specific modifier.
 
 0.7.3：小月盘的计算窗口允许排除边框附近、窗口外的成行文字，避免较大图注阻止识别。原图水印不修改；第二个明显目标、内部文字和孤立的大标志仍保守处理。已验证 DWARF 实拍添加图注后的变体，以及横向、纵向边框文字。背景亮度处理不变。
 

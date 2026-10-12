@@ -815,7 +815,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.canvas.scene().addPixmap(QPixmap.fromImage(qimage(image))).setZValue(0)
         h, w = image.shape[:2]
         self.canvas_title.setText(Path(self.project.image_path).name or "月面照片")
-        self.canvas_details.setText(f"{w:,} × {h:,} px   ·   滚轮缩放")
+        self.canvas_details.setText(f"{w:,} × {h:,} px   ·   滚轮缩放 · {LABEL_DRAG_HINT} · 双击编辑文字")
         self.canvas.scene().setSceneRect(QRectF(0, 0, w, h))
         self.cancel_pick()
         self.refresh_anchor_table()
