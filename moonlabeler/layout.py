@@ -180,7 +180,9 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
     labels = list(reserve) if max_labels is None else list(islice(reserve, max(0, max_labels)))
     placements = {}
     leaders = {}
-    text_index, line_index, marker_index = (_SpatialIndex(max(32., gap*4)) for _ in range(3))
+    # Caption-sized buckets avoid walking dozens of tiny cells per query.
+    # Exact intersection checks below still decide every placement.
+    text_index, line_index, marker_index = (_SpatialIndex(max(96., gap*12)) for _ in range(3))
 
     def place(label, rect, line):
         placements[label.key], leaders[label.key] = rect, line
@@ -214,7 +216,10 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
             left, top = min(x, lx), min(y, ly)
             neighborhood = (left, top, max(x+w, lx+lw)-left, max(y+h, ly+lh)-top)
             other_rects = text_index.near(neighborhood, 3*gap, label.key)
-            other_lines = line_index.near(neighborhood, 3*gap, label.key)
+            # Most candidates already hit a caption. Reject them before
+            # querying marker/leader grids or constructing those lists.
+            if not label.force and any(rect_intersects(rect, old, gap*.65) for old in other_rects):
+                continue
             nearby_markers = marker_index.near(neighborhood, 3*gap)
             own_marker = markers.get(label.key)
             other_markers = [marker for marker in nearby_markers if marker is not own_marker]
@@ -223,18 +228,18 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
                 # Most rejected positions hit a nearby caption or marker.
                 # Stop on the first collision instead of counting every
                 # conflict and performing expensive line tests unnecessarily.
-                if any(rect_intersects(rect, old, gap*.65) for old in other_rects):
-                    continue
                 if any(rect_intersects(rect, old, gap*.3) for old in nearby_markers):
                     continue
                 if any(segment_hits_rect(line, old, 1) for old in other_rects):
                     continue
+                other_lines = line_index.near(neighborhood, 3*gap, label.key)
                 if any(segment_hits_rect(old, rect, 1) or segments_cross(line, old) for old in other_lines):
                     continue
                 if any(segment_hits_rect(line, old) for old in other_markers):
                     continue
                 conflicts = 0
             else:
+                other_lines = line_index.near(neighborhood, 3*gap, label.key)
                 conflicts = sum(rect_intersects(rect, old, gap*.65) for old in other_rects)
                 conflicts += sum(rect_intersects(rect, old, gap*.3) for old in nearby_markers)
                 conflicts += sum(segment_hits_rect(line, old, 1) for old in other_rects)

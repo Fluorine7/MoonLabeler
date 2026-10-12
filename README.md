@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.1** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.2** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -135,7 +135,7 @@ The **辅助找坑与参考点** (Candidate and reference assistance) section on
 
 The bundled example is explicitly synthetic and demonstrates calibration and editing. It is not a real-image recognition benchmark. Optional FITS support requires `astropy`.
 
-Important named landmarks (including Copernicus, Tycho and Plato) reserve label space before ordinary terrain centers enter collision checks. Ordinary captions and markers yield to those placements. A bounded wider search runs only when compact placements for an important caption fail. Manual positions, explicit hiding, visibility filters and the final label budget remain respected; conflicts between important targets or fixed captions can still cause omissions. This layout change does not rerun registration.
+Important named landmarks (including Copernicus, Tycho and Plato) reserve label space before ordinary terrain centers enter collision checks. Ordinary captions and markers yield to those placements. A bounded wider search runs only when compact placements for an important caption fail. Manual positions, explicit hiding, visibility filters and the final label budget remain respected; conflicts between important targets or fixed captions can still cause omissions. This layout change does not rerun registration. Caption-sized spatial buckets and early rejection of text collisions reduce redundant marker/leader queries without changing the placement rules.
 
 ### Landing sites
 
