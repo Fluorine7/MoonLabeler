@@ -318,6 +318,7 @@ class WindowUiMixin:
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.toolbar.addWidget(spacer)
         action("打开示例", self.open_example)
+        action("计算设置", self.compute_settings_dialog)
         action("帮助", self.help_dialog)
         action("致谢", self.about_dialog)
         delete = QAction("隐藏所选名称", self)

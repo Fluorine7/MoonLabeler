@@ -20,6 +20,56 @@ _LOG = logging.getLogger(__name__)
 _lock = threading.Lock()
 _disabled = False
 _kernel = None
+MODES = ('auto', 'cpu', 'metal')
+_mode = 'auto'
+_mlx = None
+_mlx_error = None
+_import_lock = threading.Lock()
+
+
+def _load_mlx():
+    """Do not reimport a native Metal extension after failed initialization."""
+    global _mlx, _mlx_error
+    with _import_lock:
+        if _mlx_error is not None:
+            raise ImportError(_mlx_error)
+        if _mlx is None:
+            try:
+                import mlx.core as mx
+                _mlx = mx
+            except (ImportError, RuntimeError, OSError) as exc:
+                _mlx_error = str(exc)
+                raise
+        return _mlx
+
+
+def configured_mode():
+    """An explicit environment override takes precedence over the UI setting."""
+    override = os.environ.get('MOONLABELER_COMPUTE', '').lower()
+    return override if override in MODES else _mode
+
+
+def set_mode(mode):
+    global _mode, _disabled
+    if mode not in MODES:
+        raise ValueError(f'Unknown compute mode: {mode}')
+    with _lock:
+        if mode != _mode:
+            _disabled = False
+        _mode = mode
+
+
+def metal_support():
+    """Probe only when the settings dialog is opened, not at app startup."""
+    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
+        return False, '当前电脑使用 CPU。Apple GPU 仅支持 Apple 芯片 Mac；暂未接入 NVIDIA / AMD GPU。'
+    try:
+        mx = _load_mlx()
+        if mx.metal.is_available():
+            return True, 'Apple GPU 可用。加速高程与阴影参考；纹理匹配和标注仍使用 CPU。'
+    except (ImportError, RuntimeError, OSError):
+        pass
+    return False, 'Apple GPU 当前不可用，使用 CPU。请确认已安装 MLX 且系统支持 Metal，安装方法见 README。'
 
 _HEADER = r'''
 float sample_grid(device const float* dem, int xbase, int ybase, float fx, float fy,
@@ -116,7 +166,7 @@ def _eligible(dem, size):
 def try_render(dem, geometry, size):
     """Return a GPU atlas, or None so the caller uses the CPU implementation."""
     global _disabled
-    if os.environ.get('MOONLABELER_COMPUTE', 'auto').lower() == 'cpu' or not _eligible(dem, size):
+    if configured_mode() == 'cpu' or not _eligible(dem, size):
         return None
     # Qt workers may run on different threads. Serialize the small GPU entry
     # point and use a per-call stream rather than a thread-bound global stream.
@@ -132,7 +182,7 @@ def try_render(dem, geometry, size):
 
 
 def _render(dem, geometry, size):
-    import mlx.core as mx
+    mx = _load_mlx()
     global _kernel
     if not mx.metal.is_available():
         raise RuntimeError('No Metal device')

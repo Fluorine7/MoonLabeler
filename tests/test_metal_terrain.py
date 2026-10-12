@@ -49,7 +49,7 @@ def test_gpu_failure_falls_back_to_cpu(monkeypatch):
 @pytest.mark.parametrize('in_worker', [False, True])
 def test_real_metal_shading_agrees_with_cpu(in_worker):
     try:
-        import mlx.core as mx
+        mx = terrain_metal._load_mlx()
     except ImportError:
         pytest.skip('MLX / Metal unavailable')
     if not mx.metal.is_available():
@@ -71,7 +71,7 @@ def test_real_metal_shading_agrees_with_cpu(in_worker):
 def test_metal_preserves_dem_subpixel_positions():
     """Large DEM indices must not swallow the fractional sample position."""
     try:
-        import mlx.core as mx
+        mx = terrain_metal._load_mlx()
     except ImportError:
         pytest.skip('MLX / Metal unavailable')
     if not mx.metal.is_available():

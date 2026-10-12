@@ -13,7 +13,7 @@ import sys
 import traceback
 
 import numpy as np
-from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QObject, Signal, QRunnable, QThreadPool, QTimer
+from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QObject, Signal, QRunnable, QThreadPool, QTimer, QSettings
 from PySide6.QtGui import QColor, QFont, QImage, QPixmap, QPainter, QPen, QPainterPath, QPainterPathStroker
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
@@ -28,6 +28,8 @@ from . import __version__
 from .capture_time import winjupos_capture_time
 from .ui.theme import STYLE
 from .ui.window import WindowUiMixin
+from .ui.compute import ComputeDialog
+from . import terrain_metal
 from .craters import DetectionOptions, detect_craters, detect_crater_rims
 from .identification import identify_from_candidates
 from .atlas import identify_from_atlas
@@ -253,6 +255,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project = Project()
         self.image = None
         self.catalog = load_catalog(CACHE)
+        self.compute_preferences = QSettings(str(CACHE/'preferences.ini'), QSettings.Format.IniFormat)
+        compute_mode = self.compute_preferences.value('compute/mode', 'auto')
+        terrain_metal.set_mode(compute_mode if compute_mode in terrain_metal.MODES else 'auto')
         self.catalog_by_id = {f["id"]: f for f in self.catalog}
         self.annotation_items = []
         self.reference_items = []
@@ -1679,6 +1684,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def open_example(self):
         self.open_project(str(ROOT / "examples" / "demo.moonlabel"))
+
+    def compute_settings_dialog(self):
+        if not self.busy:
+            ComputeDialog(self.compute_preferences, self).exec()
 
     def help_dialog(self):
         QMessageBox.information(self, "使用 MoonLabeler",

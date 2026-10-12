@@ -175,3 +175,9 @@ Copyright © 2026 Fluorine Zhu。代码采用 GNU GPL v3.0 或更新版本，见
 在项目目录运行 `.venv/bin/python -m pip install ".[apple-gpu]"`，随后正常启动即可自动使用。MLX / Metal 加速自动识别的高程与阴影参考生成；精确投影、纹理匹配、配准精修与标注继续使用 CPU。GPU 采样保留高程格内小数位置，灰度取整及阴影临界像素由 CPU 复核。首次执行包含内核编译。
 
 未安装 MLX、设备不支持 Metal 或 GPU 执行失败时使用 CPU。需要强制 CPU 对照时，在项目目录运行 `MOONLABELER_COMPUTE=cpu .venv/bin/python -m moonlabeler`。这不是神经网络识别，不需要训练模型。
+
+### 计算设置（0.6.5）
+
+顶部“计算设置”提供“自动选择”“仅 CPU”“Apple GPU”。默认自动选择；Apple 芯片且 MLX / Metal 可用时加速，否则使用 CPU。Windows、Linux 和 Intel Mac 当前使用 CPU，尚未接入 NVIDIA / AMD GPU；不支持的选项显示为禁用。
+
+选择“仅 CPU”即可关闭 GPU。保存后下次计算生效，重启仍保留；偏好保存在本机缓存目录的 `preferences.ini`，不随 `.moonlabel` 工程传递。若显式设置了 `MOONLABELER_COMPUTE`，它优先于界面设置，窗口会显示此状态。
