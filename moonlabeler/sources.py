@@ -2,6 +2,7 @@
 # Copyright (c) 2026 Fluorine Zhu
 """Public data downloads, cached locally; photographs never leave the machine."""
 from datetime import datetime, timezone
+from functools import lru_cache
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin
@@ -39,28 +40,68 @@ CHINESE = {
 COMMON_FEATURES = frozenset(CHINESE)
 
 
+@lru_cache(maxsize=2)
+def _translation_tables(data_directory):
+    legacy = json.loads((data_directory/"chinese_names.json").read_text(encoding="utf-8"))
+    primary = json.loads((data_directory/"lunar_chinese_names.json").read_text(encoding="utf-8"))
+    return primary, legacy
+
+
+def _compact_chinese(name, entry):
+    text = entry["zh"]
+    satellite = re.fullmatch(r"(.+) ([A-Z])", name)
+    if satellite:
+        # Only strip structural crater notation, never retranslate the name.
+        parts = re.fullmatch(r"(.+?)(?:坑)?\s*([A-Z])(?:坑)?", text.replace("[", "").replace("]", ""))
+        if parts and parts[2] == satellite[2]:
+            return parts[1]+" "+parts[2]
+    return text
+
+
 def translate_catalog(features):
-    """Overlay current translations even on an older, offline USGS cache."""
-    translations = json.loads((PACKAGE_DATA/"chinese_names.json").read_text(encoding="utf-8"))["names"]
+    """Prefer supplied LPND names; retain legacy translations as search aliases."""
+    primary, legacy = _translation_tables(PACKAGE_DATA)
+    translations, old_translations = primary["names"], legacy["names"]
     for feature in features:
         name = feature["name"]
-        entry = translations.get(name)
+        satellite = re.fullmatch(r"(.+) ([A-Z])", name)
         aliases = set(feature.get("name_zh_aliases", []))
-        old = feature.get("name_zh") or CHINESE.get(name, "")
+        aliases.update(filter(None, (feature.get("name_zh"), CHINESE.get(name))))
+        previous = old_translations.get(name)
+        old_parent = old_translations.get(satellite[1]) if satellite else None
+        if previous:
+            aliases.add(previous["zh"])
+        elif old_parent:
+            aliases.add(old_parent["zh"]+" "+satellite[2])
+        entry = translations.get(name)
+        authority = primary
+        derived = False
+        if entry is None and satellite and satellite[1] in translations:
+            entry = translations[satellite[1]]
+            derived = True
+        if entry is None:
+            authority = legacy
+            entry = previous or old_parent
+            derived = previous is None and old_parent is not None
         if entry:
-            feature["name_zh"] = entry["zh"]
-            feature["name_zh_source"] = entry["url"]
-        else:
-            satellite = re.fullmatch(r"(.+) ([A-Z])", name)
-            parent = translations.get(satellite[1]) if satellite else None
-            if parent:
-                feature["name_zh"] = parent["zh"]+" "+satellite[2]
-                feature["name_zh_source"] = parent["url"]
+            translated = _compact_chinese(satellite[1] if derived else name, entry)
+            feature["name_zh"] = translated+" "+satellite[2] if derived else translated
+            source = entry.get("source", authority["source"])
+            # Some supplied LPND rows retain NADC URLs from the older table.
+            # Those are historical references, not evidence for the new wording.
+            feature["name_zh_source"] = (primary["source_urls"][0] if source.startswith("LPND")
+                                         else entry.get("url", ""))
+            feature["name_zh_source_name"] = source
+            feature.pop("name_zh_derived", None)
+            if derived:
                 feature["name_zh_derived"] = True
-            elif name in CHINESE:
-                feature["name_zh"] = CHINESE[name]
-        if old and old != feature.get("name_zh"):
-            aliases.add(old)
+                feature.pop("name_zh_term", None)
+            else:
+                feature["name_zh_term"] = entry.get("term_zh", entry["zh"])
+                aliases.update((entry["zh"], feature["name_zh_term"]))
+        elif name in CHINESE:
+            feature["name_zh"] = CHINESE[name]
+        aliases.discard(feature.get("name_zh", ""))
         if aliases:
             feature["name_zh_aliases"] = sorted(aliases)
     return features

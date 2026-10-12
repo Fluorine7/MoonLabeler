@@ -1,0 +1,12 @@
+{
+  "provided_by": "樊仕达（10deg）",
+  "provided_date": "2026-10-12",
+  "input_filename": "lunar_chinese_names.json",
+  "source_url": "https://lpnd.bao.ac.cn/#/search?is=1",
+  "entries": 9040,
+  "entries_labelled_lpnd": 9031,
+  "supplemental_entries": 9,
+  "verification": "Local structure, matching and coverage checked. Source labels are preserved from the contributor-supplied snapshot; individual LPND records were not independently re-fetched.",
+  "processing": "Original supplied names and term_zh are preserved. Compact satellite captions remove crater/bracket notation and separate the official letter with a space. Legacy translations remain searchable aliases.",
+  "url_note": "Some rows labelled LPND retain older NADC term URLs. These are historical references, not evidence for the revised LPND wording; runtime source links for LPND rows use the LPND search page."
+}

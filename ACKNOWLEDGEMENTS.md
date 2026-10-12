@@ -2,7 +2,7 @@
 
 MoonLabeler 作者：**Fluorine Zhu**。本项目代码采用 **GPL-3.0-or-later**，完整许可见 [LICENSE](LICENSE)；第三方代码与数据的原有条款见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考。
+感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考，并提供 **LPND 中文地名资料**。
 
 向 **Jim Mosher 与 Henrik Bondo** 致敬。他们创建的 **Lunar Terminator Visualization Tool（LTVT）** 将月面几何、已知地形校准和高程光照模拟带给了业余观测者。
 
@@ -34,7 +34,7 @@ Lommel–Seeliger 使用 `cos(i) / (cos(i) + cos(e))`；Lambert 使用 `max(cos(
 整月盘纹理配准使用 **NASA LRO / LROC 团队**的全球纹理图。致谢 NASA Scientific Visualization Studio、**Ernie Wright（USRA）**、**Noah Petro（NASA/GSFC）**及 LROC / LOLA 团队，来源为 [CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/)。源码内置的 2048×1024 JPEG 经第三方镜像重压缩，保留原分辨率；原始 URL、固定镜像提交和处理说明见 [数据来源记录](moonlabeler/data/moon_albedo_2k.provenance.json)。它用于视觉配准，不作为定量测光数据。当前用双向 SIFT、相似变换 RANSAC 和月盘范围检查恢复地图到照片的位置，不将纹理点虚构为地名。
 
 - 月面地名：[USGS / IAU Planetary Nomenclature GIS](https://planetarynames.wr.usgs.gov/GIS_Downloads)。
-- 中文地名：[国家天文科学数据中心 · 天文学名词](https://nadc.china-vo.org/astrodict/)，致谢中国天文学会天文学名词审定委员会、词表编订者和数据中心。908 对源词条与链接保存于 `moonlabeler/data/chinese_names.json`；对照原名并去掉环形山类别后缀用于紧凑标注，卫星坑按主坑译名加字母派生。词条出版与审定状态以原网站为准，并不声称覆盖所有月球地名。未收录者保留官方英文名称。
+- 中文地名优先采用樊仕达（10deg）提供的 [LPND 月球与行星地名库](https://lpnd.bao.ac.cn/#/search?is=1) 快照，感谢资料整理者及地名库维护团队。9,040 条记录中，9,031 条标注为 LPND，另有 9 条补录；保留各条来源与原文。旧 [NADC 天文学名词](https://nadc.china-vo.org/astrodict/) 词表保留作搜索别名及缺失项兜底，感谢中国天文学会天文学名词审定委员会、编订者及数据中心。卫星坑显示作紧凑格式处理，不修改原始全称。来源标签沿用所提供快照，未逐条在线复核；部分旧 NADC 链接不作为 LPND 新译名的依据。
 - 星历与月球姿态：[JPL DE421](https://ssd.jpl.nasa.gov/planets/eph_export.html)，通过 [Skyfield 月面参考系接口](https://rhodesmill.org/skyfield/planetary.html)计算。
 - 着陆点：[NASA NSSDCA 月面人造物位置表](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html)，感谢 NSSDCA 与 LROC 团队。采用阿波罗登月舱下降级及嫦娥着陆器坐标，DE421 平均地球 / 极轴坐标系，北纬、东经为正；内置数据记录来源日期，不包含其代码。
 - 高程：[LRO / LOLA](https://lola.gsfc.nasa.gov/) 科学团队及数据生产者。
@@ -55,8 +55,9 @@ MoonLabeler is authored by **Fluorine Zhu** and released under **GNU GPL version
 - **USGS / IAU planetary nomenclature contributors:** Terrain names, positions, categories, and diameters.
 - **NASA NSSDCA and LROC:** [Landing-location coordinates](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html) for Apollo LM descent stages and Chang’e landers, in the DE421 mean Earth / polar axis frame (north/east positive). The bundled data retain source and retrieval dates; no upstream code is included.
 - **JPL and Skyfield contributors:** Ephemerides, lunar orientation, and observing geometry.
-- **樊仕达 (10deg) — moonlib:** Provided code as a reference for this project's lunar geometry research and implementation.
-- **National Astronomical Data Center and Chinese astronomical terminology contributors:** Sourced Chinese names. Each imported term retains its source URL. Lettered satellites derive their names from the parent term and the original official letter; they are not presented as independently approved translations.
+- **樊仕达 (10deg) — moonlib:** Provided code as a reference for this project's lunar geometry research and implementation, and supplied the LPND Chinese-name snapshot.
+- **LPND maintainers and 樊仕达 (10deg):** The supplied Chinese-name snapshot takes precedence: 9,040 entries, with 9,031 labelled LPND and 9 supplemental entries retaining their separate sources. Original terms remain intact; lettered crater captions use compact formatting. Source labels come from the supplied snapshot, not a fresh online verification of every entry. Retained historical NADC URLs do not substantiate changed LPND wording.
+- **National Astronomical Data Center and Chinese astronomical terminology contributors:** The earlier sourced terminology table remains available for search aliases and missing-entry fallback, without overriding LPND translations.
 - **chase-kusterer/lunar_stack, wdoppenberg/crater-detection, and cosinekitty/astronomy:** Studied for image matching, crater-pattern methods, and possible future ephemeris alternatives. Their code and models are not incorporated into the current application. Scope and fixed versions are documented in [REPOSITORY_RESEARCH.md](REPOSITORY_RESEARCH.md).
 - The new wide-limb fallback independently fits the lunar outer circle and compares phase and high-pass LROC albedo templates. The limb-fitting approach was informed by the lunar_stack research; no SAM, learned model, or upstream source code is included. It rejects short polar arcs and ambiguous rotations or reflections.
 - **Matt Pocock and contributors to [skills](https://github.com/mattpocock/skills):** Development and debugging workflows used during development. Skills are development aids, not runtime recognition algorithms, and are not bundled here.

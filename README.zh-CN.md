@@ -109,7 +109,9 @@ cd MoonLabeler
 
 确实排不下的标签会暂时收起，列表中显示“避让收起”。取消再勾选可优先显示，或减少其他标签。
 
-名称与坐标来自 USGS / IAU。中文译名采用 [国家天文科学数据中心的天文学名词词表](https://nadc.china-vo.org/astrodict/)，其月球地貌词条引用《英汉天文学名词》和民政部月球地名汉字译名；个别新词条另有审定状态，不把所有条目一概称为已出版国家标准。本次导入 **908 对可匹配官方原名的译名**，附属坑使用主坑译名加原来的官方字母（不是独立审定条目），加上既有名称覆盖 **4566 项**。没有可靠来源的名称保留英文。每个导入译名保留原始词条链接，数据见 `moonlabeler/data/chinese_names.json`；既有离线 USGS 缓存也会在加载时补入中文，无需重新下载目录。搜索忽略拉丁字母变音符，例如 `Vaisala` 可找到 `Väisälä`。
+名称与坐标来自 USGS / IAU。中文译名优先采用樊仕达（10deg）提供的 [LPND 月球与行星地名库](https://lpnd.bao.ac.cn/#/search?is=1) 资料快照：共 **9,040 条**，其中 **9,031 条标为 LPND 来源、9 条为其他来源补录**。结合缺失条目的旧词表兜底和主坑译名派生，当前 9,087 个地名中有 **9,042 个**可显示中文。旧 NADC 译名保留为搜索别名；冲突时显示 LPND 译名，不把全部补录归入 LPND。原始数据保存在 `moonlabeler/data/lunar_chinese_names.json`，来源与处理说明见同目录 `lunar_chinese_names.provenance.json`。本次核验了本地结构和目录匹配，未逐条在线复核全部 LPND 地名。
+
+卫星坑标签统一使用“哥白尼 D”“哈得来 C”等简写，原始全称保留供检索与追溯。文件部分 LPND 条目仍带旧 NADC 链接，程序将其主来源指向 LPND，原链接只作为历史记录。旧离线 USGS 缓存加载时即可应用新译名，无需重新下载目录；没有译名的条目继续显示英文。搜索忽略拉丁字母变音符，例如 `Vaisala` 可找到 `Väisälä`。
 
 ## 离线局部模拟图
 
@@ -170,9 +172,9 @@ Copyright © 2026 Fluorine Zhu。代码采用 GNU GPL v3.0 或更新版本，见
 
 高倍照片的大坑可通过低分辨率长弧拟合产生椭圆候选，再用多个方向上的边缘验证。大半径搜索会降低工作分辨率，减少计算。候选可能受坑壁和阴影影响，请核对中心；单个候选不能独立证明地名或配准。
 
-### 跨平台 GPU 与计算设置（0.6.6）
+### 跨平台 GPU 与计算设置（0.7.0）
 
-在项目目录激活虚拟环境后运行 `python -m pip install ".[gpu]"`，安装可选 wgpu 组件。macOS 使用 Metal，Windows / Linux 可通过 DirectX 12 或 Vulkan 使用受支持的显卡；具体要求见 [wgpu 安装说明](https://wgpu-py.readthedocs.io/en/stable/start.html)。已在 Apple M5 Pro 实测；NVIDIA / AMD / Intel 尚待对应机器验证。无需安装 CUDA 或浏览器。
+在项目目录激活虚拟环境后运行 `python -m pip install ".[gpu]"`，安装可选 wgpu 组件。macOS 使用 Metal，Windows 可使用 DirectX 12 或 Vulkan，Linux 使用 Vulkan；具体要求见 [wgpu 安装说明](https://wgpu-py.readthedocs.io/en/stable/start.html)。已在 Apple M5 Pro 实测；NVIDIA / AMD / Intel 尚待对应机器验证。无需安装 CUDA 或浏览器。Apple M 系列、支持 Metal 的 Intel / AMD Mac，以及支持所需 Vulkan / DirectX 12 计算功能的 NVIDIA / AMD / Intel 独显或核显均可尝试；品牌或系列名称不等于兼容保证，完整说明见 [README 显卡范围](README.md)。软件模拟显卡不作为 GPU 加速设备。
 
 顶部“计算设置”提供“自动选择”“仅 CPU”，显示可用设备。选择“仅 CPU”可关闭 GPU；保存后下次计算生效，重启仍保留。偏好保存在本机缓存目录 `preferences.ini`，不随 `.moonlabel` 工程传递。显式设置的 `MOONLABELER_COMPUTE=cpu` / `auto` 优先于界面，旧 `metal` 值兼容为自动选择。
 

@@ -145,7 +145,9 @@ def test_confirmation_and_repick_use_the_visible_candidate_name_pair(visible_win
     QTest.mouseClick(window.crater_anchor_button, Qt.MouseButton.LeftButton)
     fid = next(f['id'] for f in window.catalog if f['name'] == 'Hadley C')
     assert window.project.anchors == [{'id': fid, 'pixel': [1150, 1210], 'enabled': True}]
-    assert '02' in window.crater_status.text() and 'Hadley C' in window.crater_status.text()
+    confirmed = next(f for f in window.catalog if f['id'] == fid)
+    assert '02' in window.crater_status.text()
+    assert (confirmed.get('name_zh') or confirmed['name']) in window.crater_status.text()
     assert '（1）' in window.crater_finish_button.text()
 
 

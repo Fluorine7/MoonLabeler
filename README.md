@@ -1,13 +1,13 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.6** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.0** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
 
-0.6.6：加入可选 wgpu 跨平台 GPU 后端，使用 Metal / Vulkan / DirectX 12 生成高程阴影参考。“计算设置”简化为自动与仅 CPU，并显示可用设备。已实测 Apple M5 Pro；NVIDIA、AMD、Intel 的硬件与驱动兼容性仍需对应机器验证。
+0.7.0：中文地名优先采用 LPND 资料；加入可选 wgpu 跨平台 GPU 后端，使用 Metal / Vulkan / DirectX 12 生成高程阴影参考。“计算设置”简化为自动与仅 CPU，并显示可用设备。已实测 Apple M5 Pro；NVIDIA、AMD、Intel 的硬件与驱动兼容性仍需对应机器验证。
 
-0.6.6 adds optional cross-platform wgpu terrain shading through Metal / Vulkan / DirectX 12. Compute settings offer Auto and CPU-only, with the detected device shown. Tested on Apple M5 Pro; NVIDIA, AMD and Intel hardware/driver compatibility still requires native validation.
+0.7.0 prioritizes contributor-supplied LPND Chinese names and adds optional cross-platform wgpu terrain shading through Metal / Vulkan / DirectX 12. Compute settings offer Auto and CPU-only, with the detected device shown. Tested on Apple M5 Pro; NVIDIA, AMD and Intel hardware/driver compatibility still requires native validation.
 
 [中文使用说明](README.zh-CN.md) · [Acknowledgements / 致谢](ACKNOWLEDGEMENTS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 
@@ -31,7 +31,7 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 - 默认近白色文字与深色描边；大环形山默认用平滑椭圆，可选坑缘轮廓，小坑使用短引线。
 - 可选着陆点图层：阿波罗 11、12、14、15、16、17 与嫦娥三、四、五、六号；默认关闭，浅青色十字与短引线，使用小档字号。
 - 设置修改后，点击 **“重新生成标注”** 统一应用。
-- 中文译名来自国家天文科学数据中心词表；没有可靠译名的名称保留英文。
+- 中文译名优先采用樊仕达（10deg）提供的 LPND 地名资料；手工补录与旧词表兜底保留各自来源，旧译名仍可搜索。
 - 保存 `.moonlabel` 工程，导出与原图同尺寸 PNG 或可编辑 SVG；另提供 LOLA DEM 光照模拟参考。
 
 支持 WinJUPOS 的 `YYYY-MM-DD-HHMM.T`、`YYYY-MM-DD-HHMMT` 以及常见的 `HHMM_T` 写法，可带拍摄者前缀和处理后缀。例如 `2026-08-31-2137_7-Moon_lapl3_ap311(1).tif` → **2026-08-31 21:37:42 UTC**；末位是十分之一分钟，不是秒。无效日期不导入，工程中的已保存时间优先，导入后仍可修改。规范依据为 [WinJUPOS 官方安装包](https://jupos.org/gh/download.htm)内英文帮助的 *Image measurement → Image → WinJUPOS-Conventions*；若采集软件实际用本地时间命名，需自行换算。
@@ -61,6 +61,14 @@ python -m moonlabeler
 ```
 
 可选跨平台 GPU 加速：在项目目录激活虚拟环境后运行 `python -m pip install ".[gpu]"`。通过 [wgpu](https://wgpu-py.readthedocs.io/en/stable/start.html) 自动选择 Metal、Vulkan 或 DirectX 12；是否可用取决于显卡、驱动和上游安装包支持。无需浏览器或 CUDA。已实测 Apple M5 Pro，Windows / Linux 显卡尚待实机验证。
+
+| 系统 | 可尝试的显卡 | 计算接口 |
+| --- | --- | --- |
+| macOS | Apple M 系列；支持 Metal 的 Intel / AMD Mac 显卡 | Metal |
+| Windows 10 / 11 | 支持所需接口与计算功能的 NVIDIA、AMD、Intel 独显或核显 | Vulkan / DirectX 12 |
+| Linux | 配有可用 Vulkan 驱动的 NVIDIA、AMD、Intel 独显或核显 | Vulkan |
+
+这表示后端适配范围，不是逐型号测试清单。需安装 `.[gpu]`，且系统、驱动和计算能力通过运行时检测；显卡品牌本身不能保证兼容。软件模拟显卡不会作为 GPU 加速设备使用。
 
 顶部“计算设置”提供“自动选择”“仅 CPU”，显示可用设备，选择保存在本机、下次计算生效，不随照片工程传递。只加速自动识别中的高程阴影参考生成；精确投影、SIFT、配准精修与标注仍使用 CPU。首次运行包含内核编译，临界像素和分布抽样由 CPU 复核。GPU 不可用、计算失败或抽样不符时回退；旧版安装的 `.[apple-gpu]` / MLX 仍作为 Apple 兼容后端，其余情况使用 CPU。小参考图及超出内存限制的 DEM 使用 CPU。
 
@@ -96,7 +104,7 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 Copyright © 2026 **Fluorine Zhu**。MoonLabeler 代码按 **GNU General Public License v3.0 or later** 发布，完整文本见 [LICENSE](LICENSE)。改编代码保留原作者的 MIT 许可与版权声明；第三方数据及依赖保留其原有条款，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-向 Jim Mosher、Henrik Bondo、Ram Maruboina，以及 LTVT、OpenCV、NASA / LROC / LOLA、USGS / IAU、JPL、Skyfield 和中文词表的贡献者致敬。完整来源与实际采用范围见 [致谢](ACKNOWLEDGEMENTS.md)。
+感谢樊仕达（10deg）提供 moonlib 参考代码及 LPND 中文地名资料。向 Jim Mosher、Henrik Bondo、Ram Maruboina，以及 LTVT、OpenCV、NASA / LROC / LOLA、USGS / IAU、JPL、Skyfield 和中文词表的贡献者致敬。完整来源与实际采用范围见 [致谢](ACKNOWLEDGEMENTS.md)。
 
 感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考。
 
@@ -117,12 +125,20 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 - Three font tiers based on projected apparent diameter, defaulting to **1.8% / 1.5% / 1.2%** of the image's shorter dimension. **字号递减** (Font decrement) subtracts **0.3 percentage points** per tier; set it to 0 for uniform text. The default display limit is **200** labels.
 - Near-white annotations with dark text outlines; projected reference outlines for large craters and short leaders for small craters.
 - A **Regenerate annotations** button (重新生成标注) that applies edited settings together.
-- Sourced Chinese names, original English names, or bilingual labels.
+- Chinese names prioritize the LPND snapshot supplied by 樊仕达 (10deg); manual additions and legacy fallback retain separate provenance. Previous translations remain searchable. Original English and bilingual labels are also available.
 - Editable `.moonlabel` projects, original-size PNG export, SVG export, and a separate LOLA DEM lighting-reference tool.
 
 ### Installation and usage
 
 For optional cross-platform GPU acceleration, activate the virtual environment and run `python -m pip install ".[gpu]"` in the project directory. [wgpu](https://wgpu-py.readthedocs.io/en/stable/start.html) selects Metal, Vulkan or DirectX 12 according to the available hardware and drivers. No browser or CUDA installation is needed. Apple M5 Pro is tested; Windows/Linux and NVIDIA/AMD/Intel GPUs still need native validation.
+
+| Platform | Potential hardware | Compute API |
+| --- | --- | --- |
+| macOS | Apple M series; Metal-capable Intel / AMD Mac GPUs | Metal |
+| Windows 10 / 11 | NVIDIA, AMD or Intel discrete/integrated GPUs meeting the required compute features | Vulkan / DirectX 12 |
+| Linux | NVIDIA, AMD or Intel discrete/integrated GPUs with a working Vulkan driver | Vulkan |
+
+This describes backend coverage, not a model-by-model test list. Install `.[gpu]`; OS, driver and compute capabilities must pass runtime detection. Vendor names alone do not guarantee compatibility. Software adapters are not treated as GPU acceleration devices.
 
 The toolbar’s **计算设置** (Compute settings) offers Auto and CPU-only and shows the detected device. Preferences apply to subsequent jobs and persist locally, independently of photo projects. Only coarse terrain/shadow references are accelerated; projection, SIFT, pose refinement and labels remain on CPU. Initial execution includes shader compilation. CPU recomputation of boundary pixels and distributed CPU spot checks protect numerical consistency. GPU errors or failed checks trigger fallback; existing `.[apple-gpu]` / MLX installations remain an Apple compatibility backend, followed by CPU. Small atlases and DEMs beyond the buffer budget stay on CPU.
 
