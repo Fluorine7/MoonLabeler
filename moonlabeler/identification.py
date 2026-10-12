@@ -7,7 +7,6 @@ general perspective-conic invariants in Christian et al. (2020).
 Seed triangles propose a pose; other crater observations must verify it.
 """
 from dataclasses import dataclass
-from itertools import combinations
 import math
 
 import cv2
@@ -58,10 +57,25 @@ def _triangle_index(points, radii, neighbors=14, centered=False):
     matcher = cv2.FlannBasedMatcher(dict(algorithm=1, trees=2), dict(checks=32))
     near = matcher.knnMatch(points, points, k=min(neighbors+1, len(points)))
     rows = []
+    pair_indices = {}
     for i, choices in enumerate(near):
-        indices = [choice.trainIdx for choice in choices if choice.trainIdx != i]
-        rows.extend(tuple(sorted((i, j, k))) for j, k in combinations(indices, 2))
-    triangles = np.unique(np.asarray(rows, dtype=np.int32), axis=0)
+        indices = np.asarray([choice.trainIdx for choice in choices if choice.trainIdx != i], dtype=np.int32)
+        count = len(indices)
+        if count not in pair_indices:
+            pair_indices[count] = np.triu_indices(count, 1)
+        left, right = pair_indices[count]
+        triples = np.column_stack((np.full(len(left), i, dtype=np.int32), indices[left], indices[right]))
+        triples.sort(axis=1)
+        rows.append(triples)
+    # np.unique(axis=0) uses costly structured-row comparisons. Integer
+    # column sorting preserves the same lexicographic order,
+    # including hypothesis tie-breaking, without that cost.
+    triangles = np.concatenate(rows)
+    if not len(triangles):
+        return np.empty((0, 5), np.float32), np.empty((0, 3), np.int32)
+    triangles = triangles[np.lexsort(triangles.T[::-1])]
+    distinct = np.r_[True, np.any(triangles[1:] != triangles[:-1], axis=1)]
+    triangles = triangles[distinct]
     p = points[triangles]
     sides = np.stack((np.linalg.norm(p[:, 1]-p[:, 2], axis=1),
                       np.linalg.norm(p[:, 0]-p[:, 2], axis=1),

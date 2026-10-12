@@ -1,9 +1,13 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.2** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.3** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
+
+0.6.3：加速自动识别中的坑群索引构建，保持候选顺序与匹配验证条件；清理 UI 拆分后遗留的未使用导入和辅助函数。高程参考仍是复杂局部图的主要耗时来源。
+
+0.6.3 speeds up crater-pattern index construction while preserving candidate order and match validation. Unused imports and a UI helper left over from the UI split were removed. Terrain references remain the main cost for difficult close-ups.
 
 [中文使用说明](README.zh-CN.md) · [Acknowledgements / 致谢](ACKNOWLEDGEMENTS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 

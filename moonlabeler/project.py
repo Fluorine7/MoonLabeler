@@ -16,7 +16,7 @@ import numpy as np
 from PIL import Image, ImageColor
 
 from .geometry import Geometry, MOON_RADIUS_KM, surface_vectors
-from .sources import read_image, write_json, COMMON_FEATURES
+from .sources import write_json, COMMON_FEATURES
 from .registration import transform_points
 from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR, landing_marker_radius
 

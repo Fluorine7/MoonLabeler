@@ -13,15 +13,14 @@ import sys
 import traceback
 
 import numpy as np
-from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QTime, QTimeZone, QObject, Signal, QRunnable, QThreadPool, QTimer
-from PySide6.QtGui import QColor, QFont, QImage, QPixmap, QPainter, QPen, QAction, QKeySequence, QPainterPath, QPainterPathStroker
+from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QObject, Signal, QRunnable, QThreadPool, QTimer
+from PySide6.QtGui import QColor, QFont, QImage, QPixmap, QPainter, QPen, QPainterPath, QPainterPathStroker
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
+    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
     QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsLineItem, QGraphicsEllipseItem,
-    QPushButton, QToolButton, QLabel, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
-    QCheckBox, QDateTimeEdit, QGroupBox, QScrollArea, QSplitter,
-    QFileDialog, QMessageBox, QColorDialog, QTableWidget, QTableWidgetItem,
-    QHeaderView, QListWidget, QListWidgetItem, QInputDialog, QAbstractItemView, QTabWidget,
+    QPushButton, QLabel,
+    QFileDialog, QMessageBox, QColorDialog, QTableWidgetItem,
+    QListWidgetItem, QInputDialog,
     QDialog,
 )
 

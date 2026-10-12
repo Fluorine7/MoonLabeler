@@ -68,11 +68,6 @@ class WindowUiMixin:
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         return form
 
-    def ui_section(self, title):
-        """Flat titled section: a QGroupBox without the box."""
-        group = QGroupBox(title)
-        return group
-
     def ui_combo(self, minimum_contents_length=None):
         """Combo with a stylesheet-friendly view whose popup fits its items."""
         combo = WidePopupComboBox()
