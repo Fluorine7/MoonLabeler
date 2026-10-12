@@ -1,9 +1,13 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.0** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.1** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
+
+0.7.1：增加受限的手机目镜后畸变校正。已有可靠纹理匹配、但月缘检查失败时才尝试；需同时通过分区留出与真实受光月缘验证。原图不重采样，文字、坑缘和导出共用校正坐标。已验证一张实拍，不保证所有手机、目镜组合或局部照片都能识别。
+
+0.7.1 adds a guarded afocal-phone distortion fallback after a strong atlas match fails its limb check. Spatial holdouts and the observed illuminated limb must both agree. Original pixels remain untouched; labels, crater outlines and exports share the corrected coordinates. Validated on one real afocal photograph, not a general success-rate claim. Distortion-aware projects require 0.7.1 or later and cannot serve as planar local-reference projects.
 
 0.7.0：中文地名优先采用 LPND 资料；加入可选 wgpu 跨平台 GPU 后端，使用 Metal / Vulkan / DirectX 12 生成高程阴影参考。“计算设置”简化为自动与仅 CPU，并显示可用设备。已实测 Apple M5 Pro；NVIDIA、AMD、Intel 的硬件与驱动兼容性仍需对应机器验证。
 

@@ -47,6 +47,7 @@ class IdentificationResult:
     refinement: dict | None = None
     crater_rims: dict | None = None
     reference_points: dict | None = None
+    lens_distortion: dict | None = None
 
 
 def _triangle_index(points, radii, neighbors=14, centered=False):

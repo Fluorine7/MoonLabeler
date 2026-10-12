@@ -426,6 +426,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                        "rms_px": recognition.rms_px}
         if recognition.refinement:
             self.project.identification["refinement"] = recognition.refinement
+        if recognition.lens_distortion:
+            self.project.identification["lens_distortion"] = recognition.lens_distortion
         if recognition.reference_points:
             self.project.identification["reference_points"] = recognition.reference_points
         self.accept_crater_candidates(detection)
@@ -436,6 +438,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         names = [m.feature["name"] for m in recognition.matches if m.feature["kind"] == "Crater, craters"]
         if recognition.reference_points:
             message = f"参考点辅助配准 · {len(recognition.reference_points['reference_ids'])} 个已确认点 · {recognition.image_inliers} 个图像对应点 · 覆盖 {recognition.coverage:.1%}。圈为目录参考轮廓"
+        elif recognition.lens_distortion:
+            message = f"目镜畸变校正 · {recognition.image_inliers} 个图像对应点 · 月缘偏差（95%）{recognition.refinement['limb_p95_px']:.1f} px"
         elif recognition.limb_inliers:
             message = f"月盘外缘与月海纹理配准成功 · 纹理相关 {recognition.texture_correlation:.2f} · 外缘拟合偏差 {recognition.rms_px:.2f} px"
         elif recognition.refinement and recognition.matches:
@@ -1026,9 +1030,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 features = [self.catalog_by_id[a["id"]] for a in enabled]
                 source, _, _ = self.project.geometry.project([f["lat"] for f in features], [f["lon"] for f in features])
                 target = np.array([a["pixel"] for a in enabled])
-                actual_errors = np.linalg.norm(transform_points(self.project.matrix, source)-target, axis=1)
+                actual_errors = np.linalg.norm(self.project.photo_points(source)-target, axis=1)
                 diagnostics = {a["id"]: (error, float("nan"), False) for a, error in zip(enabled, actual_errors)}
-                if len(enabled) >= 2:
+                if len(enabled) >= 2 and not self.project.identification.get("lens_distortion"):
                     self.calibration = calibration_report(source, target, ["auto", "no", "yes"][self.mirror.currentIndex()])
                     diagnostics = {a["id"]: (error, self.calibration.check_errors_px[i], i == self.calibration.suspect_index)
                                    for i, (a, error) in enumerate(zip(enabled, actual_errors))}
@@ -1107,7 +1111,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 feature = self.catalog_by_id.get(anchor["id"])
                 if feature:
                     projected, _, _ = self.project.geometry.project([feature["lat"]], [feature["lon"]])
-                    predicted = transform_points(self.project.matrix, projected)[0]
+                    predicted = self.project.photo_points(projected)[0]
                     if np.linalg.norm(predicted-[x, y]) > 1:
                         line = scene.addLine(x, y, *predicted, QPen(QColor("#ffb36b"), 1.5, Qt.PenStyle.DashLine))
                         line.setZValue(30)
@@ -1220,6 +1224,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             return
         try:
             reference_project = Project.load(path)
+            if reference_project.identification.get("lens_distortion"):
+                raise ValueError("此参考工程含目镜畸变校正，请对当前照片使用自动识别。")
             if reference_project.matrix is None or reference_project.geometry is None:
                 raise ValueError("参考工程未配准")
             delta = abs((datetime.fromisoformat(reference_project.utc) - self.utc()).total_seconds())
@@ -1403,11 +1409,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
             features = [self.catalog_by_id[a["id"]] for a in anchors]
             points, _, _ = geometry.project([f["lat"] for f in features], [f["lon"] for f in features])
             errors = np.linalg.norm(transform_points(matrix, points)-[a["pixel"] for a in anchors], axis=1)
-            previous = np.linalg.norm(transform_points(self.project.matrix, points)-[a["pixel"] for a in anchors], axis=1) if self.project.matrix is not None else np.array([0.])
+            previous = np.linalg.norm(self.project.photo_points(points)-[a["pixel"] for a in anchors], axis=1) if self.project.matrix is not None else np.array([0.])
             if np.median(errors) > max(6., 2*np.median(previous)):
                 self.error("DEM 匹配与已有地形点不一致，未采用该结果。请核对区域、时间或数据分辨率。")
                 return
         self.project.geometry, self.project.matrix = geometry, matrix
+        self.project.identification.clear()
         self.project.labels.clear()
         self.refresh_anchor_table()
         self.refresh_annotations()

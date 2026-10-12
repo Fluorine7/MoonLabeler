@@ -117,6 +117,14 @@ def _refine_atlas_pose(image, geometry, matrix, projection, match, limb):
     return result
 
 
+def _eyepiece_or_raise(image, geometry, projection, match, message):
+    from .eyepiece import identify_eyepiece
+    try:
+        return identify_eyepiece(image, geometry, projection, match)
+    except IdentificationError:
+        raise IdentificationError(message) from None
+
+
 def identify_from_atlas(image, geometry):
     """No supplied region, camera angle, mirror, scale or feature names."""
     reference, projection = render_atlas(geometry)
@@ -132,7 +140,7 @@ def identify_from_atlas(image, geometry):
         matrix = refined.matrix
     effective_geometry = refined.geometry if refined is not None else geometry
     if limb is not None and _limb_error(matrix, effective_geometry, limb) > max(3., limb[1]*.008, limb[2]*4):
-        raise IdentificationError("纹理配准与照片月缘不一致，未采用配准。")
+        return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片月缘不一致，未采用配准。")
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
     height, width = gray.shape
     sample = cv2.resize(gray[:round(height*.93)], (60, 54), interpolation=cv2.INTER_AREA)
@@ -141,7 +149,7 @@ def identify_from_atlas(image, geometry):
     if len(foreground):
         inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
         if (np.linalg.norm(transform_points(inverse, foreground), axis=1) < 1.015).mean() < .95:
-            raise IdentificationError("纹理配准与照片中的月盘范围不一致。")
+            return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片中的月盘范围不一致。")
     method = "LROC albedo / symmetric SIFT / JPL projection"
     if refined is not None:
         method += " / spatially validated view refinement"

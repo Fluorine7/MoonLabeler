@@ -18,6 +18,7 @@ from PIL import Image, ImageColor
 from .geometry import Geometry, MOON_RADIUS_KM, surface_vectors
 from .sources import write_json, COMMON_FEATURES
 from .registration import transform_points
+from .eyepiece import distort_points, distortion_jacobian
 from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR, landing_marker_radius
 
 DEFAULT_FONT_PERCENT = 1.8
@@ -162,6 +163,12 @@ def _validate_project_data(data):
     if 'matched_names' in recognition and (not isinstance(recognition['matched_names'], list) or
                                          not all(isinstance(name, str) for name in recognition['matched_names'])):
         _invalid_field('automatic_recognition.matched_names')
+    distortion = recognition.get('lens_distortion')
+    if distortion is not None:
+        _mapping(distortion, 'automatic_recognition.lens_distortion')
+        _point(distortion.get('center'), 'lens_distortion.center')
+        _number(distortion.get('scale'), 'lens_distortion.scale', 1)
+        _number(distortion.get('k'), 'lens_distortion.k', 0, .6)
     for rim in _mapping(data.get('terrain_rims', {}), 'terrain_rims').values():
         _mapping(rim, 'terrain_rims')
         coordinates = rim.get('coordinates')
@@ -236,6 +243,10 @@ class Project:
     crater_outline_shape: str = "ellipse"
     terrain_rims: dict = field(default_factory=dict)
 
+    def photo_points(self, points):
+        """Map projected lunar coordinates into untouched photograph pixels."""
+        return distort_points(transform_points(self.matrix, points), self.identification.get('lens_distortion'))
+
     def update_font_size(self, shape):
         short_side = min(shape[:2])
         if self.font_percent is None:
@@ -276,6 +287,10 @@ class Project:
                         (centers @ camera.T)[:, :, None]*distance_ratio*
                         self.geometry.observer[None, None, :]/perspective[:, None, None]**2)
         local = self.matrix[None, :, :2] @ differential @ tangents
+        if self.identification.get('lens_distortion'):
+            points = self.geometry.project([f['lat'] for f in usable], [f['lon'] for f in usable])[0]
+            ideal = transform_points(self.matrix, points)
+            local = distortion_jacobian(ideal, self.identification['lens_distortion']) @ local
         diameter = np.array([f['diameter'] for f in usable])/MOON_RADIUS_KM
         apparent = diameter*np.sqrt(np.abs(np.linalg.det(local)))/min(shape[:2])
         levels = np.where(apparent >= FONT_TIER_BOUNDARIES[1], 0,
@@ -363,7 +378,7 @@ class Project:
         if self.show_landing_sites:
             catalog.extend(landing_sites())
         points, visible, lit = self.geometry.project([f["lat"] for f in catalog], [f["lon"] for f in catalog])
-        pixels = transform_points(self.matrix, points)
+        pixels = self.photo_points(points)
         h, w = shape[:2]
         # Use observed brightness when a photo is available. A crater center
         # can be in shadow even though its rim is clearly visible; incorrect
@@ -379,6 +394,9 @@ class Project:
         reference_font = self.font_sizes(shape)[1]
         bright = max(16., float(np.percentile(gray[::8, ::8], 95))) if gray is not None else None
         brightness_limit = max(4., bright*.08) if gray is not None else None
+        if gray is not None and self.identification.get("lens_distortion"):
+            # Eyepiece background glow is not illuminated lunar terrain.
+            brightness_limit = max(brightness_limit, 30., bright*.25)
         offsets = np.linspace(-1, 1, 13)
         dx, dy = np.meshgrid(offsets, offsets)
         disk = dx*dx+dy*dy <= 1
@@ -482,7 +500,7 @@ class Project:
             coordinates = np.asarray(rim['coordinates'], float)
             if coordinates.ndim == 2 and coordinates.shape[1] == 3 and len(coordinates) >= 16 and np.isfinite(coordinates).all():
                 points, visible, _ = self.geometry.project(coordinates[:, 0], coordinates[:, 1], coordinates[:, 2])
-                return transform_points(self.matrix, points), visible
+                return self.photo_points(points), visible
         center = surface_vectors([feature["lat"]], [feature["lon"]])[0]
         east = np.array([-np.sin(np.radians(feature["lon"])), np.cos(np.radians(feature["lon"])), 0.])
         north = np.cross(center, east)
@@ -493,7 +511,7 @@ class Project:
         lat = np.degrees(np.arcsin(np.clip(rim[:, 2], -1, 1)))
         lon = np.degrees(np.arctan2(rim[:, 1], rim[:, 0]))
         xy, visible, _ = self.geometry.project(lat, lon)
-        pixels = transform_points(self.matrix, xy)
+        pixels = self.photo_points(xy)
         return pixels, visible
 
     def crater_outline(self, feature, shape):
