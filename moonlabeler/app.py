@@ -29,7 +29,7 @@ from .capture_time import winjupos_capture_time
 from .ui.theme import STYLE
 from .ui.window import WindowUiMixin
 from .ui.compute import ComputeDialog
-from . import terrain_metal
+from . import compute
 from .craters import DetectionOptions, detect_craters, detect_crater_rims
 from .identification import identify_from_candidates
 from .atlas import identify_from_atlas
@@ -257,7 +257,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.catalog = load_catalog(CACHE)
         self.compute_preferences = QSettings(str(CACHE/'preferences.ini'), QSettings.Format.IniFormat)
         compute_mode = self.compute_preferences.value('compute/mode', 'auto')
-        terrain_metal.set_mode(compute_mode if compute_mode in terrain_metal.MODES else 'auto')
+        compute_mode = compute.normalize_mode(compute_mode)
+        compute.set_mode(compute_mode if compute_mode in compute.MODES else 'auto')
         self.catalog_by_id = {f["id"]: f for f in self.catalog}
         self.annotation_items = []
         self.reference_items = []

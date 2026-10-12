@@ -1,13 +1,13 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.5** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.6.6** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
 
-0.6.5：顶部“计算设置”可选择自动、仅 CPU 或 Apple GPU，设置保存在本机。Windows、Linux 和 Intel Mac 使用 CPU；当前未接入 NVIDIA / AMD GPU。
+0.6.6：加入可选 wgpu 跨平台 GPU 后端，使用 Metal / Vulkan / DirectX 12 生成高程阴影参考。“计算设置”简化为自动与仅 CPU，并显示可用设备。已实测 Apple M5 Pro；NVIDIA、AMD、Intel 的硬件与驱动兼容性仍需对应机器验证。
 
-0.6.5 adds a Compute settings dialog with Auto, CPU-only and Apple GPU modes, saved locally. Windows, Linux and Intel Macs use CPU; NVIDIA / AMD GPU backends are not implemented.
+0.6.6 adds optional cross-platform wgpu terrain shading through Metal / Vulkan / DirectX 12. Compute settings offer Auto and CPU-only, with the detected device shown. Tested on Apple M5 Pro; NVIDIA, AMD and Intel hardware/driver compatibility still requires native validation.
 
 [中文使用说明](README.zh-CN.md) · [Acknowledgements / 致谢](ACKNOWLEDGEMENTS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 
@@ -60,7 +60,11 @@ python -m pip install -r requirements.txt
 python -m moonlabeler
 ```
 
-Apple 芯片可选 GPU 加速：在项目目录运行 `.venv/bin/python -m pip install ".[apple-gpu]"`。安装后默认自动使用 MLX / Metal 生成自动识别所需的高程阴影参考；首次运行包含内核编译。精确投影、SIFT 匹配、配准精修和标注仍使用 CPU。MLX 及所需 macOS 版本以可安装的上游 wheel 为准；未安装、无 Metal 设备或 GPU 执行失败时自动使用 CPU。通过顶部“计算设置”可关闭 GPU，保存后下次计算生效并保留到下次启动；此设置不写入照片工程。环境变量优先于界面设置。需要对照时可运行 `MOONLABELER_COMPUTE=cpu .venv/bin/python -m moonlabeler` 强制使用 CPU。
+可选跨平台 GPU 加速：在项目目录激活虚拟环境后运行 `python -m pip install ".[gpu]"`。通过 [wgpu](https://wgpu-py.readthedocs.io/en/stable/start.html) 自动选择 Metal、Vulkan 或 DirectX 12；是否可用取决于显卡、驱动和上游安装包支持。无需浏览器或 CUDA。已实测 Apple M5 Pro，Windows / Linux 显卡尚待实机验证。
+
+顶部“计算设置”提供“自动选择”“仅 CPU”，显示可用设备，选择保存在本机、下次计算生效，不随照片工程传递。只加速自动识别中的高程阴影参考生成；精确投影、SIFT、配准精修与标注仍使用 CPU。首次运行包含内核编译，临界像素和分布抽样由 CPU 复核。GPU 不可用、计算失败或抽样不符时回退；旧版安装的 `.[apple-gpu]` / MLX 仍作为 Apple 兼容后端，其余情况使用 CPU。小参考图及超出内存限制的 DEM 使用 CPU。
+
+设置 `MOONLABELER_COMPUTE=cpu` 可强制关闭 GPU，`auto` 恢复自动选择；环境变量优先于界面。旧值 `metal` 兼容为 `auto`。未安装 GPU 组件也可正常使用全部功能。
 
 FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打开示例”** 测试内置的合成工程；它用于演示编辑与校准流程，不用于证明实拍识别准确率。
 
@@ -118,7 +122,11 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 
 ### Installation and usage
 
-For optional Apple silicon GPU acceleration, run `.venv/bin/python -m pip install ".[apple-gpu]"` in the project directory. Automatic identification then uses MLX / Metal for coarse terrain/shadow references; the first run includes kernel compilation. Projection, SIFT matching, pose refinement and labels remain on the CPU. Supported macOS versions depend on available upstream MLX wheels. Missing MLX, unavailable Metal or GPU runtime failures fall back to CPU. Use the toolbar’s **计算设置** (Compute settings) to select Auto, CPU-only or Apple GPU. Unsupported GPU options are disabled. Preferences apply to subsequent jobs and persist locally, independently of shared photo projects. An explicit environment override takes precedence over the dialog. Set `MOONLABELER_COMPUTE=cpu` before launch to force the CPU path.
+For optional cross-platform GPU acceleration, activate the virtual environment and run `python -m pip install ".[gpu]"` in the project directory. [wgpu](https://wgpu-py.readthedocs.io/en/stable/start.html) selects Metal, Vulkan or DirectX 12 according to the available hardware and drivers. No browser or CUDA installation is needed. Apple M5 Pro is tested; Windows/Linux and NVIDIA/AMD/Intel GPUs still need native validation.
+
+The toolbar’s **计算设置** (Compute settings) offers Auto and CPU-only and shows the detected device. Preferences apply to subsequent jobs and persist locally, independently of photo projects. Only coarse terrain/shadow references are accelerated; projection, SIFT, pose refinement and labels remain on CPU. Initial execution includes shader compilation. CPU recomputation of boundary pixels and distributed CPU spot checks protect numerical consistency. GPU errors or failed checks trigger fallback; existing `.[apple-gpu]` / MLX installations remain an Apple compatibility backend, followed by CPU. Small atlases and DEMs beyond the buffer budget stay on CPU.
+
+Set `MOONLABELER_COMPUTE=cpu` to disable acceleration, or `auto` for automatic selection. This overrides the dialog; the old `metal` value is migrated to `auto`. All features remain usable without GPU dependencies.
 
 The font tiers use projected equivalent-area diameter: large at **2%** or more of the image's short side, medium at **0.8%–2%**, and small below **0.8%**. This includes foreshortening and the camera transform; filtering the catalogue does not change a formation's tier. Rilles and other long terrain use catalogue extent. Tier sizes drive collision bounds, PNG and SVG together and are saved in projects. Older projects keep their uniform text; to enable tiers, set the maximum size to **1.8%**, decrement to **0.3%**, then regenerate. The calculation is batched and does not rerun recognition or read elevation data.
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moonlabeler"
-version = "0.6.5"
+version = "0.6.6"
 description = "Lunar photo registration and editable annotations"
 readme = "README.md"
 authors = [{name = "Fluorine Zhu"}]
@@ -20,6 +20,7 @@ Issues = "https://github.com/Fluorine7/MoonLabeler/issues"
 [project.optional-dependencies]
 fits = ["astropy>=6"]
 dev = ["pytest>=8"]
+gpu = ["wgpu>=0.32,<0.33"]
 apple-gpu = ["mlx>=0.25,<0.33; sys_platform == 'darwin' and platform_machine == 'arm64'"]
 
 [project.scripts]
@@ -32,7 +33,7 @@ dependencies = {file = "requirements.txt"}
 include = ["moonlabeler*"]
 
 [tool.setuptools.package-data]
-moonlabeler = ["data/*.json", "data/*.jpg"]
+moonlabeler = ["data/*.json", "data/*.jpg", "data/*.wgsl"]
 "moonlabeler.ui" = ["assets/*.png"]
 
 [tool.pytest.ini_options]

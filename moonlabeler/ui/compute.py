@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2026 Fluorine Zhu
 """Local compute preferences; never saved in a shared photo project."""
-import os
 
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QDialogButtonBox
 
-from .. import terrain_metal
+from .. import compute
 
 
 class ComputeDialog(QDialog):
@@ -21,18 +20,16 @@ class ComputeDialog(QDialog):
         self.mode.setObjectName('computeMode')
         self.mode.addItem('自动选择（推荐）', 'auto')
         self.mode.addItem('仅 CPU · 关闭 GPU', 'cpu')
-        self.mode.addItem('Apple GPU', 'metal')
-        available, detail = terrain_metal.metal_support()
-        self.mode.model().item(2).setEnabled(available)
-        configured = terrain_metal.configured_mode()
+        configured = compute.configured_mode()
         self.mode.setCurrentIndex(self.mode.findData(configured))
-        override = os.environ.get('MOONLABELER_COMPUTE', '').lower() in terrain_metal.MODES
+        override = compute.environment_override()
         self.mode.setEnabled(not override)
         layout.addWidget(self.mode)
-        info = QLabel(detail)
+        info = QLabel(compute.status())
         info.setWordWrap(True)
         info.setMaximumWidth(450)
         layout.addWidget(info)
+        self.mode.currentIndexChanged.connect(lambda: info.setText(compute.status(self.mode.currentData())))
         note = QLabel('设置保存在本机，下次计算生效。GPU 不可用时自动改用 CPU。')
         note.setWordWrap(True)
         layout.addWidget(note)
@@ -42,6 +39,7 @@ class ComputeDialog(QDialog):
             environment.setMaximumWidth(450)
             layout.addWidget(environment)
             buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+            buttons.button(QDialogButtonBox.StandardButton.Close).setText('关闭')
             buttons.rejected.connect(self.reject)
         else:
             buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
@@ -53,7 +51,7 @@ class ComputeDialog(QDialog):
 
     def save(self):
         mode = self.mode.currentData()
-        terrain_metal.set_mode(mode)
+        compute.set_mode(mode)
         self.preferences.setValue('compute/mode', mode)
         self.preferences.sync()
         self.accept()

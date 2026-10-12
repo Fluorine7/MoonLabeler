@@ -19,7 +19,7 @@ from .terrain import ElevationMap, download_basic_dem, shade_atlas_points
 
 
 def render_terrain_atlas(dem, geometry, size=4000):
-    from .terrain_metal import try_render
+    from .compute import try_render
     accelerated = try_render(dem, geometry, size)
     if accelerated is not None:
         return accelerated

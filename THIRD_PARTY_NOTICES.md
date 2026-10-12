@@ -75,3 +75,5 @@ Dependencies are installed separately, not vendored into this repository. Their 
 - PyShp — [PyShp license](https://github.com/GeospatialPython/pyshp/blob/master/LICENSE.TXT).
 - Astropy (optional FITS support) — [Astropy license](https://github.com/astropy/astropy/blob/main/LICENSE.rst).
 - MLX / MLX Metal (optional Apple silicon GPU acceleration) — Copyright © 2023 Apple Inc., [MIT license](https://github.com/ml-explore/mlx/blob/main/LICENSE). The terrain kernel is MoonLabeler code; MLX supplies Metal compilation and execution.
+
+- wgpu-py (optional cross-platform GPU execution) — [BSD-2-Clause license](https://github.com/pygfx/wgpu-py/blob/main/LICENSE), Copyright (c) 2019–2023 Almar Klein, Korijn van Golen. Its native backend [wgpu-native](https://github.com/gfx-rs/wgpu-native) retains its own bundled MIT / Apache-2.0 notices. The WGSL terrain kernel is MoonLabeler code.

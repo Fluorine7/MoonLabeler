@@ -41,6 +41,7 @@ Lommel–Seeliger 使用 `cos(i) / (cos(i) + cos(e))`；Lambert 使用 `max(cos(
 - 在线参考：[NASA SVS 2026 月相与天平动](https://svs.gsfc.nasa.gov/5587/)。
 - 配准回归照片：[NASA Galileo PIA00405](https://science.nasa.gov/photojournal/earths-moon/)。它用于已知图像变换的回归测试，未用于证明独立照片识别精度。
 - 界面、数值与图像处理：Qt / PySide6、NumPy、Pillow、OpenCV、Skyfield 和 PyShp。
+- [wgpu-py / wgpu-native](https://github.com/pygfx/wgpu-py)：提供跨平台 GPU 执行接口；WGSL 高程光照内核由 MoonLabeler 实现。
 - Apple MLX / Metal：为 Apple 芯片提供可选 GPU 计算后端；高程光照内核由 MoonLabeler 实现。
 
 ## Acknowledgements and provenance (English)
@@ -60,6 +61,7 @@ MoonLabeler is authored by **Fluorine Zhu** and released under **GNU GPL version
 - The new wide-limb fallback independently fits the lunar outer circle and compares phase and high-pass LROC albedo templates. The limb-fitting approach was informed by the lunar_stack research; no SAM, learned model, or upstream source code is included. It rejects short polar arcs and ambiguous rotations or reflections.
 - **Matt Pocock and contributors to [skills](https://github.com/mattpocock/skills):** Development and debugging workflows used during development. Skills are development aids, not runtime recognition algorithms, and are not bundled here.
 - **Qt / PySide6, NumPy, Pillow, OpenCV, Skyfield, PyShp, and the Python ecosystem:** The application's UI, numerical, imaging, and data-reading foundations.
+- **[wgpu-py / wgpu-native](https://github.com/pygfx/wgpu-py):** Cross-platform GPU execution. The WGSL terrain-shading kernel is implemented by MoonLabeler.
 - **Apple MLX / Metal:** Optional GPU execution on Apple silicon. The terrain-shading kernel is implemented by MoonLabeler.
 
 Thank you to the lunar photographers who provided local test images. Their photographs and derived exports are not included in this public source repository.

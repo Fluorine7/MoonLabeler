@@ -8,7 +8,7 @@ from moonlabeler.geometry import Geometry
 from moonlabeler.terrain import ElevationMap
 from moonlabeler.terrain import shade_atlas_points
 from moonlabeler import terrain_identification as terrain
-from moonlabeler import terrain_metal
+from moonlabeler import terrain_metal, terrain_wgpu
 
 
 def fixture():
@@ -34,6 +34,7 @@ def test_forced_cpu_does_not_initialize_metal(monkeypatch):
 
 def test_gpu_failure_falls_back_to_cpu(monkeypatch):
     monkeypatch.setenv('MOONLABELER_COMPUTE', 'auto')
+    monkeypatch.setattr(terrain_wgpu, 'eligible', lambda *args: False)
     monkeypatch.setattr(terrain_metal, '_eligible', lambda dem, size: True)
     monkeypatch.setattr(terrain_metal, '_disabled', False)
     def failed(*args):

@@ -170,14 +170,12 @@ Copyright © 2026 Fluorine Zhu。代码采用 GNU GPL v3.0 或更新版本，见
 
 高倍照片的大坑可通过低分辨率长弧拟合产生椭圆候选，再用多个方向上的边缘验证。大半径搜索会降低工作分辨率，减少计算。候选可能受坑壁和阴影影响，请核对中心；单个候选不能独立证明地名或配准。
 
-### Apple 芯片 GPU 加速（0.6.4）
+### 跨平台 GPU 与计算设置（0.6.6）
 
-在项目目录运行 `.venv/bin/python -m pip install ".[apple-gpu]"`，随后正常启动即可自动使用。MLX / Metal 加速自动识别的高程与阴影参考生成；精确投影、纹理匹配、配准精修与标注继续使用 CPU。GPU 采样保留高程格内小数位置，灰度取整及阴影临界像素由 CPU 复核。首次执行包含内核编译。
+在项目目录激活虚拟环境后运行 `python -m pip install ".[gpu]"`，安装可选 wgpu 组件。macOS 使用 Metal，Windows / Linux 可通过 DirectX 12 或 Vulkan 使用受支持的显卡；具体要求见 [wgpu 安装说明](https://wgpu-py.readthedocs.io/en/stable/start.html)。已在 Apple M5 Pro 实测；NVIDIA / AMD / Intel 尚待对应机器验证。无需安装 CUDA 或浏览器。
 
-未安装 MLX、设备不支持 Metal 或 GPU 执行失败时使用 CPU。需要强制 CPU 对照时，在项目目录运行 `MOONLABELER_COMPUTE=cpu .venv/bin/python -m moonlabeler`。这不是神经网络识别，不需要训练模型。
+顶部“计算设置”提供“自动选择”“仅 CPU”，显示可用设备。选择“仅 CPU”可关闭 GPU；保存后下次计算生效，重启仍保留。偏好保存在本机缓存目录 `preferences.ini`，不随 `.moonlabel` 工程传递。显式设置的 `MOONLABELER_COMPUTE=cpu` / `auto` 优先于界面，旧 `metal` 值兼容为自动选择。
 
-### 计算设置（0.6.5）
+自动识别仅将高程与阴影参考计算交给 GPU；精确投影、纹理匹配、配准精修与标注继续使用 CPU。采样保留高程格内小数位置，灰度取整、阴影临界像素由 CPU 复核，另做分布抽样检查。首次执行包含内核编译。GPU 不可用、内存不足、计算失败或检查不符时回退，不要求用户更换显卡。小参考图和超过 GPU 缓冲预算的 DEM 继续使用 CPU。
 
-顶部“计算设置”提供“自动选择”“仅 CPU”“Apple GPU”。默认自动选择；Apple 芯片且 MLX / Metal 可用时加速，否则使用 CPU。Windows、Linux 和 Intel Mac 当前使用 CPU，尚未接入 NVIDIA / AMD GPU；不支持的选项显示为禁用。
-
-选择“仅 CPU”即可关闭 GPU。保存后下次计算生效，重启仍保留；偏好保存在本机缓存目录的 `preferences.ini`，不随 `.moonlabel` 工程传递。若显式设置了 `MOONLABELER_COMPUTE`，它优先于界面设置，窗口会显示此状态。
+旧版可选 `.[apple-gpu]` 安装仍可使用 MLX / Metal 作为 Apple 兼容后端；新安装建议统一使用 `.[gpu]`。未安装 GPU 组件也不影响功能。这不是神经网络识别，不需要训练模型。

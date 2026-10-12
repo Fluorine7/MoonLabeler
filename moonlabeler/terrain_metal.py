@@ -7,7 +7,6 @@ DEM, slope and twelve-step shadow model in float32. Final pose refinement and
 validation still use the existing CPU path. No MLX import on other platforms.
 """
 import logging
-import os
 import platform
 import threading
 
@@ -20,8 +19,6 @@ _LOG = logging.getLogger(__name__)
 _lock = threading.Lock()
 _disabled = False
 _kernel = None
-MODES = ('auto', 'cpu', 'metal')
-_mode = 'auto'
 _mlx = None
 _mlx_error = None
 _import_lock = threading.Lock()
@@ -43,26 +40,10 @@ def _load_mlx():
         return _mlx
 
 
-def configured_mode():
-    """An explicit environment override takes precedence over the UI setting."""
-    override = os.environ.get('MOONLABELER_COMPUTE', '').lower()
-    return override if override in MODES else _mode
-
-
-def set_mode(mode):
-    global _mode, _disabled
-    if mode not in MODES:
-        raise ValueError(f'Unknown compute mode: {mode}')
-    with _lock:
-        if mode != _mode:
-            _disabled = False
-        _mode = mode
-
-
 def metal_support():
     """Probe only when the settings dialog is opened, not at app startup."""
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
-        return False, '当前电脑使用 CPU。Apple GPU 仅支持 Apple 芯片 Mac；暂未接入 NVIDIA / AMD GPU。'
+        return False, 'MLX 后端仅支持 Apple 芯片 Mac。'
     try:
         mx = _load_mlx()
         if mx.metal.is_available():
@@ -166,6 +147,7 @@ def _eligible(dem, size):
 def try_render(dem, geometry, size):
     """Return a GPU atlas, or None so the caller uses the CPU implementation."""
     global _disabled
+    from .compute import configured_mode
     if configured_mode() == 'cpu' or not _eligible(dem, size):
         return None
     # Qt workers may run on different threads. Serialize the small GPU entry
