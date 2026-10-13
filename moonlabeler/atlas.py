@@ -40,15 +40,30 @@ def render_atlas(geometry, size=1600):
     return reference, matrix
 
 
-def _photographed_limb(image, matrix):
+def _photographed_limb(image, matrix, geometry=None):
     """Measure a long outer arc in a moon-sized crop, ignoring canvas padding."""
     from .limb import fit_lunar_limb  # limb also uses render_atlas
     scale = np.linalg.norm(matrix[:, 0])
     center = matrix[:, 2]
     height, width = image.shape[:2]
-    # A partial lunar field cannot independently certify the whole sphere.
-    if scale < 50 or np.any(center-scale < 0) or np.any(center+scale >= [width, height]):
+    if scale < 50:
         return None
+    if np.any(center-scale < 0) or np.any(center+scale >= [width, height]):
+        # A dark hemisphere need not be in the frame. Only license this crop
+        # when the independently supplied phase predicts a long bright outer
+        # arc almost entirely in frame; short polar fields still fail below.
+        if geometry is None:
+            return None
+        angles = np.linspace(0, 2*np.pi, 720, endpoint=False)
+        circle = np.column_stack((np.cos(angles), np.sin(angles)))
+        lat, lon, _ = geometry.unproject(circle*.999)
+        margin = .02 if np.dot(geometry.observer, geometry.sun) > .98 else .15
+        illuminated = surface_vectors(lat, lon) @ geometry.sun > margin
+        pixels = transform_points(matrix, circle)
+        inside = ((pixels[:, 0] > 3) & (pixels[:, 0] < width-4)
+                  & (pixels[:, 1] > 3) & (pixels[:, 1] < height-4))
+        if illuminated.sum() < 240 or inside[illuminated].mean() < .95:
+            return None
     lower = np.maximum(np.floor(center-1.1*scale).astype(int), 0)
     upper = np.minimum(np.ceil(center+1.1*scale).astype(int), [width, height])
     try:
@@ -121,8 +136,8 @@ def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None):
     from .eyepiece import identify_eyepiece
     try:
         return identify_eyepiece(image, geometry, projection, match, limb=limb)
-    except IdentificationError:
-        raise IdentificationError(message) from None
+    except IdentificationError as exc:
+        raise IdentificationError(f"{message}\n{exc}") from None
 
 
 def _border_caption_area(stats, main, shape):
@@ -233,7 +248,7 @@ def _identify_atlas_field(image, geometry):
     if match.inliers < 24 or match.inliers/match.matches < .45:
         raise IdentificationError("纹理对应点太少或过于集中，未采用配准。")
     matrix = (np.vstack((match.matrix, [0., 0., 1.])) @ np.vstack((projection, [0., 0., 1.])))[:2]
-    limb = _photographed_limb(image, matrix)
+    limb = _photographed_limb(image, matrix, geometry)
     coverage = match.coverage
     if limb is not None:
         # An independently measured whole-Moon arc licenses measuring spatial

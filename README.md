@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.5** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.6** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -81,6 +81,8 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 纹理配准还会用分散的对应点尝试整体投影精修。空间验证按实际月面区域计算，不让照片黑边稀释覆盖率；较完整月盘另以实拍外缘独立检查中心和比例。只有分区留出误差改善且月缘一致时才接受较大的观测方向微调，避免月缘标签的地形端点落入黑背景；不会将引线端点强行移到月缘。原始星历视角与验证记录随工程保存，已有工程需重新执行“自动识别并标注”才能更新配准。
 
 目镜后照片的受限畸变校正复用纹理对应点，并验证真实受光月缘。外缘可独立测得时，按月盘大小计算分布和光学拟合范围，避免黑边阻止校正；少量错误对应点不能拉大空间验证网格。仍要求至少 100 个分散内点、80% 共识、四个独立留出区域和 120° 受光月缘。已验证两张手机目镜后实拍，原图像素不变；不能保证其他目镜、手机或局部视野通过。
+
+0.7.6 不再要求不可见的暗半球全部落在画面内：只有预测的受光外缘不少于 120°、且至少 95% 在画面内，才继续尝试独立月缘测量；最终纹理及畸变验证不变。2023-05-27 UTC 11:51 的另一张手机实拍仍因分区预测不稳定而拒绝，尚未解决。失败提示现在保留纹理与目镜校正的原因，不把识别到同一区域误报为可靠标注。
 
 只认得一两个地形时，在“辅助找坑”中确认名称和位置，然后展开“参考点与配准”，点击 **“用参考点自动配准”**。顶部“自动识别并标注”也会优先使用已确认的点。程序复用同一份小型 LOLA 数据，尝试少量局部参考尺度，通过后立即停止搜索；仍需至少 24 个图像对应点、分布覆盖、明暗与细节相关，以及全部参考点位置的一致性。失败保留参考点和原配准。一个点本身不能确定方向和比例；纯手动校准仍默认需要至少三点。
 
@@ -182,6 +184,8 @@ The wide-limb fallback requires at least a 120° outer arc, clear phase agreemen
 Atlas texture registration now attempts a global projection refinement from distributed correspondences. Spatial checks use the observed lunar field rather than black canvas margins. A measurable wide limb independently validates center and scale; a larger bounded view correction requires both held-out improvement and limb consistency. Inconsistent texture poses are rejected instead of moving leader endpoints onto the limb. The original ephemeris geometry and validation record are saved in projects. Rerun Identify and annotate to update an existing registration; regenerating labels alone does not change its pose.
 
 Afocal distortion recovery reuses texture correspondences and independently checks the illuminated limb. A measurable outer arc supplies Moon-sized coverage and fitting bounds, so sky padding cannot prevent recovery. Isolated descriptor outliers cannot stretch the spatial validation grid. Acceptance still requires at least 100 distributed inliers, 80% consensus, four spatial holdouts and a 120° illuminated arc. Two real afocal-phone photographs have passed local checks; original pixels stay unchanged. Other phones, eyepieces and partial fields can still be rejected.
+
+Version 0.7.6 permits the invisible hemisphere to extend outside the frame only when a predicted illuminated arc of at least 120° is at least 95% in frame. It still requires independent limb measurement and the existing texture/distortion checks. Another real phone photograph, captured on 2023-05-27 at 11:51 UTC, remains unresolved and is rejected for unstable spatial predictions. Failure messages now retain the atlas and eyepiece validation reasons; finding the correct region alone does not establish reliable annotations.
 
 After crater-pattern identification, local refinement uses the same small LOLA DEM, with terrain height included consistently in reference rendering and pose fitting. A small camera correction is followed by retrieval of further independent terrain points and a bounded two-axis view fit. The terrain fallback also attempts view refinement. Changes are accepted only with spatially held-out improvement and a fresh dense-render check. The estimated direction is an image-derived projection correction, not a recovered observing location or a libration measurement. The original ephemeris geometry and validation record are retained in the project.
 

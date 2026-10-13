@@ -395,7 +395,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             else:
                 try:
                     recognition = identify_from_atlas(image, geometry)
-                except ValueError:
+                except ValueError as atlas_error:
                     try:
                         recognition = identify_from_limb(image, geometry)
                     except ValueError as limb_error:
@@ -406,7 +406,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                             try:
                                 recognition = identify_from_terrain(image, geometry, CACHE, catalog=catalog)
                             except (ValueError, OSError) as terrain_error:
-                                raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；纹理、月盘轮廓和坑群验证均未通过。\n{limb_error}\n{exc}\n高程参考：{terrain_error}") from terrain_error
+                                raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；未通过自动配准验证。\n纹理参考：{atlas_error}\n轮廓参考：{limb_error}\n坑群参考：{exc}\n高程参考：{terrain_error}") from terrain_error
             return detection, recognition, geometry, lat, lon
         def failure(message):
             self.identification_status.setText("参考点配准失败，请核对取点" if known else "识别失败，可改用手动校准")

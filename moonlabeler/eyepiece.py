@@ -140,7 +140,7 @@ def identify_eyepiece(image, geometry, projection, match, *, limb=None):
     if match.coverage < .08:
         if limb is None:
             from .atlas import _photographed_limb
-            limb = _photographed_limb(image, camera)
+            limb = _photographed_limb(image, camera, geometry)
         if limb is not None:
             area = min(area, 4*limb[1]**2)
             scale, center = limb[1], limb[0]

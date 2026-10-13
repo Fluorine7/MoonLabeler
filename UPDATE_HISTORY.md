@@ -6,6 +6,12 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 0.7.6
+
+修复暗半球在画面外时提前跳过长亮缘测量的问题：只有预测受光外缘不少于 120°、且至少 95% 在画面内，才允许继续测量，实际月缘和分区纹理验证仍须通过。自动识别失败提示保留纹理与目镜校正的具体原因。新增正向/镜像暗面裁切、亮缘裁切拒绝及实际按钮错误传递回归；49 项相关测试通过，包含此前两张手机实拍。2023-05-27 UTC 11:51 的新手机实拍仍未通过畸变分区验证，本版本不宣称解决该照片。
+
+Version 0.7.6 fixes premature rejection of long bright-limb measurement when only the invisible hemisphere extends outside the frame. Measurement is attempted only if the predicted illuminated arc spans at least 120° and is at least 95% in frame; observed-limb and spatial-texture checks remain mandatory. Automatic failures retain atlas and eyepiece validation reasons. New normal/mirrored dark-hemisphere cropping, bright-arc clipping rejection and actual button error-propagation regressions pass, with 49 related tests including the two previously accepted phone photographs. The new 2023-05-27 11:51 UTC phone photograph still fails distortion holdouts and is not claimed as fixed.
+
 ## 0.7.5
 
 修复带大片黑边的手机目镜后月牙照片被纹理覆盖率及空间网格误拒绝的问题。独立月缘测量用于确定月盘大小、拟合范围和覆盖率；复用同一批纹理对应点，错误点仍参与留出检查。保留至少 100 个内点、80% 共识、四区留出和 120° 受光月缘验证，原图不重采样。2025-02-04 UTC 10:49 实拍通过实际按钮流程；既有手机、整月盘、局部月面、南北极及拒绝错误月缘的相关测试通过。不增加拍摄模式选择。

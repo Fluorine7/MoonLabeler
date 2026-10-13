@@ -12,6 +12,44 @@ from PySide6.QtWidgets import QApplication
 from moonlabeler.app import MainWindow
 
 
+def test_failed_automatic_workflow_retains_the_texture_validation_reason(monkeypatch):
+    from types import SimpleNamespace
+    from moonlabeler.geometry import Geometry
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    errors = []
+    window.error = errors.append
+    try:
+        window.set_image(np.zeros((400, 600, 3), np.uint8))
+        geometry = Geometry(np.array([1., 0., 0.]), np.array([0., 1., 0.]),
+                            np.array([0., 0., 1.]), np.array([1., 0., 0.]),
+                            384400., '2023-05-27T11:51:00+00:00')
+        monkeypatch.setattr('moonlabeler.app.compute_geometry', lambda *args: geometry)
+        monkeypatch.setattr('moonlabeler.app.detect_crater_rims', lambda *args: SimpleNamespace(candidates=[]))
+        def reject(*args, **kwargs):
+            raise ValueError('目镜校正的分区预测不稳定。')
+        monkeypatch.setattr('moonlabeler.app.identify_from_atlas', reject)
+        for name in ('identify_from_limb', 'identify_from_candidates', 'identify_from_terrain'):
+            def unavailable(*args, **kwargs):
+                raise ValueError('没有可验证的参考')
+            monkeypatch.setattr(f'moonlabeler.app.{name}', unavailable)
+        def run_work(title, work, success, failure=None):
+            try:
+                result = work()
+            except ValueError as exc:
+                failure(str(exc))
+            else:
+                success(result)
+        monkeypatch.setattr(window, 'run_background', run_work)
+        window.identify_button.click()
+        assert len(errors) == 1 and '分区预测不稳定' in errors[0]
+        assert '分区预测不稳定' in window.identification_status.toolTip()
+        assert window.project.matrix is None and not window.annotation_items
+    finally:
+        window.dirty = False
+        window.close()
+
+
 def test_guided_failure_keeps_candidate_review_and_the_confirmed_point(monkeypatch):
     app = QApplication.instance() or QApplication([])
     window = MainWindow()
