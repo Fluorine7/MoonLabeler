@@ -24,6 +24,27 @@ def test_phone_photo_identifies_without_moving_pixels():
     assert np.array_equal(image, original)
 
 
+def test_phone_crescent_with_sky_padding_identifies_and_checks_separate_regions():
+    from moonlabeler.atlas import identify_from_atlas
+    from moonlabeler.geometry import compute_geometry
+    from moonlabeler.sources import read_image
+    root = Path(__file__).parents[1]
+    path = root/'2502041049.jpg'
+    if not path.exists() or not (root/'.cache/ephemeris/de421.bsp').exists():
+        pytest.skip('Local photographer image and ephemerides required')
+    image = read_image(path)
+    original = image.copy()
+    geometry = compute_geometry(datetime(2025, 2, 4, 10, 49, tzinfo=timezone.utc), root/'.cache/ephemeris')
+    result = identify_from_atlas(image, geometry)
+    assert result.lens_distortion is not None
+    assert result.image_inliers >= 140
+    assert result.rms_px < 2
+    assert result.refinement['limb_arc_deg'] >= 120
+    assert len(result.refinement['validation_folds']) >= 4
+    assert all(fold['within_4px'] >= .8 for fold in result.refinement['validation_folds'])
+    assert np.array_equal(image, original)
+
+
 def synthetic_photo(mirror):
     import cv2
     from moonlabeler.geometry import Geometry
@@ -53,6 +74,30 @@ def synthetic_photo(mirror):
     photo = np.zeros((800, 1000, 3), np.uint8)
     cv2.fillPoly(photo, [np.rint(rim).astype(np.int32)], (180, 180, 180))
     return g, projection, match, photo, actual, truth
+
+
+@pytest.mark.parametrize('mirror', [1, -1])
+def test_sky_padding_does_not_replace_lunar_area_or_hide_an_incompatible_limb(mirror):
+    from dataclasses import replace
+    from moonlabeler.eyepiece import identify_eyepiece, distort_points
+    from moonlabeler.identification import IdentificationError
+    from moonlabeler.registration import transform_points
+    g, projection, match, photo, actual, truth = synthetic_photo(mirror)
+    origin = np.array([800., 600.])
+    padded = np.pad(photo, ((600, 600), (800, 800), (0, 0)))
+    camera = match.matrix.copy()
+    camera[:, 2] += origin
+    shifted = replace(match, matrix=camera, target_points=match.target_points+origin,
+                      target_matches=match.target_matches+origin,
+                      coverage=match.coverage*photo.shape[0]*photo.shape[1]/(padded.shape[0]*padded.shape[1]))
+    result = identify_eyepiece(padded, g, projection, shifted)
+    probes = np.array([[-.71, .45], [.52, -.65], [.82, .1], [-.42, -.68]])
+    lat, lon, _ = g.unproject(probes)
+    predicted = distort_points(transform_points(result.matrix, result.projection_geometry.project(lat, lon)[0]),
+                               result.lens_distortion)
+    assert np.max(np.linalg.norm(predicted-truth(actual.project(lat, lon)[0])-origin, axis=1)) < .6
+    with pytest.raises(IdentificationError, match='月缘'):
+        identify_eyepiece(np.roll(padded, 40, axis=1), g, projection, shifted)
 
 
 @pytest.mark.parametrize('mirror', [1, -1])

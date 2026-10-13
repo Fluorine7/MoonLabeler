@@ -6,6 +6,12 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 0.7.5
+
+修复带大片黑边的手机目镜后月牙照片被纹理覆盖率及空间网格误拒绝的问题。独立月缘测量用于确定月盘大小、拟合范围和覆盖率；复用同一批纹理对应点，错误点仍参与留出检查。保留至少 100 个内点、80% 共识、四区留出和 120° 受光月缘验证，原图不重采样。2025-02-04 UTC 10:49 实拍通过实际按钮流程；既有手机、整月盘、局部月面、南北极及拒绝错误月缘的相关测试通过。不增加拍摄模式选择。
+
+MoonLabeler 0.7.5 fixes rejection of a sky-padded afocal crescent by canvas-based coverage and an outlier-stretched spatial grid. An independent limb measurement supplies Moon-sized fitting and coverage bounds. Existing texture correspondences are reused, and outliers still enter holdout checks. The minimum 100 inliers, 80% consensus, four spatial holdouts and 120° illuminated arc remain required; source pixels are untouched. The 2025-02-04 10:49 UTC photograph passes the actual annotation workflow, alongside related phone, full-disk, close-up, polar and incompatible-limb rejection tests. No capture-mode selector is added.
+
 ## 0.7.4
 
 标签仅在按住 Cmd（macOS）或 Ctrl（Windows/Linux）并拖动时移动；普通拖动平移画面，双击仍可改名。画布顶部和悬停提示显示对应按键。

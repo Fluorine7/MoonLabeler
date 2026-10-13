@@ -117,10 +117,10 @@ def _refine_atlas_pose(image, geometry, matrix, projection, match, limb):
     return result
 
 
-def _eyepiece_or_raise(image, geometry, projection, match, message):
+def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None):
     from .eyepiece import identify_eyepiece
     try:
-        return identify_eyepiece(image, geometry, projection, match)
+        return identify_eyepiece(image, geometry, projection, match, limb=limb)
     except IdentificationError:
         raise IdentificationError(message) from None
 
@@ -230,16 +230,24 @@ def _identify_atlas_field(image, geometry):
     match = auto_register(reference, image)
     # The map search has no user-supplied region, so require more evidence than
     # the existing manually selected reference matching tool.
-    if match.inliers < 24 or match.inliers/match.matches < .45 or match.coverage < .04:
+    if match.inliers < 24 or match.inliers/match.matches < .45:
         raise IdentificationError("纹理对应点太少或过于集中，未采用配准。")
     matrix = (np.vstack((match.matrix, [0., 0., 1.])) @ np.vstack((projection, [0., 0., 1.])))[:2]
     limb = _photographed_limb(image, matrix)
+    coverage = match.coverage
+    if limb is not None:
+        # An independently measured whole-Moon arc licenses measuring spatial
+        # evidence in a Moon-sized field rather than its surrounding black sky.
+        area = image.shape[0]*image.shape[1]
+        coverage *= area/min(area, 4*limb[1]**2)
+    if coverage < .04:
+        raise IdentificationError("纹理对应点太少或过于集中，未采用配准。")
     refined = _refine_atlas_pose(image, geometry, matrix, projection, match, limb)
     if refined is not None:
         matrix = refined.matrix
     effective_geometry = refined.geometry if refined is not None else geometry
     if limb is not None and _limb_error(matrix, effective_geometry, limb) > max(3., limb[1]*.008, limb[2]*4):
-        return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片月缘不一致，未采用配准。")
+        return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片月缘不一致，未采用配准。", limb)
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
     height, width = gray.shape
     sample = cv2.resize(gray[:round(height*.93)], (60, 54), interpolation=cv2.INTER_AREA)
@@ -248,7 +256,7 @@ def _identify_atlas_field(image, geometry):
     if len(foreground):
         inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
         if (np.linalg.norm(transform_points(inverse, foreground), axis=1) < 1.015).mean() < .95:
-            return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片中的月盘范围不一致。")
+            return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片中的月盘范围不一致。", limb)
     method = "LROC albedo / symmetric SIFT / JPL projection"
     if refined is not None:
         method += " / spatially validated view refinement"

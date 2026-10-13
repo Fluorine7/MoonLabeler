@@ -76,7 +76,7 @@ def _fit(initial, coordinates, target, geometry, sign, scale):
     return params
 
 
-def _limb_check(image, geometry, params, center, scale, sign):
+def _limb_check(image, geometry, params, center, scale, sign, *, field_area=None):
     """Use observed boundary pixels, not a fitted circle, as independent data."""
     h, w = image.shape[:2]
     # Bound contour/distance work on large photographs.
@@ -89,7 +89,8 @@ def _limb_check(image, geometry, params, center, scale, sign):
     if not contours:
         raise IdentificationError('目镜校正缺少可验证的受光月缘。')
     contour = max(contours, key=cv2.contourArea)
-    if cv2.contourArea(contour) < gray.size*.1:
+    area = h*w if field_area is None else min(h*w, field_area)
+    if cv2.contourArea(contour)/factor**2 < area*.1:
         raise IdentificationError('目镜校正需要较完整的月面视野。')
     boundary = np.ones(gray.shape, np.uint8)
     cv2.drawContours(boundary, [contour], -1, 0, 1)
@@ -108,13 +109,15 @@ def _limb_check(image, geometry, params, center, scale, sign):
         raise IdentificationError('目镜校正的可验证月缘不足 120°。')
     xy = np.rint(predicted[keep]*factor).astype(int)
     errors = distances[xy[:, 1], xy[:, 0]]
-    tolerance = max(4., scale*.008)
+    # Four working pixels bound the discretization of a downsampled boundary;
+    # enlarging the source canvas must not enlarge optical fitting parameters.
+    tolerance = max(4./factor, scale*.008)
     if np.percentile(errors, 95) > tolerance or np.median(errors) > tolerance*.7:
         raise IdentificationError('目镜校正仍与实际受光月缘不一致。')
     return circle[keep], float(np.percentile(errors, 95)), float(keep.sum()/2)
 
 
-def identify_eyepiece(image, geometry, projection, match):
+def identify_eyepiece(image, geometry, projection, match, *, limb=None):
     if match.inliers < 64 or match.source_matches is None or match.target_matches is None:
         raise IdentificationError('目镜校正缺少可靠的纹理对应点。')
     source, target = match.source_matches, match.target_matches
@@ -131,8 +134,16 @@ def identify_eyepiece(image, geometry, projection, match):
     if len(target) < 100:
         raise IdentificationError('目镜校正需要至少 100 个分散的纹理对应点。')
     h, w = image.shape[:2]
-    scale, center = max(h, w)/2, np.array([w/2, h/2])
     camera = (np.vstack((match.matrix, [0, 0, 1])) @ np.vstack((projection, [0, 0, 1])))[:2]
+    area = h*w
+    scale, center = max(h, w)/2, np.array([w/2, h/2])
+    if match.coverage < .08:
+        if limb is None:
+            from .atlas import _photographed_limb
+            limb = _photographed_limb(image, camera)
+        if limb is not None:
+            area = min(area, 4*limb[1]**2)
+            scale, center = limb[1], limb[0]
     sign = -1 if np.linalg.det(camera[:, :2]) < 0 else 1
     initial = np.array([camera[0, 0]/sign/scale, camera[1, 0]/sign/scale,
                         *( (camera[:, 2]-center)/scale ), .1, 0., 0., 0., 0.])
@@ -142,14 +153,22 @@ def identify_eyepiece(image, geometry, projection, match):
         raise IdentificationError('目镜校正参数未通过验证。')
     errors = np.linalg.norm(_predict(params, coordinates, geometry, sign)-normalized, axis=1)*scale
     inliers = errors < 3
-    coverage = cv2.contourArea(cv2.convexHull(target[inliers].astype(np.float32)))/(h*w)
+    coverage = cv2.contourArea(cv2.convexHull(target[inliers].astype(np.float32)))/area
     if inliers.sum() < 100 or inliers.mean() < .8 or coverage < .08:
         raise IdentificationError('目镜校正的纹理验证不足。')
     effective = shifted_geometry(geometry, params[7:])
-    rim, limb_error, arc = _limb_check(image, effective, params, center, scale, sign)
+    rim, limb_error, arc = _limb_check(image, effective, params, center, scale, sign, field_area=area)
     predicted_rim = _radial(params, rim*[sign, 1])*scale
     cells = np.minimum(((target-target.min(0))/np.maximum(np.ptp(target, axis=0), 1)*3).astype(int), 2)
     cells = cells[:, 0]+3*cells[:, 1]
+    if np.count_nonzero(np.bincount(cells, minlength=9) >= 10) < 4:
+        # Isolated bad descriptors must not stretch the grid until a crescent's
+        # consistent textures share only a few cells. All original matches,
+        # including outliers, still enter the held-out checks below.
+        lower = target[inliers].min(0)
+        span = np.maximum(np.ptp(target[inliers], axis=0), 1)
+        grid = np.clip(((target-lower)/span*3).astype(int), 0, 2)
+        cells = grid[:, 0]+3*grid[:, 1]
     folds = []
     for cell in np.unique(cells):
         hold = cells == cell
