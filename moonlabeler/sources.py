@@ -58,27 +58,35 @@ def _compact_chinese(name, entry):
     return text
 
 
+def _chinese_entry(translations, name):
+    """Mixed catalogues use English captions for entries still awaiting translation."""
+    entry = translations.get(name)
+    return entry if entry and re.search(r"[\u3400-\u4dbf\u4e00-\u9fff]", entry.get("zh", "")) else None
+
+
 def translate_catalog(features):
     """Prefer supplied LPND names; retain legacy translations as search aliases."""
     primary, legacy = _translation_tables(PACKAGE_DATA)
     translations, old_translations = primary["names"], legacy["names"]
+    lpnd_url = next((url for url in primary["source_urls"] if urlparse(url).hostname == "lpnd.bao.ac.cn"),
+                    "https://lpnd.bao.ac.cn/#/search?is=1")
     for feature in features:
         name = feature["name"]
         satellite = re.fullmatch(r"(.+) ([A-Z])", name)
         aliases = set(feature.get("name_zh_aliases", []))
         aliases.update(filter(None, (feature.get("name_zh"), CHINESE.get(name))))
-        previous = old_translations.get(name)
-        old_parent = old_translations.get(satellite[1]) if satellite else None
+        previous = _chinese_entry(old_translations, name)
+        old_parent = _chinese_entry(old_translations, satellite[1]) if satellite else None
         if previous:
             aliases.add(previous["zh"])
         elif old_parent:
             aliases.add(old_parent["zh"]+" "+satellite[2])
-        entry = translations.get(name)
+        entry = _chinese_entry(translations, name)
         authority = primary
         derived = False
-        if entry is None and satellite and satellite[1] in translations:
-            entry = translations[satellite[1]]
-            derived = True
+        if entry is None and satellite:
+            entry = _chinese_entry(translations, satellite[1])
+            derived = entry is not None
         if entry is None:
             authority = legacy
             entry = previous or old_parent
@@ -89,7 +97,7 @@ def translate_catalog(features):
             source = entry.get("source", authority["source"])
             # Some supplied LPND rows retain NADC URLs from the older table.
             # Those are historical references, not evidence for the new wording.
-            feature["name_zh_source"] = (primary["source_urls"][0] if source.startswith("LPND")
+            feature["name_zh_source"] = (lpnd_url if source.startswith("LPND")
                                          else entry.get("url", ""))
             feature["name_zh_source_name"] = source
             feature.pop("name_zh_derived", None)

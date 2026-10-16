@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.6** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.7** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -27,7 +27,7 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 - 默认近白色文字与深色描边；大环形山默认用平滑椭圆，可选坑缘轮廓，小坑使用短引线。
 - 可选着陆点图层：阿波罗 11、12、14、15、16、17 与嫦娥三、四、五、六号；默认关闭，浅青色十字与短引线，使用小档字号。
 - 设置修改后，点击 **“重新生成标注”** 统一应用。
-- 中文译名优先采用樊仕达（10deg）提供的 LPND 地名资料；手工补录与旧词表兜底保留各自来源，旧译名仍可搜索。
+- 中文译名优先采用樊仕达（10deg）提供的 LPND 地名资料；手工补录与旧词表兜底保留各自来源，旧译名仍可搜索。内置资料已更新至 2026-10-16 的 10,431 条综合快照，其中 9,040 条含中文，1,391 条为英文待译名。扩展资料中的坐标与 VMA 独有地貌暂不合并到现有 USGS 配准目录。
 - 保存 `.moonlabel` 工程，导出与原图同尺寸 PNG 或可编辑 SVG；另提供 LOLA DEM 光照模拟参考。
 
 支持 WinJUPOS 的 `YYYY-MM-DD-HHMM.T`、`YYYY-MM-DD-HHMMT` 以及常见的 `HHMM_T` 写法，可带拍摄者前缀和处理后缀。例如 `2026-08-31-2137_7-Moon_lapl3_ap311(1).tif` → **2026-08-31 21:37:42 UTC**；末位是十分之一分钟，不是秒。无效日期不导入，工程中的已保存时间优先，导入后仍可修改。规范依据为 [WinJUPOS 官方安装包](https://jupos.org/gh/download.htm)内英文帮助的 *Image measurement → Image → WinJUPOS-Conventions*；若采集软件实际用本地时间命名，需自行换算。
@@ -104,7 +104,7 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 Copyright © 2026 **Fluorine Zhu**。MoonLabeler 代码按 **GNU General Public License v3.0 or later** 发布，完整文本见 [LICENSE](LICENSE)。改编代码保留原作者的 MIT 许可与版权声明；第三方数据及依赖保留其原有条款，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-感谢樊仕达（10deg）提供 moonlib 参考代码及 LPND 中文地名资料。向 Jim Mosher、Henrik Bondo、Ram Maruboina，以及 LTVT、OpenCV、NASA / LROC / LOLA、USGS / IAU、JPL、Skyfield 和中文词表的贡献者致敬。完整来源与实际采用范围见 [致谢](ACKNOWLEDGEMENTS.md)。
+感谢樊仕达（10deg）提供 moonlib 参考代码、LPND 中文地名及更新的综合地貌资料。向 Jim Mosher、Henrik Bondo、Ram Maruboina，以及 LTVT、Virtual Moon Atlas、OpenCV、NASA / LROC / LOLA、USGS / IAU、JPL、Skyfield 和中文词表的贡献者致敬。完整来源与实际采用范围见 [致谢](ACKNOWLEDGEMENTS.md)。
 
 感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考。
 
@@ -125,7 +125,7 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 - Three font tiers based on projected apparent diameter, defaulting to **1.8% / 1.5% / 1.2%** of the image's shorter dimension. **字号递减** (Font decrement) subtracts **0.3 percentage points** per tier; set it to 0 for uniform text. The default display limit is **200** labels.
 - Near-white annotations with dark text outlines; projected reference outlines for large craters and short leaders for small craters.
 - A **Regenerate annotations** button (重新生成标注) that applies edited settings together.
-- Chinese names prioritize the LPND snapshot supplied by 樊仕达 (10deg); manual additions and legacy fallback retain separate provenance. Previous translations remain searchable. Original English and bilingual labels are also available.
+- Chinese names prioritize the LPND snapshot supplied by 樊仕达 (10deg); manual additions and legacy fallback retain separate provenance. Previous translations remain searchable. The bundled 2026-10-16 combined snapshot contains 10,431 records: 9,040 Chinese captions and 1,391 English placeholders. Supplemental coordinates and VMA-only formations are retained as reference data and do not replace or extend the active USGS registration catalogue. Original English and bilingual labels are also available.
 - Editable `.moonlabel` projects, original-size PNG export, SVG export, and a separate LOLA DEM lighting-reference tool.
 
 ### Installation and usage

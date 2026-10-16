@@ -6,6 +6,12 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 0.7.7
+
+接入樊仕达（10deg）提供的 2026-10-16 综合地貌快照 `lunar_nomenclature(1).json`：10,431 条记录，含 9,040 条中文（9,031 条标注 LPND、9 条其他来源），新增 1,391 条仍为英文待译名。原有中文与来源原文未变化。保留完整元数据，适配混合来源链接；英文占位名不覆盖旧译名或主坑派生译名，也不产生双份英文标签。现有 USGS 地形编号、坐标、类别和着陆点图层不变，VMA 独有扩展条目暂仅作资料保留。更新中英文致谢与来源说明；79 项相关测试通过。
+
+Version 0.7.7 imports 樊仕达 (10deg)'s 2026-10-16 combined `lunar_nomenclature(1).json` snapshot: 10,431 records, with 9,040 Chinese captions (9,031 labelled LPND and 9 separately sourced) and 1,391 added English placeholders. Existing Chinese wording and attribution are unchanged. Complete metadata is retained, mixed source-link ordering is supported, and English placeholders cannot override legacy/parent translations or create duplicate English captions. Active USGS IDs, coordinates, categories and the landing-site layer remain unchanged; VMA-only supplemental entries remain reference data. Bilingual acknowledgements and provenance are updated; 79 related tests pass.
+
 ## 0.7.6
 
 修复暗半球在画面外时提前跳过长亮缘测量的问题：只有预测受光外缘不少于 120°、且至少 95% 在画面内，才允许继续测量，实际月缘和分区纹理验证仍须通过。自动识别失败提示保留纹理与目镜校正的具体原因。新增正向/镜像暗面裁切、亮缘裁切拒绝及实际按钮错误传递回归；49 项相关测试通过，包含此前两张手机实拍。2023-05-27 UTC 11:51 的新手机实拍仍未通过畸变分区验证，本版本不宣称解决该照片。

@@ -1,12 +1,49 @@
 {
   "provided_by": "樊仕达（10deg）",
-  "provided_date": "2026-10-12",
-  "input_filename": "lunar_chinese_names.json",
+  "provided_date": "2026-10-16",
+  "input_filename": "lunar_nomenclature(1).json",
   "source_url": "https://lpnd.bao.ac.cn/#/search?is=1",
-  "entries": 9040,
+  "source_urls": [
+    "https://planetarynames.wr.usgs.gov/Page/MOON/target",
+    "https://lpnd.bao.ac.cn/#/search?is=1",
+    "https://www.ap-i.net/avl/en/start"
+  ],
+  "entries": 10431,
+  "entries_with_chinese": 9040,
   "entries_labelled_lpnd": 9031,
-  "supplemental_entries": 9,
-  "verification": "Local structure, matching and coverage checked. Source labels are preserved from the contributor-supplied snapshot; individual LPND records were not independently re-fetched.",
-  "processing": "Original supplied names and term_zh are preserved. Compact satellite captions remove crater/bracket notation and separate the official letter with a space. Legacy translations remain searchable aliases.",
-  "url_note": "Some rows labelled LPND retain older NADC term URLs. These are historical references, not evidence for the revised LPND wording; runtime source links for LPND rows use the LPND search page."
+  "supplemental_chinese_entries": 9,
+  "entries_awaiting_translation": 1391,
+  "classes": {
+    "basin": 86,
+    "mare": 23,
+    "crater": 8677,
+    "lacus": 20,
+    "sinus": 12,
+    "palus": 3,
+    "rima": 114,
+    "vallis": 14,
+    "mons": 52,
+    "dome": 525,
+    "dorsum": 39,
+    "rupes": 8,
+    "catena": 23,
+    "promontorium": 9,
+    "statio": 148,
+    "pit": 266,
+    "pyroclastic": 99,
+    "imp": 91,
+    "impact": 221,
+    "albedo": 1
+  },
+  "previous_snapshot": {
+    "input_filename": "lunar_chinese_names.json",
+    "provided_date": "2026-10-12",
+    "entries": 9040,
+    "changed_existing_terms": 0
+  },
+  "verification": "Local JSON structure, exact-name matching, Chinese coverage and source labels checked. All previous name/term/source fields are unchanged. Individual upstream records were not independently re-fetched.",
+  "processing": "The supplied snapshot is preserved, including coordinates, classification, notes and reported metadata. Runtime uses genuine Chinese entries for translation, retains legacy search aliases and fallback, and formats lettered crater captions compactly. English placeholders are not Chinese translations.",
+  "geometry_scope": "Snapshot coordinates, sizes and VMA-only entries do not replace or extend the active USGS/IAU geometry catalogue. Existing feature IDs, coordinates, categories, saved reference points and the separate optional landing-site layer remain unchanged.",
+  "coverage_note": "The supplied named=10423 and coverage_percent=99.9 are retained as reported metadata, not Chinese translation coverage. Local inspection finds 9040 Chinese captions and 1391 English placeholders.",
+  "url_note": "Some LPND rows retain historical NADC term URLs. Runtime Chinese-name authority links select the LPND host independently of the mixed source_urls ordering; other source records retain their own attribution."
 }
