@@ -132,12 +132,30 @@ def _refine_atlas_pose(image, geometry, matrix, projection, match, limb):
     return result
 
 
-def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None):
+def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None, *, reference=None):
     from .eyepiece import identify_eyepiece
     try:
         return identify_eyepiece(image, geometry, projection, match, limb=limb)
     except IdentificationError as exc:
-        raise IdentificationError(f"{message}\n{exc}") from None
+        original_error = str(exc)
+    # One bounded retry after a strong coarse match and observed long limb.
+    # Successful photos never pay for this pass. Re-extracted points must pass
+    # the same optical, spatial-holdout and independent limb checks as before.
+    if reference is not None and limb is not None and match.inliers >= 64:
+        from .registration import realign_registration_matches
+        try:
+            rematch = realign_registration_matches(reference, image, match)
+            if rematch.mirrored == match.mirrored:
+                camera = (np.vstack((rematch.matrix, [0., 0., 1.])) @
+                          np.vstack((projection, [0., 0., 1.])))[:2]
+                observed = _photographed_limb(image, camera, geometry)
+                if observed is not None:
+                    result = identify_eyepiece(image, geometry, projection, rematch, limb=observed)
+                    result.method += ' / rigid-aligned rematch'
+                    return result
+        except ValueError:
+            pass
+    raise IdentificationError(f"{message}\n{original_error}") from None
 
 
 def _border_caption_area(stats, main, shape):
@@ -262,7 +280,7 @@ def _identify_atlas_field(image, geometry):
         matrix = refined.matrix
     effective_geometry = refined.geometry if refined is not None else geometry
     if limb is not None and _limb_error(matrix, effective_geometry, limb) > max(3., limb[1]*.008, limb[2]*4):
-        return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片月缘不一致，未采用配准。", limb)
+        return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片月缘不一致，未采用配准。", limb, reference=reference)
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
     height, width = gray.shape
     sample = cv2.resize(gray[:round(height*.93)], (60, 54), interpolation=cv2.INTER_AREA)
@@ -271,7 +289,7 @@ def _identify_atlas_field(image, geometry):
     if len(foreground):
         inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
         if (np.linalg.norm(transform_points(inverse, foreground), axis=1) < 1.015).mean() < .95:
-            return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片中的月盘范围不一致。", limb)
+            return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片中的月盘范围不一致。", limb, reference=reference)
     method = "LROC albedo / symmetric SIFT / JPL projection"
     if refined is not None:
         method += " / spatially validated view refinement"

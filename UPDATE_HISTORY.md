@@ -6,6 +6,12 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 0.7.8
+
+已有较强纹理匹配和独立月缘测量、但目镜畸变校正失败时，增加一次受限重试：按粗定位结果对齐参考图，再提取对应点，恢复到原图与月面参考坐标后重新验证。原本成功的识别不增加重试；保留原有对应点数量、分区留出、受光月缘和稳定性要求，原照片不重采样。此前失败的 `2305271151.jpg`（2023-05-27 UTC 11:51）通过实际自动标注按钮流程，生成 56 个标签；本机本次约 1.9 秒，不代表所有目镜后照片的成功率或普遍耗时。39 项相关测试通过，包含此前两张手机照片、整月盘、五张南北极实拍、镜像/缩图坐标还原以及错误月缘拒绝。无新增运行依赖。
+
+Version 0.7.8 adds one bounded rematching attempt when a strong coarse texture match and an independently measured limb exist but afocal correction fails. The reference is rigidly aligned before re-extracting correspondences; all points return to original reference/photo coordinates and undergo the unchanged optical, spatial-holdout and illuminated-limb checks. Already successful recognition does not incur this retry, and source pixels are untouched. The previously failing `2305271151.jpg` (2023-05-27 11:51 UTC) passes the actual annotation-button workflow with 56 labels in about 1.9 seconds in this local run, not a general afocal success-rate or timing claim. All 39 related tests pass, including the earlier two phone photographs, full-disk checks, five polar photographs, mirrored/downscaled coordinate restoration and incompatible-limb rejection. No new runtime dependency.
+
 ## 0.7.7
 
 接入樊仕达（10deg）提供的 2026-10-16 综合地貌快照 `lunar_nomenclature(1).json`：10,431 条记录，含 9,040 条中文（9,031 条标注 LPND、9 条其他来源），新增 1,391 条仍为英文待译名。原有中文与来源原文未变化。保留完整元数据，适配混合来源链接；英文占位名不覆盖旧译名或主坑派生译名，也不产生双份英文标签。现有 USGS 地形编号、坐标、类别和着陆点图层不变，VMA 独有扩展条目暂仅作资料保留。更新中英文致谢与来源说明；79 项相关测试通过。

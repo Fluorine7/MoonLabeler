@@ -121,6 +121,33 @@ def test_distortion_validates_unused_locations_and_rejects_false_silhouette(mirr
         identify_eyepiece(photo, g, projection, match)
 
 
+def test_aligned_retry_is_skipped_after_valid_optical_fit(monkeypatch):
+    from moonlabeler import atlas, registration
+    g, projection, match, photo, _, _ = synthetic_photo(1)
+    def unexpected(*args):
+        pytest.fail('A successful photo must not run the extra matching pass')
+    monkeypatch.setattr(registration, 'realign_registration_matches', unexpected)
+    result = atlas._eyepiece_or_raise(photo, g, projection, match, 'failed', reference=photo)
+    assert result.lens_distortion is not None
+    assert 'rematch' not in result.method
+
+
+def test_aligned_retry_cannot_bypass_incompatible_observed_limb(monkeypatch):
+    from moonlabeler import atlas, registration
+    from moonlabeler.identification import IdentificationError
+    g, projection, match, photo, _, _ = synthetic_photo(1)
+    calls = []
+    def rematch(*args):
+        calls.append(True)
+        return match
+    monkeypatch.setattr(registration, 'realign_registration_matches', rematch)
+    incompatible = np.roll(photo, 25, axis=1)
+    with pytest.raises(IdentificationError, match='月缘'):
+        atlas._eyepiece_or_raise(incompatible, g, projection, match, 'failed',
+                                 limb=(np.array([500., 400.]), 300., 1., 300), reference=photo)
+    assert len(calls) == 1
+
+
 def test_project_round_trip_uses_lens_for_centers_rims_and_font_scale(tmp_path):
     from moonlabeler.eyepiece import distortion_jacobian
     from moonlabeler.project import Project

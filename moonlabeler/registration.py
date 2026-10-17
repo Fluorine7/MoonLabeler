@@ -209,3 +209,25 @@ def auto_register(reference, photograph, *, ratio_threshold=.75,
                                          min_inlier_fraction=min_inlier_fraction,
                                          prepared_photo=prepared_photo)
     return max(candidates, key=lambda candidate: (candidate.inliers, candidate.coverage))
+
+
+def realign_registration_matches(reference, photograph, coarse):
+    """Re-extract descriptors after rigid alignment, returning original pixels.
+
+    Different sampling and local contrast after rotation/scale alignment can
+    recover correspondences missed by the first SIFT pass. This only supplies
+    candidates: the caller must independently validate the optical model.
+    Warp the reference, never the user's photograph, with bounded memory.
+    """
+    h, w = photograph.shape[:2]
+    factor = min(1., 2200/max(h, w))
+    alignment = coarse.matrix*factor
+    aligned = cv2.warpAffine(reference, alignment, (round(w*factor), round(h*factor)))
+    match = auto_register(aligned, photograph)
+    inverse = np.linalg.inv(np.vstack((alignment, [0., 0., 1.])))[:2]
+    match.source_points = transform_points(inverse, match.source_points)
+    match.source_matches = transform_points(inverse, match.source_matches)
+    match.matrix = (np.vstack((match.matrix, [0., 0., 1.])) @
+                    np.vstack((alignment, [0., 0., 1.])))[:2]
+    match.mirrored = bool(np.linalg.det(match.matrix[:, :2]) < 0)
+    return match
