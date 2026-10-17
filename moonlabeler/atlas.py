@@ -15,7 +15,7 @@ from PIL import Image
 from .geometry import MOON_RADIUS_KM, surface_vectors
 from .identification import IdentificationError, IdentificationResult
 from .pose_refinement import refine_view
-from .registration import auto_register, transform_points
+from .registration import auto_register, transform_points, prepare_registration_photo
 
 
 def render_atlas(geometry, size=1600):
@@ -133,7 +133,7 @@ def _refine_atlas_pose(image, geometry, matrix, projection, match, limb):
 
 
 def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None, *, reference=None,
-                       allow_eyepiece=True):
+                       allow_eyepiece=True, prepared_photo=None):
     if not allow_eyepiece:
         raise IdentificationError(f"{message}\n相机直拍模式未启用目镜畸变校正。")
     from .eyepiece import identify_eyepiece
@@ -147,7 +147,7 @@ def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None, *
     if reference is not None and limb is not None and match.inliers >= 64:
         from .registration import realign_registration_matches
         try:
-            rematch = realign_registration_matches(reference, image, match)
+            rematch = realign_registration_matches(reference, image, match, prepared_photo=prepared_photo)
             if rematch.mirrored == match.mirrored:
                 camera = (np.vstack((rematch.matrix, [0., 0., 1.])) @
                           np.vstack((projection, [0., 0., 1.])))[:2]
@@ -263,7 +263,10 @@ def identify_from_atlas(image, geometry, *, allow_eyepiece=True):
 
 def _identify_atlas_field(image, geometry, *, allow_eyepiece=True):
     reference, projection = render_atlas(geometry)
-    match = auto_register(reference, image)
+    # Scope features to this unchanged search image. Crops and later searches
+    # get their own preparation; only a reference reorientation reuses it.
+    prepared = prepare_registration_photo(image)
+    match = auto_register(reference, image, prepared_photo=prepared)
     # The map search has no user-supplied region, so require more evidence than
     # the existing manually selected reference matching tool.
     if match.inliers < 24 or match.inliers/match.matches < .45:
@@ -284,7 +287,7 @@ def _identify_atlas_field(image, geometry, *, allow_eyepiece=True):
     effective_geometry = refined.geometry if refined is not None else geometry
     if limb is not None and _limb_error(matrix, effective_geometry, limb) > max(3., limb[1]*.008, limb[2]*4):
         return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片月缘不一致，未采用配准。", limb,
-                                  reference=reference, allow_eyepiece=allow_eyepiece)
+                                  reference=reference, allow_eyepiece=allow_eyepiece, prepared_photo=prepared)
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
     height, width = gray.shape
     sample = cv2.resize(gray[:round(height*.93)], (60, 54), interpolation=cv2.INTER_AREA)
@@ -294,7 +297,7 @@ def _identify_atlas_field(image, geometry, *, allow_eyepiece=True):
         inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
         if (np.linalg.norm(transform_points(inverse, foreground), axis=1) < 1.015).mean() < .95:
             return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片中的月盘范围不一致。", limb,
-                                      reference=reference, allow_eyepiece=allow_eyepiece)
+                                      reference=reference, allow_eyepiece=allow_eyepiece, prepared_photo=prepared)
     method = "LROC albedo / symmetric SIFT / JPL projection"
     if refined is not None:
         method += " / spatially validated view refinement"

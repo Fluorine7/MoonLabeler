@@ -62,7 +62,8 @@ def test_padded_disk_refines_view_using_distributed_points_and_independent_limb(
     inverse = np.linalg.inv(np.vstack((projection, [0., 0., 1.])))
     mapping = (np.vstack((coarse, [0., 0., 1.])) @ inverse)[:2]
     monkeypatch.setattr(atlas, 'render_atlas', lambda g: (None, projection))
-    monkeypatch.setattr(atlas, 'auto_register', lambda *args: MatchResult(
+    monkeypatch.setattr(atlas, 'prepare_registration_photo', lambda image: None)
+    monkeypatch.setattr(atlas, 'auto_register', lambda *args, **kwargs: MatchResult(
         mapping, len(disk), len(disk), rms, .08, mirror == -1, source, target))
     photograph = np.zeros((1800, 3000, 3), np.uint8)
     cv2.circle(photograph, (1500, 850), 420, (180, 180, 180), -1)

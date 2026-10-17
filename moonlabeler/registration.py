@@ -211,7 +211,7 @@ def auto_register(reference, photograph, *, ratio_threshold=.75,
     return max(candidates, key=lambda candidate: (candidate.inliers, candidate.coverage))
 
 
-def realign_registration_matches(reference, photograph, coarse):
+def realign_registration_matches(reference, photograph, coarse, *, prepared_photo=None):
     """Re-extract descriptors after rigid alignment, returning original pixels.
 
     Different sampling and local contrast after rotation/scale alignment can
@@ -223,7 +223,7 @@ def realign_registration_matches(reference, photograph, coarse):
     factor = min(1., 2200/max(h, w))
     alignment = coarse.matrix*factor
     aligned = cv2.warpAffine(reference, alignment, (round(w*factor), round(h*factor)))
-    match = auto_register(aligned, photograph)
+    match = auto_register(aligned, photograph, prepared_photo=prepared_photo)
     inverse = np.linalg.inv(np.vstack((alignment, [0., 0., 1.])))[:2]
     match.source_points = transform_points(inverse, match.source_points)
     match.source_matches = transform_points(inverse, match.source_matches)

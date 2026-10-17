@@ -6,6 +6,16 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 0.7.10
+
+将自动坑缘检测推迟到实际需要坑群识别时；参考点辅助配准保留原检测证据。纹理或月缘已通过的照片不再额外找坑，也不覆盖用户修正过的辅助候选中心。目镜重匹配复用同一搜索图像的照片特征，只重提取参考图，避免第二次灰度增强与 SIFT 提取；不同裁取区域与后续识别独立准备。验证阈值、镜像检查、投影与光学校正不变。手机 `2305271151.jpg` 和彩色整月盘 `230603-2.jpg` 的配准矩阵、验证记录与标签数量均与改动前相同，分别为 56 / 61 个标签。
+
+Automatic crater detection is deferred until crater-pattern matching needs it; reference-guided registration retains its existing detection evidence. Successful texture/limb registration skips unused detection and preserves reviewed candidate centres. Afocal rematching reuses the current search image's photo descriptors and re-extracts only the aligned reference, avoiding a second contrast-enhancement/SIFT pass. Other crops and subsequent searches prepare independently. Validation thresholds, mirror checks, projection and optical correction are unchanged. The phone photo `2305271151.jpg` and colour full-Moon photo `230603-2.jpg` retain identical registration matrices, validation records and label counts of 56 / 61 compared with the previous version.
+
+76 项相关测试通过，包括模式约束、分支调用、错误月缘拒绝、实际局部照片和 Hadley C 辅助配准。局部照片异步测试首次触及原有 15 秒等待上限，单独限制 OpenCV 为两线程复跑通过；未修改测试等待上限或识别阈值。耗时随运行负载变化，不据此推算统一提速比例。
+
+All 76 related tests pass, covering mode constraints, branch execution, incompatible-limb rejection, a real close-up and Hadley C guided registration. The asynchronous close-up test initially hit its existing 15-second wait limit and passed when rerun alone with two OpenCV threads; neither the test timeout nor recognition thresholds changed. Wall-clock timing varies with runtime load, so no general speedup percentage is claimed.
+
 ## 0.7.9
 
 拍摄条件新增“拍摄方式：自动 / 相机直拍 / 目镜后”，默认自动。相机直拍禁用目镜畸变拟合及其重匹配重试；自动与目镜后保留先普通配准、必要时校正的相同策略，验证门槛不变。设置传递到裁取窗口和完整画面的识别流程，只影响下一次无参考点自动识别，切换时保留已有配准、标注及参考点。随工程保存，旧工程缺省为自动，打开新照片恢复自动。82 项相关测试通过，覆盖模式传递与禁用、工程兼容和界面流程，以及手机照片、整月盘和小月盘回归。

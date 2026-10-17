@@ -389,8 +389,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
             cached_geometry = None
         def work():
             geometry = cached_geometry or compute_geometry(utc, CACHE / "ephemeris", lat, lon)
-            detection = detect_crater_rims(image)
+            detection = None
             if known:
+                detection = detect_crater_rims(image)
                 recognition = identify_from_reference_points(image, geometry, CACHE, known, catalog,
                                                              review_candidates + detection.candidates)
             else:
@@ -400,6 +401,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                     try:
                         recognition = identify_from_limb(image, geometry)
                     except ValueError as limb_error:
+                        detection = detect_crater_rims(image)
                         try:
                             recognition = identify_from_candidates(detection.candidates, catalog, geometry, image.shape, image=image)
                             recognition = refine_crater_identification(recognition, image, geometry, CACHE, catalog)
@@ -457,7 +459,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         else:
             self.project.min_diameter = min(self.project.min_diameter, 5.)
         self.project.identification = {"method": recognition.method,
-                                       "candidate_count": len(detection.candidates),
+                                       "candidate_count": len(detection.candidates) if detection is not None else None,
                                        "matched_names": [m.feature["name"] for m in recognition.matches],
                                        "image_inliers": recognition.image_inliers,
                                        "coverage": recognition.coverage,
@@ -470,7 +472,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.project.identification["lens_distortion"] = recognition.lens_distortion
         if recognition.reference_points:
             self.project.identification["reference_points"] = recognition.reference_points
-        self.accept_crater_candidates(detection)
+        # Atlas/limb matches need no crater proposals. Preserve the user's
+        # reviewed centres instead of replacing them with unused detections.
+        if detection is not None:
+            self.accept_crater_candidates(detection)
         self.sync_controls()
         self.show_geometry()
         self.refresh_anchor_table()

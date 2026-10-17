@@ -30,13 +30,20 @@ def test_aligned_matches_restore_original_coordinates_after_bounded_resize(sign)
                                  registration.transform_points(result.matrix, probes), axis=1)) < 1.
 
 
-def test_phone_with_sparse_outer_matches_passes_original_optical_checks():
+def test_phone_with_sparse_outer_matches_passes_original_optical_checks(monkeypatch):
     from moonlabeler.geometry import compute_geometry
     from moonlabeler.sources import read_image
     root = Path(__file__).parents[1]
     if not (root/'2305271151.jpg').exists() or not (root/'.cache/ephemeris/de421.bsp').exists():
         pytest.skip('Private afocal photograph and cached ephemerides required')
     photo = read_image(root/'2305271151.jpg')
+    calls = []
+    original_prepare = registration.prepare_registration_photo
+    def prepare(*args, **kwargs):
+        calls.append(args[0])
+        return original_prepare(*args, **kwargs)
+    monkeypatch.setattr(registration, 'prepare_registration_photo', prepare)
+    monkeypatch.setattr(atlas, 'prepare_registration_photo', prepare)
     unchanged = photo.copy()
     geometry = compute_geometry(datetime.fromisoformat('2023-05-27T11:51:00+00:00'), root/'.cache/ephemeris')
     result = atlas.identify_from_atlas(photo, geometry)
@@ -48,3 +55,4 @@ def test_phone_with_sparse_outer_matches_passes_original_optical_checks():
     folds = result.refinement['validation_folds']
     assert len(folds) >= 4 and all(fold['within_4px'] >= .8 for fold in folds)
     assert np.array_equal(photo, unchanged)
+    assert len(calls) == 1, 'The rematch must reuse unchanged photo descriptors'

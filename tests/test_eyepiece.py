@@ -137,7 +137,7 @@ def test_aligned_retry_cannot_bypass_incompatible_observed_limb(monkeypatch):
     from moonlabeler.identification import IdentificationError
     g, projection, match, photo, _, _ = synthetic_photo(1)
     calls = []
-    def rematch(*args):
+    def rematch(*args, **kwargs):
         calls.append(True)
         return match
     monkeypatch.setattr(registration, 'realign_registration_matches', rematch)

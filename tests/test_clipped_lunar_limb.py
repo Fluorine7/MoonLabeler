@@ -31,7 +31,8 @@ def test_atlas_measures_in_frame_bright_arc_when_dark_hemisphere_is_outside(monk
     match = MatchResult(mapping, len(model), len(model), 0., coverage,
                         mirror == -1, source, target, source, target)
     monkeypatch.setattr(atlas, 'render_atlas', lambda g: (reference, projection))
-    monkeypatch.setattr(atlas, 'auto_register', lambda *args: match)
+    monkeypatch.setattr(atlas, 'prepare_registration_photo', lambda image: None)
+    monkeypatch.setattr(atlas, 'auto_register', lambda *args, **kwargs: match)
     result = atlas.identify_from_atlas(photograph, geometry)
     assert np.allclose(result.matrix, camera)
     limb = atlas._photographed_limb(photograph, camera, geometry)

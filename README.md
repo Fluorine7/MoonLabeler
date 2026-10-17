@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.9** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.10** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -76,6 +76,8 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 “校准 → 拍摄条件 → 拍摄方式”提供 **自动 / 相机直拍 / 目镜后**。自动为默认，必要时尝试目镜畸变校正；相机直拍禁用这条校正分支；目镜后允许校正，但仍优先普通配准，验证门槛不变。当前自动与目镜后使用相同的校正策略，不强制拟合畸变。切换只影响下一次无参考点自动识别，不改变现有标注；参考点配准和手动校准不受影响。设置随工程保存，旧工程缺省为自动，打开新照片恢复自动。
 
+纹理或月缘配准成功时跳过自动坑缘检测，保留已有的辅助候选中心；需要坑群或参考点辅助配准时仍执行检测。目镜重匹配复用本次搜索中未变化的照片特征，只重新提取对齐后的参考图特征；换图或裁取不同区域会重新计算，不增加长期图像缓存。验证标准与标注坐标算法不变。
+
 打开新照片会返回“校准”并收起辅助内容。识别到 WinJUPOS 文件名时自动填入 UTC；其他文件保留当前日期与时间。启动时默认 **UTC 15:00**；确认或修改拍摄日期，点击“自动识别并标注”。“具体时间”默认折叠，展开后通过独立的时、分框设置 UTC 时间，旧工程的秒值保留；收起或更换日期不会重置时间，可点击恢复默认。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，坑群精修和高程后备匹配使用约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
 
 自动识别属于实验性功能。强阴影、月缘与极区的严重压缩、模糊、水印、日期错误或候选坑太少时仍可能失败。不能通过验证的结果不会作为地名标注，也不会替换已有配准。可改用已知地形点手动校准。
@@ -117,6 +119,7 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 ### Features
 
 - Capture method: **Auto / Direct camera / Afocal** in the calibration panel. Auto (default) and Afocal currently share the same guarded distortion fallback and try ordinary registration first; Direct camera disables that fallback. Validation thresholds are unchanged. Switching affects the next unguided automatic search, preserving existing annotations; reference-guided and manual calibration are unaffected. The selection is saved in projects; legacy projects and newly opened photos default to Auto.
+- Recognition skips unused crater detection when texture or limb matching succeeds, preserving reviewed candidate centres. Crater and reference-guided routes still run detection. Afocal rematching reuses unchanged photo descriptors within the current search while re-extracting aligned reference descriptors; a different photo/crop gets a new preparation. No persistent image cache or relaxed validation is introduced.
 - Automatic registration using a bundled LROC texture, a wide-limb fallback validated with phase and albedo texture, crater-pattern catalogue matching for close-up views, and a small LOLA slope/shadow-reference fallback.
 - Manual calibration from at least three known terrain centers, with rotation, scale, translation, reflection, and per-point error review.
 - Automatic local registration guided by one or two confirmed terrain points, with image evidence validating scale, rotation and reflection.
