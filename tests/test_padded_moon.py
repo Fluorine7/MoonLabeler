@@ -39,7 +39,7 @@ def test_compact_field_restores_radial_projection_coordinates(monkeypatch):
     distortion = {'center': [195., 185.], 'scale': 210., 'k': .1}
     result = IdentificationResult(matrix.copy(), [], 1., 100., 0,
                                   lens_distortion=distortion)
-    monkeypatch.setattr(atlas, '_identify_atlas_field', lambda *args: result)
+    monkeypatch.setattr(atlas, '_identify_atlas_field', lambda *args, **kwargs: result)
     actual = atlas.identify_from_atlas(image, None)
     points = np.array([[150., 150.], [230., 240.]])
     assert np.allclose(actual.matrix[:, 2], matrix[:, 2]+origin)
@@ -47,19 +47,21 @@ def test_compact_field_restores_radial_projection_coordinates(monkeypatch):
                        distort_points(points, distortion)+origin)
 
 
-def test_failed_compact_search_falls_back_to_full_frame(monkeypatch):
+@pytest.mark.parametrize('allow_eyepiece', [False, True])
+def test_failed_compact_search_falls_back_to_full_frame(monkeypatch, allow_eyepiece):
     from moonlabeler import atlas
     from moonlabeler.identification import IdentificationError
     image = padded_disk()
     calls = []
-    def identify(field, geometry):
-        calls.append(field.shape)
+    def identify(field, geometry, **options):
+        calls.append((field.shape, options['allow_eyepiece']))
         if field is not image:
             raise IdentificationError('No validated match')
         return 'full-frame result'
     monkeypatch.setattr(atlas, '_identify_atlas_field', identify)
-    assert atlas.identify_from_atlas(image, None) == 'full-frame result'
-    assert len(calls) == 2 and calls[-1] == image.shape
+    assert atlas.identify_from_atlas(image, None, allow_eyepiece=allow_eyepiece) == 'full-frame result'
+    assert len(calls) == 2 and calls[-1][0] == image.shape
+    assert all(enabled == allow_eyepiece for _, enabled in calls)
 
 
 @pytest.mark.parametrize('top', [False, True])

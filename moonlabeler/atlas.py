@@ -132,7 +132,10 @@ def _refine_atlas_pose(image, geometry, matrix, projection, match, limb):
     return result
 
 
-def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None, *, reference=None):
+def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None, *, reference=None,
+                       allow_eyepiece=True):
+    if not allow_eyepiece:
+        raise IdentificationError(f"{message}\n相机直拍模式未启用目镜畸变校正。")
     from .eyepiece import identify_eyepiece
     try:
         return identify_eyepiece(image, geometry, projection, match, limb=limb)
@@ -237,13 +240,13 @@ def _compact_lunar_field(image):
     return image[lower[1]:upper[1], lower[0]:upper[0]], lower
 
 
-def identify_from_atlas(image, geometry):
+def identify_from_atlas(image, geometry, *, allow_eyepiece=True):
     """No supplied region, camera angle, mirror, scale or feature names."""
     compact = _compact_lunar_field(image)
     if compact is not None:
         field, origin = compact
         try:
-            result = _identify_atlas_field(field, geometry)
+            result = _identify_atlas_field(field, geometry, allow_eyepiece=allow_eyepiece)
         except IdentificationError:
             pass  # Preserve the full-frame search if the isolated field fails.
         else:
@@ -255,10 +258,10 @@ def identify_from_atlas(image, geometry):
                     np.asarray(result.lens_distortion['center'])+origin).tolist()
             result.method += " / compact lunar field"
             return result
-    return _identify_atlas_field(image, geometry)
+    return _identify_atlas_field(image, geometry, allow_eyepiece=allow_eyepiece)
 
 
-def _identify_atlas_field(image, geometry):
+def _identify_atlas_field(image, geometry, *, allow_eyepiece=True):
     reference, projection = render_atlas(geometry)
     match = auto_register(reference, image)
     # The map search has no user-supplied region, so require more evidence than
@@ -280,7 +283,8 @@ def _identify_atlas_field(image, geometry):
         matrix = refined.matrix
     effective_geometry = refined.geometry if refined is not None else geometry
     if limb is not None and _limb_error(matrix, effective_geometry, limb) > max(3., limb[1]*.008, limb[2]*4):
-        return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片月缘不一致，未采用配准。", limb, reference=reference)
+        return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片月缘不一致，未采用配准。", limb,
+                                  reference=reference, allow_eyepiece=allow_eyepiece)
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
     height, width = gray.shape
     sample = cv2.resize(gray[:round(height*.93)], (60, 54), interpolation=cv2.INTER_AREA)
@@ -289,7 +293,8 @@ def _identify_atlas_field(image, geometry):
     if len(foreground):
         inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
         if (np.linalg.norm(transform_points(inverse, foreground), axis=1) < 1.015).mean() < .95:
-            return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片中的月盘范围不一致。", limb, reference=reference)
+            return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片中的月盘范围不一致。", limb,
+                                      reference=reference, allow_eyepiece=allow_eyepiece)
     method = "LROC albedo / symmetric SIFT / JPL projection"
     if refined is not None:
         method += " / spatially validated view refinement"

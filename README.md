@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.8** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.9** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -74,6 +74,8 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 ### 使用与限制
 
+“校准 → 拍摄条件 → 拍摄方式”提供 **自动 / 相机直拍 / 目镜后**。自动为默认，必要时尝试目镜畸变校正；相机直拍禁用这条校正分支；目镜后允许校正，但仍优先普通配准，验证门槛不变。当前自动与目镜后使用相同的校正策略，不强制拟合畸变。切换只影响下一次无参考点自动识别，不改变现有标注；参考点配准和手动校准不受影响。设置随工程保存，旧工程缺省为自动，打开新照片恢复自动。
+
 打开新照片会返回“校准”并收起辅助内容。识别到 WinJUPOS 文件名时自动填入 UTC；其他文件保留当前日期与时间。启动时默认 **UTC 15:00**；确认或修改拍摄日期，点击“自动识别并标注”。“具体时间”默认折叠，展开后通过独立的时、分框设置 UTC 时间，旧工程的秒值保留；收起或更换日期不会重置时间，可点击恢复默认。旧工程保留已保存的精确时间。地点可选；不填时使用地心近似。照片在本机处理。首次自动识别需要下载约 20 MB JPL 星历，坑群精修和高程后备匹配使用约 33 MB LOLA 数据，缓存后可离线使用；自动识别无需 NASA 在线影像或 AI 权重。
 
 自动识别属于实验性功能。强阴影、月缘与极区的严重压缩、模糊、水印、日期错误或候选坑太少时仍可能失败。不能通过验证的结果不会作为地名标注，也不会替换已有配准。可改用已知地形点手动校准。
@@ -82,7 +84,7 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 目镜后照片的受限畸变校正复用纹理对应点，并验证真实受光月缘。外缘可独立测得时，按月盘大小计算分布和光学拟合范围，避免黑边阻止校正；少量错误对应点不能拉大空间验证网格。仍要求至少 100 个分散内点、80% 共识、四个独立留出区域和 120° 受光月缘。已验证两张手机目镜后实拍，原图像素不变；不能保证其他目镜、手机或局部视野通过。
 
-0.7.6 不再要求不可见的暗半球全部落在画面内：只有预测的受光外缘不少于 120°、且至少 95% 在画面内，才继续尝试独立月缘测量；最终纹理及畸变验证不变。2023-05-27 UTC 11:51 的另一张手机实拍仍因分区预测不稳定而拒绝，尚未解决。失败提示现在保留纹理与目镜校正的原因，不把识别到同一区域误报为可靠标注。
+0.7.6 不再要求不可见的暗半球全部落在画面内：只有预测的受光外缘不少于 120°、且至少 95% 在画面内，才继续尝试独立月缘测量；最终纹理及畸变验证不变。该版本中因分区预测不稳定而拒绝的 2023-05-27 UTC 11:51 手机实拍，已在 0.7.8 通过一次受限的参考图对齐重匹配解决；原有验证要求不变。失败提示现在保留纹理与目镜校正的原因，不把识别到同一区域误报为可靠标注。
 
 只认得一两个地形时，在“辅助找坑”中确认名称和位置，然后展开“参考点与配准”，点击 **“用参考点自动配准”**。顶部“自动识别并标注”也会优先使用已确认的点。程序复用同一份小型 LOLA 数据，尝试少量局部参考尺度，通过后立即停止搜索；仍需至少 24 个图像对应点、分布覆盖、明暗与细节相关，以及全部参考点位置的一致性。失败保留参考点和原配准。一个点本身不能确定方向和比例；纯手动校准仍默认需要至少三点。
 
@@ -114,6 +116,7 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 
 ### Features
 
+- Capture method: **Auto / Direct camera / Afocal** in the calibration panel. Auto (default) and Afocal currently share the same guarded distortion fallback and try ordinary registration first; Direct camera disables that fallback. Validation thresholds are unchanged. Switching affects the next unguided automatic search, preserving existing annotations; reference-guided and manual calibration are unaffected. The selection is saved in projects; legacy projects and newly opened photos default to Auto.
 - Automatic registration using a bundled LROC texture, a wide-limb fallback validated with phase and albedo texture, crater-pattern catalogue matching for close-up views, and a small LOLA slope/shadow-reference fallback.
 - Manual calibration from at least three known terrain centers, with rotation, scale, translation, reflection, and per-point error review.
 - Automatic local registration guided by one or two confirmed terrain points, with image evidence validating scale, rotation and reflection.
@@ -185,7 +188,7 @@ Atlas texture registration now attempts a global projection refinement from dist
 
 Afocal distortion recovery reuses texture correspondences and independently checks the illuminated limb. A measurable outer arc supplies Moon-sized coverage and fitting bounds, so sky padding cannot prevent recovery. Isolated descriptor outliers cannot stretch the spatial validation grid. Acceptance still requires at least 100 distributed inliers, 80% consensus, four spatial holdouts and a 120° illuminated arc. Two real afocal-phone photographs have passed local checks; original pixels stay unchanged. Other phones, eyepieces and partial fields can still be rejected.
 
-Version 0.7.6 permits the invisible hemisphere to extend outside the frame only when a predicted illuminated arc of at least 120° is at least 95% in frame. It still requires independent limb measurement and the existing texture/distortion checks. Another real phone photograph, captured on 2023-05-27 at 11:51 UTC, remains unresolved and is rejected for unstable spatial predictions. Failure messages now retain the atlas and eyepiece validation reasons; finding the correct region alone does not establish reliable annotations.
+Version 0.7.6 permits the invisible hemisphere to extend outside the frame only when a predicted illuminated arc of at least 120° is at least 95% in frame. It still requires independent limb measurement and the existing texture/distortion checks. The real phone photograph captured on 2023-05-27 at 11:51 UTC, rejected in that version for unstable spatial predictions, now passes in 0.7.8 after one bounded rigid-aligned reference rematch with unchanged validation. Failure messages now retain the atlas and eyepiece validation reasons; finding the correct region alone does not establish reliable annotations.
 
 After crater-pattern identification, local refinement uses the same small LOLA DEM, with terrain height included consistently in reference rendering and pose fitting. A small camera correction is followed by retrieval of further independent terrain points and a bounded two-axis view fit. The terrain fallback also attempts view refinement. Changes are accepted only with spatially held-out improvement and a fresh dense-render check. The estimated direction is an image-derived projection correction, not a recovered observing location or a libration measurement. The original ephemeris geometry and validation record are retained in the project.
 

@@ -16,14 +16,15 @@ from moonlabeler.registration import MatchResult, fit_similarity, transform_poin
 from moonlabeler.sources import load_catalog, read_image
 
 
-def test_full_moon_texture_fit_keeps_southern_anchors_on_photograph():
+@pytest.mark.parametrize('allow_eyepiece', [True, False])
+def test_full_moon_texture_fit_keeps_southern_anchors_on_photograph(allow_eyepiece):
     root = Path(__file__).parents[1]
     path = root/'230603-2.jpg'
     if not path.exists() or not (root/'.cache/ephemeris/de421.bsp').exists():
         pytest.skip('Local photographer image and ephemerides required')
     image = read_image(path)
     geometry = compute_geometry(datetime(2023, 6, 3, 15, tzinfo=timezone.utc), root/'.cache/ephemeris')
-    result = identify_from_atlas(image, geometry)
+    result = identify_from_atlas(image, geometry, allow_eyepiece=allow_eyepiece)
     geometry = result.projection_geometry or geometry
     names = {'Bailly', 'Boussingault', 'Curtius', 'Scheiner', 'Mutus'}
     features = [f for f in load_catalog(root/'.cache') if f['name'] in names]

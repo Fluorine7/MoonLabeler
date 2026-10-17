@@ -19,6 +19,7 @@ from moonlabeler.sources import read_image
     ('style.font_step_percent', -.1), ('style.font_step_percent', float('inf')),
     ('style.font_step_percent', True),
     ('style.font_size', 0), ('style.max_labels', '200'),
+    ('capture_mode', 'unknown'), ('capture_mode', None), ('capture_mode', []),
     ('style.max_labels', 0), ('style.min_diameter', -1),
     ('style.illuminated_only', 'false'), ('style.language', []),
     ('anchors', [{'id': '42', 'pixel': [1]}]),

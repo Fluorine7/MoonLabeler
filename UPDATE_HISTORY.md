@@ -6,6 +6,12 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 0.7.9
+
+拍摄条件新增“拍摄方式：自动 / 相机直拍 / 目镜后”，默认自动。相机直拍禁用目镜畸变拟合及其重匹配重试；自动与目镜后保留先普通配准、必要时校正的相同策略，验证门槛不变。设置传递到裁取窗口和完整画面的识别流程，只影响下一次无参考点自动识别，切换时保留已有配准、标注及参考点。随工程保存，旧工程缺省为自动，打开新照片恢复自动。82 项相关测试通过，覆盖模式传递与禁用、工程兼容和界面流程，以及手机照片、整月盘和小月盘回归。
+
+Capture conditions now offer Auto / Direct camera / Afocal, defaulting to Auto. Direct camera disables optical-distortion fitting and its rematching retry; Auto and Afocal retain the same ordinary-registration-first fallback with unchanged validation. The policy reaches both compact-field and full-frame searches and affects only the next unguided automatic search; changing it preserves the current pose, labels and reference points. Projects save the selection; legacy projects and new photos default to Auto. All 82 related tests pass, covering policy propagation and exclusion, project compatibility, UI workflows, and phone, full-disk and small-disk regressions.
+
 ## 0.7.8
 
 已有较强纹理匹配和独立月缘测量、但目镜畸变校正失败时，增加一次受限重试：按粗定位结果对齐参考图，再提取对应点，恢复到原图与月面参考坐标后重新验证。原本成功的识别不增加重试；保留原有对应点数量、分区留出、受光月缘和稳定性要求，原照片不重采样。此前失败的 `2305271151.jpg`（2023-05-27 UTC 11:51）通过实际自动标注按钮流程，生成 56 个标签；本机本次约 1.9 秒，不代表所有目镜后照片的成功率或普遍耗时。39 项相关测试通过，包含此前两张手机照片、整月盘、五张南北极实拍、镜像/缩图坐标还原以及错误月缘拒绝。无新增运行依赖。

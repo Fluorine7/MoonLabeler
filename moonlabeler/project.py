@@ -76,6 +76,8 @@ def _validate_project_data(data):
     for key in ('image_path', 'utc'):
         if not isinstance(data[key], str):
             _invalid_field(key)
+    if data.get('capture_mode', 'auto') not in ('auto', 'direct', 'afocal'):
+        _invalid_field('capture_mode')
     if data['utc']:
         from datetime import datetime
         try:
@@ -242,6 +244,7 @@ class Project:
     crater_outlines: bool = True
     crater_outline_shape: str = "ellipse"
     terrain_rims: dict = field(default_factory=dict)
+    capture_mode: str = "auto"
 
     def photo_points(self, points):
         """Map projected lunar coordinates into untouched photograph pixels."""
@@ -306,7 +309,8 @@ class Project:
         image = Path(self.image_path).resolve()
         data = {"format": "MoonLabeler", "version": 2,
                 "image_path": os.path.relpath(image, path.parent.resolve()),
-                "utc": self.utc, "geometry": self.geometry.to_dict() if self.geometry else None,
+                "utc": self.utc, "capture_mode": self.capture_mode,
+                "geometry": self.geometry.to_dict() if self.geometry else None,
                 "matrix": self.matrix.tolist() if self.matrix is not None else None,
                 "anchors": self.anchors, "labels": self.labels,
                 "crater_detection": self.crater_settings,
@@ -326,7 +330,8 @@ class Project:
             raise ValueError("这不是受支持的 MoonLabeler 工程。")
         _validate_project_data(data)
         project = cls(image_path=str((path.parent / data["image_path"]).resolve()),
-                      utc=data["utc"], anchors=data["anchors"], labels=data["labels"])
+                      utc=data["utc"], anchors=data["anchors"], labels=data["labels"],
+                      capture_mode=data.get("capture_mode", "auto"))
         project.latitude = data.get("observer", {}).get("latitude")
         project.longitude = data.get("observer", {}).get("longitude")
         terrain = data.get("terrain", {})

@@ -379,6 +379,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         lat = self.latitude.value() if self.topocentric.isChecked() else None
         lon = self.longitude.value() if self.topocentric.isChecked() else None
         image, catalog = self.image, list(self.catalog)
+        allow_eyepiece = self.project.capture_mode != "direct"
         known = self.manual_reference_points()
         review_candidates = list(self.crater_candidates)
         cached_geometry = self.project.geometry
@@ -394,7 +395,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                                              review_candidates + detection.candidates)
             else:
                 try:
-                    recognition = identify_from_atlas(image, geometry)
+                    recognition = identify_from_atlas(image, geometry, allow_eyepiece=allow_eyepiece)
                 except ValueError as atlas_error:
                     try:
                         recognition = identify_from_limb(image, geometry)
@@ -738,6 +739,17 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if self.image is not None:
             self.dirty = True
 
+    def capture_mode_changed(self, *args):
+        if self.rebuilding:
+            return
+        self.project.capture_mode = self.capture_mode.currentData()
+        # This is a search policy, not a change to the current photo geometry.
+        # Keep the validated result and all edits until a new result is accepted.
+        if self.image is not None:
+            self.dirty = True
+            self.identification_status.setText("拍摄方式已改，下次识别生效")
+            self.identification_status.setToolTip("")
+
     def calculate_geometry(self, checked=False, *, after=None):
         if not self.ui_capture_inputs_valid():
             self.error(self.ui_capture_error.text())
@@ -886,6 +898,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def sync_controls(self):
         self.rebuilding = True
+        self.capture_mode.setCurrentIndex(self.capture_mode.findData(self.project.capture_mode))
         self.topocentric.setChecked(self.project.latitude is not None)
         self.latitude.setValue(self.project.latitude or 0.)
         self.longitude.setValue(self.project.longitude or 0.)

@@ -387,6 +387,15 @@ class WindowUiMixin:
         group = QGroupBox("拍摄条件")
         self.geometry_group = group
         form = self.ui_form(group)
+        self.capture_mode = WidePopupComboBox()
+        for caption, mode in (("自动", "auto"), ("相机直拍", "direct"), ("目镜后", "afocal")):
+            self.capture_mode.addItem(caption, mode)
+        self.capture_mode.setToolTip(
+            "自动：必要时尝试畸变校正；相机直拍：跳过目镜畸变校正；"
+            "目镜后：允许校正，仍先尝试普通配准。\n"
+            "切换后点击“自动识别并标注”应用。参考点配准和手动校准不受此选项影响。")
+        self.capture_mode.currentIndexChanged.connect(self.capture_mode_changed)
+        form.addRow("拍摄方式", self.capture_mode)
         self.date = QDateTimeEdit(QDateTime.currentDateTimeUtc(), group)
         self.date.setTimeZone(QTimeZone(b"UTC"))
         self.date.setDateTime(QDateTime.currentDateTimeUtc())
