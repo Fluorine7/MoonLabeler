@@ -6,6 +6,16 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 0.7.12
+
+修复 0.7.11 混用配准表面基准的标注回归。`0708.jpg` 按已知日期 2026-07-08、未知 UTC 暂按 15:00 复现，实际走球面阴影参考及视角微调，0.7.11 却给最终落点追加高程；傅科、布格等处额外位移约 16–18 px。现在由配准结果明确记录 sphere / terrain，只有真正使用高程表面拟合的结果才采用高程标注；其他路径保留原参考球面坐标。自动高程路径的标注与拟合使用同一基础 DEM，预览选择和新导入 DEM 不覆盖已拟合快照。手动高程拟合及视觉中心功能保留。
+
+工程保存表面类型。新增实拍固定配准回归、表面标记传递、非法标记校验和自动调用限制。对 `0708.jpg` 再次执行实际自动按钮，矩阵、几何及完整识别验证记录与修复前完全相同；检查的九个地貌落点及坑缘轮廓与 0.7.10 一致，额外偏移为零。这是消除本次回归，不代表原配准已无误差，也未确认照片的精确 UTC。
+
+Version 0.7.12 fixes the annotation regression caused by mixing projection surfaces in 0.7.11. Replaying `0708.jpg` on its known date, 2026-07-08, with 15:00 UTC assumed because the actual time is unknown, uses a spherical shading reference with view refinement. The extra post-fit elevation displaced Foucault and Bouguer by approximately 16–18 pixels. Results now record sphere / terrain explicitly; only actual relief-aware fits apply display heights and visual rim centres. Automatic relief annotations use the same basic DEM as the fit; preview-map selection and subsequent imports do not replace an existing fitted snapshot. Height-aware manual fitting remains supported.
+
+Projects persist the surface type. Regressions cover the fixed real-photo pose, surface propagation, invalid metadata and automatic sampling policy. Repeating the actual `0708.jpg` button workflow retains identical matrices, geometry and complete recognition-validation records; all nine checked anchors and crater outlines match 0.7.10 with zero added displacement. This removes the introduced regression, not all original registration errors, and does not establish the actual capture time.
+
 ## 0.7.11
 
 将地形高程从参考图/坑缘补齐到最终标注落点。有本地 LOLA 数据时，批量采样画面附近的地貌高度和足够大的目录圈；已有连续高程坑缘优先。完整可见的大坑按默认椭圆或可选轮廓的视觉中心布置引线；跨月缘、非闭合或退化轮廓保留地理落点。月溪、直壁、小坑和着陆点继续使用短引线；着陆点不作坑缘居中。采样不下载新数据，缺失或无效高度退回参考球面。快照与来源/分辨率随工程保存，PNG、SVG 和重开使用同一份数据，手动文字位置保留。日期、配准或目录更新时失效重建；标注坐标不反馈到自动识别与验收。纯手动校准使用同一套高程/视觉落点重新拟合和显示偏差，避免球面拟合后重复加高程；无 DEM 的球面流程保持原样。增加 Autolycus、Timocharis、Pytheas、Manilius 的重要目标避让保护，避免小幅坐标变化将这些醒目地貌挤掉。

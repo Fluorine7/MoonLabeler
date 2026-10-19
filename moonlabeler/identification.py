@@ -49,6 +49,7 @@ class IdentificationResult:
     reference_points: dict | None = None
     lens_distortion: dict | None = None
     annotation_relief: dict | None = None
+    projection_surface: str = 'sphere'
 
 
 def _triangle_index(points, radii, neighbors=14, centered=False):

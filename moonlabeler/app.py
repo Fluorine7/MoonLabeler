@@ -380,7 +380,6 @@ class MainWindow(WindowUiMixin, QMainWindow):
         lat = self.latitude.value() if self.topocentric.isChecked() else None
         lon = self.longitude.value() if self.topocentric.isChecked() else None
         image, catalog = self.image, list(self.catalog)
-        dem_path = self.dem_path
         allow_eyepiece = self.project.capture_mode != "direct"
         known = self.manual_reference_points()
         review_candidates = list(self.crater_candidates)
@@ -412,9 +411,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                 recognition = identify_from_terrain(image, geometry, CACHE, catalog=catalog)
                             except (ValueError, OSError) as terrain_error:
                                 raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；未通过自动配准验证。\n纹理参考：{atlas_error}\n轮廓参考：{limb_error}\n坑群参考：{exc}\n高程参考：{terrain_error}") from terrain_error
-            recognition.annotation_relief = prepare_annotation_relief(
-                catalog, recognition.projection_geometry or geometry, recognition.matrix, image.shape, CACHE,
-                dem_path=dem_path, lens_distortion=recognition.lens_distortion)
+            if recognition.projection_surface == 'terrain':
+                # The accepted automatic relief fit used the basic LOLA map,
+                # not an unrelated map currently selected in the preview UI.
+                recognition.annotation_relief = prepare_annotation_relief(
+                    catalog, recognition.projection_geometry or geometry, recognition.matrix, image.shape, CACHE,
+                    lens_distortion=recognition.lens_distortion)
             return detection, recognition, geometry, lat, lon
         def failure(message):
             self.identification_status.setText("参考点配准失败，请核对取点" if known else "识别失败，可改用手动校准")
@@ -445,6 +447,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.matrix = recognition.matrix
         self.project.terrain_rims = recognition.crater_rims or {}
         self.project.annotation_relief = recognition.annotation_relief or {}
+        self.project.projection_surface = recognition.projection_surface
         self.project.utc = geometry.utc
         self.project.latitude, self.project.longitude = lat, lon
         previous_auto = {a['id']: a for a in self.project.anchors if a.get('source') == 'automatic'}
@@ -741,6 +744,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.identification.clear()
         self.project.terrain_rims.clear()
         self.project.annotation_relief.clear()
+        self.project.projection_surface = 'sphere'
         self.project.labels.clear()
         self.clear_terrain_preview()
         self.refresh_anchor_table()
@@ -778,6 +782,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.project.identification.clear()
             self.project.terrain_rims.clear()
             self.project.annotation_relief.clear()
+            self.project.projection_surface = 'sphere'
             self.clear_terrain_preview()
             self.show_geometry()
             self.refresh_anchor_table()
@@ -1203,6 +1208,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.identification.clear()
         self.project.terrain_rims.clear()
         self.project.annotation_relief.clear()
+        self.project.projection_surface = 'sphere'
         self.project.labels.clear()
         self.refresh_anchor_table()
         self.refresh_annotations()
@@ -1238,7 +1244,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                                CACHE, dem_path=self.dem_path)
             if relief:
                 provisional = Project(geometry=self.project.geometry, matrix=report.matrix,
-                                      annotation_relief=relief, crater_outline_shape=self.project.crater_outline_shape)
+                                      annotation_relief=relief, projection_surface='terrain',
+                                      crater_outline_shape=self.project.crater_outline_shape)
                 predicted = provisional.annotation_points(features)[0]
                 inverse = np.linalg.inv(np.vstack((report.matrix, [0., 0., 1.])))[:2]
                 points = transform_points(inverse, predicted)
@@ -1249,6 +1256,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.project.identification.clear()
             self.project.terrain_rims.clear()
             self.project.annotation_relief = relief
+            self.project.projection_surface = 'terrain' if relief else 'sphere'
             self.project.labels.clear()
             mirrored = np.linalg.det(matrix[:, :2]) < 0
             warning = "；两点无法自动判断镜像，也无法独立评估误差" if len(features) == 2 else ""
@@ -1263,7 +1271,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         except Exception as exc:
             self.error(str(exc))
 
-    def accept_auto(self, result):
+    def accept_auto(self, result, *, reference_project=None):
         match, geometry, matrix, reference_utc, latitude, longitude = result
         self.project.geometry = geometry
         self.project.matrix = matrix
@@ -1273,6 +1281,13 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.identification.clear()
         self.project.terrain_rims.clear()
         self.project.annotation_relief.clear()
+        self.project.projection_surface = 'sphere'
+        if reference_project is not None:
+            # Composing the photo transform does not change the reference
+            # project's geographic surface or its sampled heights.
+            self.project.projection_surface = reference_project.projection_surface
+            self.project.terrain_rims = dict(reference_project.terrain_rims)
+            self.project.annotation_relief = dict(reference_project.annotation_relief)
         self.project.labels.clear()
         self.sync_controls()
         self.show_geometry()
@@ -1324,7 +1339,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 match = auto_register(reference, photo)
                 composed = (np.vstack((match.matrix, [0.,0.,1.])) @ np.vstack((reference_project.matrix,[0.,0.,1.])))[:2]
                 return match, reference_project.geometry, composed, requested_utc, reference_project.latitude, reference_project.longitude
-            self.run_background("正在匹配本地参考照片…", work, self.accept_auto)
+            self.run_background("正在匹配本地参考照片…", work,
+                                lambda result: self.accept_auto(result, reference_project=reference_project))
         except Exception as exc:
             self.error(str(exc))
 
@@ -1368,8 +1384,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.dem_path, name, resolution = result
         self.dem_status.setText(f"{name} · 赤道采样约 {resolution:.3f} km")
         self.dem_status.setToolTip(self.dem_path)
-        self.project.annotation_relief.clear()
-        self._annotation_relief_attempt = None
+        if self.project.matrix is None:
+            self.project.annotation_relief.clear()
+            self._annotation_relief_attempt = None
         self.terrain_settings_changed()
         self.statusBar().showMessage("高程数据已加载")
 
@@ -1506,6 +1523,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.identification.clear()
         self.project.terrain_rims.clear()
         self.project.annotation_relief.clear()
+        self.project.projection_surface = 'sphere'
         self.project.labels.clear()
         self.refresh_anchor_table()
         self.refresh_annotations()
@@ -1603,14 +1621,16 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.layout_status.setText("")
             self.rebuilding = False
             return
-        if self.project.geometry is not None and self.project.matrix is not None and not self.project.annotation_relief:
+        if (self.project.projection_surface == 'terrain' and self.project.geometry is not None and
+                self.project.matrix is not None and not self.project.annotation_relief):
             # Recognition prepares this in its worker. Legacy/manual projects
             # sample a local map once, without downloads or retained handles.
             key = (id(self.project), id(self.project.geometry), self.project.matrix.tobytes(), self.dem_path)
             if key != getattr(self, '_annotation_relief_attempt', None):
                 self.project.annotation_relief = prepare_annotation_relief(
                     self.catalog, self.project.geometry, self.project.matrix, self.image.shape, CACHE,
-                    dem_path=self.dem_path, lens_distortion=self.project.identification.get('lens_distortion'))
+                    dem_path=self.dem_path if not self.project.identification else '',
+                    lens_distortion=self.project.identification.get('lens_distortion'))
                 self._annotation_relief_attempt = None if self.project.annotation_relief else key
         candidates = self.project.visible_features(self.catalog, self.image.shape, image=self.image, all_candidates=True)
         font_sizes = self.project.label_font_sizes([feature for feature, _ in candidates], self.image.shape)

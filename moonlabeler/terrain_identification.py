@@ -136,6 +136,7 @@ def _adopt_refinement(result, refined):
     result.matrix, result.rms_px = refined.matrix, refined.rms_px
     result.projection_geometry = refined.geometry
     result.refinement = refined.details
+    result.projection_surface = 'terrain' if refined.details.get('relief_aware') is True else 'sphere'
     result.image_inliers = refined.details['points']
     result.coverage = refined.details['coverage']
     result.texture_correlation = refined.details['light_before_after'][1]

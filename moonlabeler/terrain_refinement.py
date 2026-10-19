@@ -153,5 +153,6 @@ def refine_crater_identification(result, image, geometry, cache, catalog):
     return replace(result, matrix=refined.matrix, rms_px=refined.rms_px,
                    method=result.method + ' / local LOLA refinement',
                    projection_geometry=refined.geometry, refinement=refined.details,
+                   projection_surface='terrain',
                    image_inliers=refined.details['points'], coverage=refined.details['coverage'],
                    texture_correlation=refined.details['light_before_after'][1], crater_rims=rims)

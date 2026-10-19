@@ -78,6 +78,8 @@ def _validate_project_data(data):
             _invalid_field(key)
     if data.get('capture_mode', 'auto') not in ('auto', 'direct', 'afocal'):
         _invalid_field('capture_mode')
+    if data.get('projection_surface', 'sphere') not in ('sphere', 'terrain'):
+        _invalid_field('projection_surface')
     if data['utc']:
         from datetime import datetime
         try:
@@ -162,6 +164,10 @@ def _validate_project_data(data):
     if 'viewport' in craters and type(craters['viewport']) is not bool:
         _invalid_field('crater_detection.viewport')
     recognition = _mapping(data.get('automatic_recognition', {}), 'automatic_recognition')
+    if recognition.get('refinement') is not None:
+        refinement = _mapping(recognition['refinement'], 'automatic_recognition.refinement')
+        if 'relief_aware' in refinement and type(refinement['relief_aware']) is not bool:
+            _invalid_field('automatic_recognition.refinement.relief_aware')
     if 'matched_names' in recognition and (not isinstance(recognition['matched_names'], list) or
                                          not all(isinstance(name, str) for name in recognition['matched_names'])):
         _invalid_field('automatic_recognition.matched_names')
@@ -275,6 +281,7 @@ class Project:
     crater_outline_shape: str = "ellipse"
     terrain_rims: dict = field(default_factory=dict)
     annotation_relief: dict = field(default_factory=dict)
+    projection_surface: str = 'sphere'
     capture_mode: str = "auto"
 
     def photo_points(self, points):
@@ -348,6 +355,7 @@ class Project:
                 "automatic_recognition": self.identification,
                 "terrain_rims": self.terrain_rims,
                 "annotation_relief": self.annotation_relief,
+                "projection_surface": self.projection_surface,
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": os.path.relpath(Path(self.terrain_path).resolve(), path.parent.resolve()) if self.terrain_path else "",
                             "settings": self.terrain_settings},
@@ -388,6 +396,9 @@ class Project:
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
+        refinement = project.identification.get('refinement') or {}
+        default_surface = 'terrain' if refinement.get('relief_aware') is True else 'sphere'
+        project.projection_surface = data.get('projection_surface', default_surface)
         return project
 
     def label_text(self, feature):
@@ -402,12 +413,16 @@ class Project:
         return name
 
     def _feature_height(self, feature):
+        if self.projection_surface != 'terrain':
+            return 0.
         point = self.annotation_relief.get('points', {}).get(feature['id'])
         if point is not None and abs(point[0]-feature['lat']) <= 1e-8 and abs(point[1]-feature['lon']) <= 1e-8:
             return point[2]
         return 0.
 
     def _reference_relief_rim(self, feature):
+        if self.projection_surface != 'terrain':
+            return None
         rim = self.annotation_relief.get('rims', {}).get(feature['id'])
         if rim and np.allclose(rim['feature'], [feature['lat'], feature['lon'], feature['diameter']], rtol=0, atol=1e-8):
             return rim
@@ -422,6 +437,8 @@ class Project:
         points, visible, lit = self.geometry.project([f['lat'] for f in features], [f['lon'] for f in features],
                                                      [self._feature_height(f) for f in features])
         pixels = self.photo_points(points)
+        if self.projection_surface != 'terrain':
+            return pixels, visible, lit
         for i, f in enumerate(features):
             if (not visible[i] or f['kind'] not in ('Crater, craters', 'Satellite Feature') or
                     f['diameter'] < MIN_OUTLINE_DIAMETER_KM or

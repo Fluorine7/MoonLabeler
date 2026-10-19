@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.11** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.12** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
@@ -98,7 +98,7 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 坑缘圈仅用于直径至少 35 km 且在照片中足够大的坑，小坑保留短引线。“标注 → 排版选项 → 轮廓形状”默认选择平滑 **椭圆**，也可选 **坑缘轮廓（手绘风）**；点击“重新生成标注”应用。局部坑群路径和含高程投影的后备精修路径优先沿 DEM 中连续的坑缘高地取点，考虑地形高度投影，再拟合椭圆；坑缘轮廓选项保留这些点的不规则形状。数据不足或其他识别路径使用目录参考圈。形状设置与高程坑缘保存在工程中，并用于 PNG / SVG。这些轮廓受 DEM 约 1.9 km 网格、遮挡与配准残差限制，并非逐像素测得的真实坑壁。小拟合残差不等于绝对定位精度。
 
-0.7.11 将高程修正补到最终标注：有本地 LOLA 数据时，批量读取画面内地貌的高度，并给足够大的目录参考圈采样高程。大坑优先使用已有连续坑缘，其次使用加高程的目录圈；闭合且完整可见时，引线以所选椭圆或轮廓的视觉中心为依据。月溪、直壁、小坑和着陆点仍按各自地理坐标加高程投影，保留短引线；不会取可见残弧的中心冒充坑中心。优先使用已导入 DEM，其次使用已缓存基础 DEM，标注不额外下载数据；无可用数据时保持参考球面。高程快照随工程保存，重画和导出不重读 DEM。旧工程在打开或重新生成时可补充本地高程，手动移动过的文字位置保留。纯手动校准在拟合和偏差表中使用同一套高程/视觉落点，避免球面拟合后重复叠加高程。这项修正不改变自动识别的配准矩阵和验收标准，也不消除数据分辨率或镜头畸变造成的误差。
+0.7.12 按实际配准的表面基准生成标注。纹理、月缘和球面阴影参考的配准保持参考球面落点，不在拟合后额外叠加高程。只有已通过高程表面精修、或使用高程取点拟合的手动校准，才为最终标注应用高程和坑缘视觉中心；自动精修使用与拟合一致的基础 LOLA 数据，预览界面选中的其他 DEM 不会替换它。完整大坑仍默认椭圆，月溪、直壁、小坑和着陆点继续用短引线；残弧不用于猜测中心。高程快照和表面类型随工程保存，重画、离线重开和 PNG/SVG 导出使用相同坐标。导入其他 DEM 不会覆盖当前拟合的快照，需重新执行相应校准。自动识别与验收门槛不变，DEM 分辨率、遮挡及原配准误差仍可能造成偏移。
 
 本仓库包含源码、公开数据来源记录及可公开示例。用户提供的摄影师实拍、相关导出图、运行缓存和虚拟环境不随源码分发。
 
@@ -205,7 +205,7 @@ Reference-guided searches also use this relief-aware refinement and recheck ever
 
 Outlines are shown for craters at least 35 km across that are also large enough in the photograph; smaller craters use short leaders. Under 标注 → 排版选项 → 轮廓形状, smooth **ellipses** are the default; the optional **rim contour (hand-drawn appearance)** preserves irregular terrain shapes. Click 重新生成标注 to apply changes. The close-up crater-pattern and relief-aware terrain refinement routes sample continuous DEM crests with terrain-height projection before fitting ellipses. Catalogue reference circles remain the fallback when suitable elevation contours are unavailable. Both the style and elevation contours are saved in projects and shared by PNG/SVG export. These are not pixel-accurate photographic rim measurements: the approximately 1.9 km DEM grid, occlusion and registration residuals can still cause offsets. A low fitting residual measures internal consistency, not absolute lunar positioning accuracy.
 
-Version 0.7.11 carries relief into final annotation anchors. When a local LOLA map is available, it batch-samples feature elevations and sufficiently large catalogue rims. Existing traced crests take precedence; complete visible rims anchor leaders at the visual centre of the selected ellipse or contour. Rilles, scarps, small craters and landing sites retain their geographic positions with elevation and short leaders. Partial limb arcs do not supply invented centres. Imported maps take precedence over the cached basic map; annotations trigger no extra downloads and fall back to the reference sphere without usable data. Projects save the elevation snapshot, so redraw and export need no DEM access. Opening or regenerating legacy projects can populate it from local data while preserving manually positioned captions. Pure manual fitting and its error table use the same elevated/visual anchors as the display, avoiding double-counted relief after a sphere fit. Automatic pose matrices and acceptance checks are unchanged; DEM resolution and lens errors remain limitations.
+Version 0.7.12 records the surface used by each fit. Albedo, limb and spherical shading references keep their reference-sphere anchors, with no post-fit height displacement. Only validated relief-aware fits and height-aware manual calibration apply elevations and visual rim centres. Automatic relief refinement uses the same basic LOLA map as the fit; another DEM selected for preview does not replace its datum. Large craters remain ellipses by default; rilles, scarps, small craters and landing sites retain short leaders, and partial arcs do not supply centres. Projects persist the surface type and height snapshot for consistent offline redraw and PNG/SVG export. Importing another map does not overwrite the current fit snapshot; recalibrate to use it. Recognition thresholds are unchanged; DEM resolution, occlusion and original registration errors remain limitations.
 
 Third-party photographers' test images and derived exports remain local and are not distributed with this repository. Public data sources and processing provenance are documented separately.
 

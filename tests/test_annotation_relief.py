@@ -4,6 +4,7 @@
 from types import SimpleNamespace
 import json
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -12,6 +13,106 @@ import pytest
 from moonlabeler.geometry import Geometry
 from moonlabeler.project import Project
 from moonlabeler.annotation_relief import prepare_annotation_relief, catalogue_rim
+
+
+def test_0708_sphere_registration_does_not_receive_a_second_height_shift():
+    record = json.loads((Path(__file__).parent/'fixtures/0708-sphere-registration.json').read_text())
+    catalog = [dict(id=row['name'], name=row['name'], lat=row['height'][0], lon=row['height'][1],
+                    diameter=20., kind='Crater, craters') for row in record['positions']]
+    p = Project(geometry=Geometry.from_dict(record['geometry']), matrix=np.array(record['matrix']),
+                identification=record['identification'])
+    p.projection_surface = 'sphere'
+    # This is the snapshot 0.7.11 added after a sphere-based reference fit.
+    p.annotation_relief = {'source': 'LDEM_16', 'resolution_km': 1.895,
+                           'points': {row['name']: row['height'] for row in record['positions']}, 'rims': {}}
+    expected = np.array([row['sphere'] for row in record['positions']])
+    assert np.max(np.linalg.norm(p.annotation_points(catalog)[0]-expected, axis=1)) < .001
+
+
+@pytest.mark.parametrize('relief_aware', [False, True])
+def test_automatic_refinement_records_its_actual_projection_surface(relief_aware):
+    from moonlabeler.identification import IdentificationResult
+    from moonlabeler.terrain_identification import _adopt_refinement
+    result = IdentificationResult(np.eye(2, 3), [], 1., 10., 0)
+    refined = SimpleNamespace(matrix=np.eye(2, 3), geometry=geometry(), rms_px=1.,
+                              details={'relief_aware': relief_aware, 'points': 100, 'coverage': .4,
+                                       'light_before_after': [.7, .8], 'detail_before_after': [.5, .6]})
+    _adopt_refinement(result, refined)
+    assert result.projection_surface == ('terrain' if relief_aware else 'sphere')
+
+
+@pytest.mark.parametrize('surface', ['sphere', 'terrain'])
+def test_automatic_workflow_only_samples_the_surface_used_by_the_fit(monkeypatch, surface):
+    from PySide6.QtWidgets import QApplication
+    from moonlabeler import app as module
+    from moonlabeler.identification import IdentificationResult
+    application = QApplication.instance() or QApplication([])
+    window = module.MainWindow()
+    calls, errors = [], []
+    window.error = errors.append
+    g = geometry()
+    result = IdentificationResult(np.array([[150., 0., 200.], [0., 150., 200.]]), [], 1., 50., 0,
+                                  image_inliers=50, projection_surface=surface)
+    relief = {'source': 'Fitted basic LOLA map', 'resolution_km': 1.895, 'points': {}, 'rims': {}}
+    def prepare(*args, **kwargs):
+        calls.append(kwargs)
+        assert kwargs.get('dem_path', '') == ''  # Preview map must not change an automatic fit's datum.
+        return relief.copy()
+    monkeypatch.setattr(module, 'identify_from_atlas', lambda *args, **kwargs: result)
+    monkeypatch.setattr(module, 'prepare_annotation_relief', prepare)
+    def sync(title, work, success, failure=None):
+        try:
+            value = work()
+        except (ValueError, OSError) as exc:
+            (failure or window.error)(str(exc))
+        else:
+            success(value)
+    monkeypatch.setattr(window, 'run_background', sync)
+    try:
+        window.image = np.zeros((400, 400, 3), np.uint8)
+        window.project = Project(geometry=g)
+        window.dem_path = '/a/different/preview-map.lbl'
+        window.identify_photo()
+        assert not errors
+        assert len(calls) == (1 if surface == 'terrain' else 0)
+        assert window.project.projection_surface == surface
+        assert np.array_equal(window.project.matrix, result.matrix)
+    finally:
+        window.dirty = False
+        window.close()
+
+
+@pytest.mark.parametrize('surface', [None, 'sphere', 'terrain'])
+def test_photo_reference_matching_retains_its_projection_surface(monkeypatch, surface):
+    from PySide6.QtWidgets import QApplication
+    from moonlabeler import app as module
+    application = QApplication.instance() or QApplication([])
+    window = module.MainWindow()
+    f = feature(diameter=20., lon=15.)
+    reference = project(f) if surface is not None else None
+    if reference is not None:
+        reference.projection_surface = surface
+    expected_surface = surface or 'sphere'
+    matrix = np.array([[120., 0., 200.], [0., 120., 200.]])
+    match = SimpleNamespace(inliers=50, matches=60, rms_px=1., mirrored=False)
+    monkeypatch.setattr(module, 'prepare_annotation_relief',
+                        lambda *args, **kwargs: pytest.fail('Changed the fitted reference surface'))
+    try:
+        window.image = np.zeros((400, 400, 3), np.uint8)
+        window.catalog, window.catalog_by_id = [f], {f['id']: f}
+        window.project = Project(projection_surface='terrain', annotation_relief={'old': True})
+        window.accept_auto((match, geometry(), matrix, geometry().utc, None, None),
+                           reference_project=reference)
+        assert window.project.projection_surface == expected_surface
+        sphere = window.project.geometry.project([0.], [15.])[0]
+        elevated = window.project.geometry.project([0.], [15.], [3.])[0]
+        expected = window.project.photo_points(elevated if surface == 'terrain' else sphere)
+        assert np.allclose(window.project.annotation_points([f])[0], expected)
+        if reference is not None:
+            assert reference.annotation_relief['points'][f['id']][2] == 3.
+    finally:
+        window.dirty = False
+        window.close()
 
 
 def geometry():
@@ -26,7 +127,7 @@ def feature(kind='Crater, craters', diameter=80., lon=60.):
 
 def project(f):
     p = Project(geometry=geometry(), matrix=np.array([[3000., 0., 1000.], [0., 3000., 1800.]]),
-                illuminated_only=False, min_diameter=0.)
+                illuminated_only=False, min_diameter=0., projection_surface='terrain')
     p.annotation_relief = {'source': 'Controlled DEM', 'resolution_km': 1.,
                            'points': {f['id']: [f['lat'], f['lon'], 3.]}, 'rims': {}}
     return p
