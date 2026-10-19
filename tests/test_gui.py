@@ -325,6 +325,9 @@ def test_manual_registration_of_partial_lunar_image_without_nasa(tmp_path, monke
     from datetime import datetime, timezone
     from moonlabeler.geometry import compute_geometry
     from moonlabeler.registration import transform_points
+    # This fixture's known points are on the reference sphere. Keep that
+    # surface explicit instead of depending on the developer's DEM cache.
+    monkeypatch.setattr('moonlabeler.app.prepare_annotation_relief', lambda *args, **kwargs: {})
 
     application = QApplication.instance() or QApplication([])
     window = MainWindow()
@@ -373,8 +376,10 @@ def test_manual_registration_of_partial_lunar_image_without_nasa(tmp_path, monke
     window.close()
 
 
-def test_multi_point_error_review_disable_and_repick(tmp_path):
+def test_multi_point_error_review_disable_and_repick(tmp_path, monkeypatch):
     from moonlabeler.registration import transform_points
+    # The synthetic coordinates below were generated without terrain relief.
+    monkeypatch.setattr('moonlabeler.app.prepare_annotation_relief', lambda *args, **kwargs: {})
     application = QApplication.instance() or QApplication([])
     window = MainWindow()
     errors = []

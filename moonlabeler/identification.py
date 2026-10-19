@@ -48,6 +48,7 @@ class IdentificationResult:
     crater_rims: dict | None = None
     reference_points: dict | None = None
     lens_distortion: dict | None = None
+    annotation_relief: dict | None = None
 
 
 def _triangle_index(points, radii, neighbors=14, centered=False):

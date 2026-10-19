@@ -37,6 +37,7 @@ from .limb import identify_from_limb
 from .terrain_identification import identify_from_terrain
 from .guided_identification import identify_from_reference_points, reference_point_errors, reference_point_tolerance
 from .terrain_refinement import refine_crater_identification
+from .annotation_relief import prepare_annotation_relief
 from .geometry import compute_geometry, MOON_RADIUS_KM
 from .layout import LabelBox, arrange_labels, leader_segment
 from .landing_sites import is_landing_site, landing_marker_radius
@@ -379,6 +380,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         lat = self.latitude.value() if self.topocentric.isChecked() else None
         lon = self.longitude.value() if self.topocentric.isChecked() else None
         image, catalog = self.image, list(self.catalog)
+        dem_path = self.dem_path
         allow_eyepiece = self.project.capture_mode != "direct"
         known = self.manual_reference_points()
         review_candidates = list(self.crater_candidates)
@@ -410,6 +412,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                 recognition = identify_from_terrain(image, geometry, CACHE, catalog=catalog)
                             except (ValueError, OSError) as terrain_error:
                                 raise ValueError(f"检测到 {len(detection.candidates)} 个疑似坑缘；未通过自动配准验证。\n纹理参考：{atlas_error}\n轮廓参考：{limb_error}\n坑群参考：{exc}\n高程参考：{terrain_error}") from terrain_error
+            recognition.annotation_relief = prepare_annotation_relief(
+                catalog, recognition.projection_geometry or geometry, recognition.matrix, image.shape, CACHE,
+                dem_path=dem_path, lens_distortion=recognition.lens_distortion)
             return detection, recognition, geometry, lat, lon
         def failure(message):
             self.identification_status.setText("参考点配准失败，请核对取点" if known else "识别失败，可改用手动校准")
@@ -439,6 +444,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.geometry = geometry
         self.project.matrix = recognition.matrix
         self.project.terrain_rims = recognition.crater_rims or {}
+        self.project.annotation_relief = recognition.annotation_relief or {}
         self.project.utc = geometry.utc
         self.project.latitude, self.project.longitude = lat, lon
         previous_auto = {a['id']: a for a in self.project.anchors if a.get('source') == 'automatic'}
@@ -733,6 +739,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.geometry = None
         self.project.matrix = None
         self.project.identification.clear()
+        self.project.terrain_rims.clear()
+        self.project.annotation_relief.clear()
         self.project.labels.clear()
         self.clear_terrain_preview()
         self.refresh_anchor_table()
@@ -768,6 +776,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.project.latitude, self.project.longitude = lat, lon
             self.project.matrix = None
             self.project.identification.clear()
+            self.project.terrain_rims.clear()
+            self.project.annotation_relief.clear()
             self.clear_terrain_preview()
             self.show_geometry()
             self.refresh_anchor_table()
@@ -1085,11 +1095,13 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if self.project.geometry and self.project.matrix is not None and enabled:
             try:
                 features = [self.catalog_by_id[a["id"]] for a in enabled]
-                source, _, _ = self.project.geometry.project([f["lat"] for f in features], [f["lon"] for f in features])
+                predicted = self.project.annotation_points(features)[0]
                 target = np.array([a["pixel"] for a in enabled])
-                actual_errors = np.linalg.norm(self.project.photo_points(source)-target, axis=1)
+                actual_errors = np.linalg.norm(predicted-target, axis=1)
                 diagnostics = {a["id"]: (error, float("nan"), False) for a, error in zip(enabled, actual_errors)}
                 if len(enabled) >= 2 and not self.project.identification.get("lens_distortion"):
+                    inverse = np.linalg.inv(np.vstack((self.project.matrix, [0., 0., 1.])))[:2]
+                    source = transform_points(inverse, predicted)
                     self.calibration = calibration_report(source, target, ["auto", "no", "yes"][self.mirror.currentIndex()])
                     diagnostics = {a["id"]: (error, self.calibration.check_errors_px[i], i == self.calibration.suspect_index)
                                    for i, (a, error) in enumerate(zip(enabled, actual_errors))}
@@ -1167,8 +1179,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             if self.project.matrix is not None and self.project.geometry and anchor.get("enabled", True):
                 feature = self.catalog_by_id.get(anchor["id"])
                 if feature:
-                    projected, _, _ = self.project.geometry.project([feature["lat"]], [feature["lon"]])
-                    predicted = self.project.photo_points(projected)[0]
+                    predicted = self.project.annotation_points([feature])[0][0]
                     if np.linalg.norm(predicted-[x, y]) > 1:
                         line = scene.addLine(x, y, *predicted, QPen(QColor("#ffb36b"), 1.5, Qt.PenStyle.DashLine))
                         line.setZValue(30)
@@ -1190,6 +1201,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.cancel_pick()
         self.project.matrix = None
         self.project.identification.clear()
+        self.project.terrain_rims.clear()
+        self.project.annotation_relief.clear()
         self.project.labels.clear()
         self.refresh_anchor_table()
         self.refresh_annotations()
@@ -1218,9 +1231,24 @@ class MainWindow(WindowUiMixin, QMainWindow):
             if not np.all(visible):
                 raise ValueError("参考点包含背面地形，请核对地形和拍摄时间。")
             report = calibration_report(points, [a["pixel"] for a in anchors], ["auto", "no", "yes"][self.mirror.currentIndex()])
+            # Start with a coarse sphere fit to bound the DEM snapshot. Then
+            # fit the SAME elevated/visual anchors the display will use; simply
+            # adding heights after a manual fit would count relief twice.
+            relief = prepare_annotation_relief(self.catalog, self.project.geometry, report.matrix, self.image.shape,
+                                               CACHE, dem_path=self.dem_path)
+            if relief:
+                provisional = Project(geometry=self.project.geometry, matrix=report.matrix,
+                                      annotation_relief=relief, crater_outline_shape=self.project.crater_outline_shape)
+                predicted = provisional.annotation_points(features)[0]
+                inverse = np.linalg.inv(np.vstack((report.matrix, [0., 0., 1.])))[:2]
+                points = transform_points(inverse, predicted)
+                report = calibration_report(points, [a['pixel'] for a in anchors],
+                                             ["auto", "no", "yes"][self.mirror.currentIndex()])
             matrix, rms = report.matrix, report.rms_px
             self.project.matrix = matrix
             self.project.identification.clear()
+            self.project.terrain_rims.clear()
+            self.project.annotation_relief = relief
             self.project.labels.clear()
             mirrored = np.linalg.det(matrix[:, :2]) < 0
             warning = "；两点无法自动判断镜像，也无法独立评估误差" if len(features) == 2 else ""
@@ -1243,6 +1271,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.project.latitude, self.project.longitude = latitude, longitude
         self.project.anchors.clear()
         self.project.identification.clear()
+        self.project.terrain_rims.clear()
+        self.project.annotation_relief.clear()
         self.project.labels.clear()
         self.sync_controls()
         self.show_geometry()
@@ -1338,6 +1368,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.dem_path, name, resolution = result
         self.dem_status.setText(f"{name} · 赤道采样约 {resolution:.3f} km")
         self.dem_status.setToolTip(self.dem_path)
+        self.project.annotation_relief.clear()
+        self._annotation_relief_attempt = None
         self.terrain_settings_changed()
         self.statusBar().showMessage("高程数据已加载")
 
@@ -1472,6 +1504,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 return
         self.project.geometry, self.project.matrix = geometry, matrix
         self.project.identification.clear()
+        self.project.terrain_rims.clear()
+        self.project.annotation_relief.clear()
         self.project.labels.clear()
         self.refresh_anchor_table()
         self.refresh_annotations()
@@ -1569,6 +1603,15 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.layout_status.setText("")
             self.rebuilding = False
             return
+        if self.project.geometry is not None and self.project.matrix is not None and not self.project.annotation_relief:
+            # Recognition prepares this in its worker. Legacy/manual projects
+            # sample a local map once, without downloads or retained handles.
+            key = (id(self.project), id(self.project.geometry), self.project.matrix.tobytes(), self.dem_path)
+            if key != getattr(self, '_annotation_relief_attempt', None):
+                self.project.annotation_relief = prepare_annotation_relief(
+                    self.catalog, self.project.geometry, self.project.matrix, self.image.shape, CACHE,
+                    dem_path=self.dem_path, lens_distortion=self.project.identification.get('lens_distortion'))
+                self._annotation_relief_attempt = None if self.project.annotation_relief else key
         candidates = self.project.visible_features(self.catalog, self.image.shape, image=self.image, all_candidates=True)
         font_sizes = self.project.label_font_sizes([feature for feature, _ in candidates], self.image.shape)
         reference_font = self.project.font_sizes(self.image.shape)[1]
@@ -1741,6 +1784,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         def success(features):
             self.catalog = features
             self.catalog_by_id = {f["id"]: f for f in features}
+            self.project.annotation_relief.clear()
+            self._annotation_relief_attempt = None
             self.catalog_button.setText(f"更新 USGS 地名（现有 {len(features):,} 项）")
             self.search_features(self.feature_search.text())
             self.search_crater_features(self.crater_search.text())

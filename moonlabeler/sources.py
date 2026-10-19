@@ -37,7 +37,9 @@ CHINESE = {
     "Mare Nubium": "云海", "Mare Humorum": "湿海", "Oceanus Procellarum": "风暴洋",
     "Sinus Iridum": "虹湾", "Montes Apenninus": "亚平宁山脉", "Vallis Alpes": "阿尔卑斯月谷",
 }
-COMMON_FEATURES = frozenset(CHINESE)
+# These distinct mare landmarks also reserve caption space; their importance
+# must not depend on a small change to height-corrected anchors or contrast.
+COMMON_FEATURES = frozenset(CHINESE) | {'Autolycus', 'Timocharis', 'Pytheas', 'Manilius'}
 
 
 @lru_cache(maxsize=2)

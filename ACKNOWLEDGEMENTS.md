@@ -4,6 +4,8 @@ MoonLabeler 作者：**Fluorine Zhu**。本项目代码采用 **GPL-3.0-or-later
 
 感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考，并持续提供 **LPND 中文地名与综合月面地貌资料**，包括 2026-10-16 的 `lunar_nomenclature(1).json` 更新。
 
+同时感谢他指出标注的地形高程问题。[Tsukikage 1.4.0 的边缘标注修正](https://github.com/10deg/tsukikage/commit/88c0353883864d6d3556e85625852f57415908c7)启发了 0.7.11 的高程快照和坑缘视觉中心修正。MoonLabeler 复用自身已有的 LOLA 采样、投影、连续坑缘及椭圆拟合代码，独立实现最终标注修正；未复制其标注源码。目录圆周加高程仍是参考轮廓，不等同于识别到真实坑壁。
+
 向 **Jim Mosher 与 Henrik Bondo** 致敬。他们创建的 **Lunar Terminator Visualization Tool（LTVT）** 将月面几何、已知地形校准和高程光照模拟带给了业余观测者。
 
 MoonLabeler 参考这些公开方法，以 Python / Qt 独立实现当前功能。当前项目没有复制 LTVT 的 Delphi 源码，也不是原作者发布的 LTVT 版本。
@@ -16,7 +18,7 @@ MoonLabeler 参考这些公开方法，以 Python / Qt 独立实现当前功能�
 
 | 来源支持的方法或事实 | 直接来源 | 当前实现与限制 |
 | --- | --- | --- |
-| 确定拍摄几何后，两个已知地形可求比例、旋转和偏移；第三点可检查校准 | [LTVT 照片校准文档](https://github.com/pavolgaj/ltvt/wiki/User-Photo-Calibration-Window) | 多点相似变换最小二乘拟合；显式比较镜像；加入逐点偏差与留出检查。仍是球面模型。 |
+| 确定拍摄几何后，两个已知地形可求比例、旋转和偏移；第三点可检查校准 | [LTVT 照片校准文档](https://github.com/pavolgaj/ltvt/wiki/User-Photo-Calibration-Window) | 多点相似变换最小二乘拟合；显式比较镜像；加入逐点偏差与留出检查。参考球面投影可加入本地高程，拟合与显示使用一致的落点。 |
 | 高程坡度和地形遮挡可用于模拟月面光照；Lambert 与 Lommel–Seeliger 是可选模型 | [LTVT DEM 选项](https://github.com/pavolgaj/ltvt/wiki/DEM-Options) | 实现坡度法线与有限步长的太阳射线遮挡；未实现完整三维表面求交及反照率纹理。 |
 | LOLA 高度为 DN × SCALING_FACTOR；半径需要再加 OFFSET | [官方 LDEM_16 标签](https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/LDEM_16.LBL) | 将高度转换为 km，相对 1737.4 km 参考球面；检查数据坐标系、采样和长度。 |
 | LDEM_16 为像素中心网格，16 像素/度，约 1895.21 m/采样点 | [LRO / LOLA 官方数据目录](https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/) | 双线性插值，全球经度接缝环绕；可按需读取更高分辨率区域数据。输出像素不等于地形分辨率。 |
@@ -57,6 +59,7 @@ MoonLabeler is authored by **Fluorine Zhu** and released under **GNU GPL version
 - **NASA NSSDCA and LROC:** [Landing-location coordinates](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html) for Apollo LM descent stages and Chang’e landers, in the DE421 mean Earth / polar axis frame (north/east positive). The bundled data retain source and retrieval dates; no upstream code is included.
 - **JPL and Skyfield contributors:** Ephemerides, lunar orientation, and observing geometry.
 - **樊仕达 (10deg) — moonlib:** Provided code as a reference for this project's lunar geometry research and implementation, and continues to supply Chinese-name and combined lunar-nomenclature data, including `lunar_nomenclature(1).json` dated 2026-10-16.
+- **10deg — Tsukikage:** His [1.4.0 limb-annotation correction](https://github.com/10deg/tsukikage/commit/88c0353883864d6d3556e85625852f57415908c7) and explanation of elevation offsets informed version 0.7.11's annotation-height snapshots and visual rim centres. This is independently implemented using MoonLabeler's existing LOLA sampling, projection, crest tracing and ellipse fitting; no upstream annotation source was copied. An elevation-adjusted catalogue circle remains a reference outline rather than a detected photographic crater wall.
 - **LPND maintainers and 樊仕达 (10deg):** The current combined snapshot contains 10,431 records: 9,040 Chinese captions (9,031 labelled LPND and 9 separately sourced additions) and 1,391 English placeholders still awaiting translation. LPND wording takes precedence. Original terms and metadata remain intact; lettered crater captions use compact formatting. Source labels come from the supplied snapshot, not a fresh online verification of every entry. Retained historical NADC URLs do not substantiate LPND wording.
 - **[Virtual Moon Atlas maintainers](https://www.ap-i.net/avl/en/start):** The supplied snapshot attributes supplemental formations and classification to VMA. These remain reference data without replacing the active USGS registration catalogue or the existing landing-site data. No VMA software code is incorporated.
 - **National Astronomical Data Center and Chinese astronomical terminology contributors:** The earlier sourced terminology table remains available for search aliases and missing-entry fallback, without overriding LPND translations.

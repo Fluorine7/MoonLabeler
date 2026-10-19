@@ -6,6 +6,16 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 0.7.11
+
+将地形高程从参考图/坑缘补齐到最终标注落点。有本地 LOLA 数据时，批量采样画面附近的地貌高度和足够大的目录圈；已有连续高程坑缘优先。完整可见的大坑按默认椭圆或可选轮廓的视觉中心布置引线；跨月缘、非闭合或退化轮廓保留地理落点。月溪、直壁、小坑和着陆点继续使用短引线；着陆点不作坑缘居中。采样不下载新数据，缺失或无效高度退回参考球面。快照与来源/分辨率随工程保存，PNG、SVG 和重开使用同一份数据，手动文字位置保留。日期、配准或目录更新时失效重建；标注坐标不反馈到自动识别与验收。纯手动校准使用同一套高程/视觉落点重新拟合和显示偏差，避免球面拟合后重复加高程；无 DEM 的球面流程保持原样。增加 Autolycus、Timocharis、Pytheas、Manilius 的重要目标避让保护，避免小幅坐标变化将这些醒目地貌挤掉。
+
+完成高程落点/闭合坑缘中心、月缘残弧拒绝、镜像与目镜畸变、工程校验/兼容、离线保存与重开、重画不重读 DEM，以及北极、南极、克拉维斯坑群、Hadley C、手机目镜后、全月图等相关回归。四份既有实拍工程中，批量采样本机约 7–11 ms；实际手机和彩色整月盘按钮流程约 11–14 ms。这些是单轮本机测量，不代表所有设备。两张照片的配准矩阵与识别验证记录和 0.7.10 完全一致；标签布局可随落点及优先级变化，不宣称所有偏移已消除。
+
+Version 0.7.11 carries local elevation into final annotation anchors. Existing LOLA maps batch-sample on-frame features and sufficiently large catalogue rims, with traced crests taking precedence. Complete visible large craters use the visual centre of the default ellipse or optional contour; incomplete, occulted or degenerate rings retain geographic anchors. Rilles, scarps, small craters and landing sites keep short leaders; landing sites are never rim-centred. Missing or invalid height data falls back to the reference sphere without extra downloads. Projects persist the small snapshot and its provenance for offline redraw, PNG/SVG export and reopening. Manual caption positions are retained. Date, pose and catalogue updates invalidate derived data; display coordinates never feed back into automatic recognition validation. Pure manual calibration fits and reports errors on the same elevated/visual anchors as the display, preventing double-counted relief; the sphere-only path remains available without a DEM. Autolycus, Timocharis, Pytheas and Manilius now reserve layout space as important landmarks.
+
+Related regressions cover display heights and rim centres, partial-limb rejection, mirroring and afocal distortion, project validation and compatibility, offline round-tripping, redraw without DEM reads, and real north/south polar, Clavius, Hadley C, phone and full-Moon images. Local single-run batch sampling took approximately 7–11 ms for four saved real-photo projects and 11–14 ms in the phone/colour full-Moon button workflows; these are not general timing guarantees. Both button workflows retain exactly the same pose matrices and recognition validation records as 0.7.10. Layout can change with corrected anchors and priorities; remaining photographic offsets are not claimed resolved.
+
 ## 0.7.10
 
 将自动坑缘检测推迟到实际需要坑群识别时；参考点辅助配准保留原检测证据。纹理或月缘已通过的照片不再额外找坑，也不覆盖用户修正过的辅助候选中心。目镜重匹配复用同一搜索图像的照片特征，只重提取参考图，避免第二次灰度增强与 SIFT 提取；不同裁取区域与后续识别独立准备。验证阈值、镜像检查、投影与光学校正不变。手机 `2305271151.jpg` 和彩色整月盘 `230603-2.jpg` 的配准矩阵、验证记录与标签数量均与改动前相同，分别为 56 / 61 个标签。

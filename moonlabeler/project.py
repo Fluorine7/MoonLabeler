@@ -20,13 +20,13 @@ from .sources import write_json, COMMON_FEATURES
 from .registration import transform_points
 from .eyepiece import distort_points, distortion_jacobian
 from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR, landing_marker_radius
+from .annotation_relief import catalogue_rim, contour_center, MIN_OUTLINE_DIAMETER_KM, MAX_HEIGHT_KM
 
 DEFAULT_FONT_PERCENT = 1.8
 DEFAULT_FONT_STEP_PERCENT = .3
 # Equivalent projected diameter as a fraction of the photograph's short side.
 # Fixed boundaries keep a formation's tier independent of catalogue filters.
 FONT_TIER_BOUNDARIES = (.008, .02)
-MIN_OUTLINE_DIAMETER_KM = 35.
 
 
 def font_tier_percentages(maximum, step):
@@ -178,6 +178,27 @@ def _validate_project_data(data):
             _invalid_field('terrain_rims.coordinates')
         for point in coordinates:
             _point(point, 'terrain_rims.coordinates', 3)
+    relief = _mapping(data.get('annotation_relief', {}), 'annotation_relief')
+    if relief:
+        if not isinstance(relief.get('source'), str):
+            _invalid_field('annotation_relief.source')
+        _number(relief.get('resolution_km'), 'annotation_relief.resolution_km', .000001, 1000)
+        for point in _mapping(relief.get('points'), 'annotation_relief.points').values():
+            _point(point, 'annotation_relief.points', 3)
+            _number(point[0], 'annotation_relief.latitude', -90, 90)
+            _number(point[1], 'annotation_relief.longitude', -360, 360)
+            _number(point[2], 'annotation_relief.height', -MAX_HEIGHT_KM, MAX_HEIGHT_KM)
+        for rim in _mapping(relief.get('rims'), 'annotation_relief.rims').values():
+            _mapping(rim, 'annotation_relief.rims')
+            _point(rim.get('feature'), 'annotation_relief.rims.feature', 3)
+            coordinates = rim.get('coordinates')
+            if not isinstance(coordinates, list) or len(coordinates) != 97:
+                _invalid_field('annotation_relief.rims.coordinates')
+            for point in coordinates:
+                _point(point, 'annotation_relief.rims.coordinates', 3)
+                _number(point[0], 'annotation_relief.latitude', -90, 90)
+                _number(point[1], 'annotation_relief.longitude', -360, 360)
+                _number(point[2], 'annotation_relief.height', -MAX_HEIGHT_KM, MAX_HEIGHT_KM)
     if data['geometry'] is not None:
         geometry = _mapping(data['geometry'], 'geometry')
         for key in ('observer', 'right', 'north', 'sun'):
@@ -187,24 +208,33 @@ def _validate_project_data(data):
             _invalid_field('geometry.utc')
 
 
-def _ellipse_outline(pixels):
-    """Smooth a projected rim while retaining its vertex order for occultation."""
+def _ellipse_parameters(pixels):
     if len(pixels) < 6 or not np.isfinite(pixels).all():
-        return pixels
+        return None
     closed = np.allclose(pixels[0], pixels[-1])
     samples = pixels[:-1] if closed else pixels
     origin = samples.mean(axis=0)
     try:
         center, axes, degrees = cv2.fitEllipse((samples-origin).astype(np.float32))
     except cv2.error:
-        return pixels
+        return None
     radii = np.asarray(axes, float)/2
     if not np.isfinite(radii).all() or min(radii) <= 1e-6:
-        return pixels
+        return None
     center = origin+np.asarray(center)
     angle = np.radians(degrees)
     rotation = np.array([[np.cos(angle), -np.sin(angle)],
                          [np.sin(angle), np.cos(angle)]])
+    return center, radii, rotation
+
+
+def _ellipse_outline(pixels):
+    """Smooth a projected rim while retaining its vertex order for occultation."""
+    parameters = _ellipse_parameters(pixels)
+    if parameters is None:
+        return pixels
+    center, radii, rotation = parameters
+    closed = np.allclose(pixels[0], pixels[-1])
     local = (pixels-center) @ rotation
     phase = np.arctan2(local[:, 1]/radii[1], local[:, 0]/radii[0])
     # Keep each source vertex's angular position so its visibility flag still
@@ -244,6 +274,7 @@ class Project:
     crater_outlines: bool = True
     crater_outline_shape: str = "ellipse"
     terrain_rims: dict = field(default_factory=dict)
+    annotation_relief: dict = field(default_factory=dict)
     capture_mode: str = "auto"
 
     def photo_points(self, points):
@@ -316,6 +347,7 @@ class Project:
                 "crater_detection": self.crater_settings,
                 "automatic_recognition": self.identification,
                 "terrain_rims": self.terrain_rims,
+                "annotation_relief": self.annotation_relief,
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": os.path.relpath(Path(self.terrain_path).resolve(), path.parent.resolve()) if self.terrain_path else "",
                             "settings": self.terrain_settings},
@@ -340,6 +372,7 @@ class Project:
         project.crater_settings = data.get("crater_detection", {})
         project.identification = data.get("automatic_recognition", {})
         project.terrain_rims = data.get("terrain_rims", {})
+        project.annotation_relief = data.get("annotation_relief", {})
         if data["geometry"]:
             project.geometry = Geometry.from_dict(data["geometry"])
         if data["matrix"] is not None:
@@ -368,6 +401,48 @@ class Project:
             return f"{zh} · {name}"
         return name
 
+    def _feature_height(self, feature):
+        point = self.annotation_relief.get('points', {}).get(feature['id'])
+        if point is not None and abs(point[0]-feature['lat']) <= 1e-8 and abs(point[1]-feature['lon']) <= 1e-8:
+            return point[2]
+        return 0.
+
+    def _reference_relief_rim(self, feature):
+        rim = self.annotation_relief.get('rims', {}).get(feature['id'])
+        if rim and np.allclose(rim['feature'], [feature['lat'], feature['lon'], feature['diameter']], rtol=0, atol=1e-8):
+            return rim
+        return None
+
+    def annotation_points(self, features):
+        """Display coordinates, never fed back into recognition or calibration.
+
+        Round landforms use a complete projected rim's visual centre. Other
+        locations (including landing sites) retain their geographic identity.
+        """
+        points, visible, lit = self.geometry.project([f['lat'] for f in features], [f['lon'] for f in features],
+                                                     [self._feature_height(f) for f in features])
+        pixels = self.photo_points(points)
+        for i, f in enumerate(features):
+            if (not visible[i] or f['kind'] not in ('Crater, craters', 'Satellite Feature') or
+                    f['diameter'] < MIN_OUTLINE_DIAMETER_KM or
+                    not (f['id'] in self.terrain_rims or self._reference_relief_rim(f))):
+                continue
+            ring, facing = self._project_crater_rim(f)
+            if not facing.all() or contour_center(ring) is None:
+                continue
+            if self.crater_outline_shape == 'terrain':
+                center = contour_center(ring)
+            else:
+                parameters = _ellipse_parameters(ring)
+                center = parameters[0] if parameters is not None else contour_center(ring)
+            # Reject pathological projected rings rather than moving a marker
+            # outside its feature. Never infer a centre from a visible fragment.
+            extent = np.ptp(ring, axis=0)
+            if (center is not None and (extent > .1).all() and
+                    np.linalg.norm(center-pixels[i]) < max(8., np.max(extent))):
+                pixels[i] = center
+        return pixels, visible, lit
+
     def visible_features(self, catalog, shape, image=None, *, all_candidates=False):
         """Rank visible catalogue entries; the scene requests reserves as well.
 
@@ -382,8 +457,7 @@ class Project:
         catalog = list(catalog)
         if self.show_landing_sites:
             catalog.extend(landing_sites())
-        points, visible, lit = self.geometry.project([f["lat"] for f in catalog], [f["lon"] for f in catalog])
-        pixels = self.photo_points(points)
+        pixels, visible, lit = self.annotation_points(catalog)
         h, w = shape[:2]
         # Use observed brightness when a photo is available. A crater center
         # can be in shadow even though its rim is clearly visible; incorrect
@@ -500,22 +574,14 @@ class Project:
 
     def _project_crater_rim(self, feature, radius_factors=(1.,)):
         """Terrain crest when available; otherwise the catalogue reference rim."""
-        rim = self.terrain_rims.get(feature['id']) if radius_factors == (1.,) else None
+        rim = (self.terrain_rims.get(feature['id']) or self._reference_relief_rim(feature)) if radius_factors == (1.,) else None
         if rim:
             coordinates = np.asarray(rim['coordinates'], float)
             if coordinates.ndim == 2 and coordinates.shape[1] == 3 and len(coordinates) >= 16 and np.isfinite(coordinates).all():
                 points, visible, _ = self.geometry.project(coordinates[:, 0], coordinates[:, 1], coordinates[:, 2])
                 return self.photo_points(points), visible
-        center = surface_vectors([feature["lat"]], [feature["lon"]])[0]
-        east = np.array([-np.sin(np.radians(feature["lon"])), np.cos(np.radians(feature["lon"])), 0.])
-        north = np.cross(center, east)
-        angle = feature["diameter"]/(2*MOON_RADIUS_KM)*np.asarray(radius_factors)
-        theta = np.linspace(0, 2*np.pi, 97)
-        tangent = np.cos(theta[:, None])*north + np.sin(theta[:, None])*east
-        rim = (np.cos(angle[:, None, None])*center + np.sin(angle[:, None, None])*tangent).reshape(-1, 3)
-        lat = np.degrees(np.arcsin(np.clip(rim[:, 2], -1, 1)))
-        lon = np.degrees(np.arctan2(rim[:, 1], rim[:, 0]))
-        xy, visible, _ = self.geometry.project(lat, lon)
+        coordinates = catalogue_rim(feature, radius_factors)
+        xy, visible, _ = self.geometry.project(coordinates[:, 0], coordinates[:, 1], self._feature_height(feature))
         pixels = self.photo_points(xy)
         return pixels, visible
 
