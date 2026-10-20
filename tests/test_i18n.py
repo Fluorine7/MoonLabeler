@@ -509,31 +509,53 @@ def test_placeholder_check_rejects_broken_translations():
         _format_fields("保存 {name!")
 
 
-# tr()/trf() calls whose first argument is not a literal. Each one must be listed here with
-# the reason its value is already covered by the table; a new dynamic argument fails the test.
+# tr()/trf() calls whose first argument is not a literal, keyed file:function:expression. Each one
+# is listed with the reason its value is already covered; a new call site needs its own entry.
 DYNAMIC_ARGUMENTS = {
-    "detail": "describe_error: OSError.strerror, shown as-is when no entry exists",
-    "str(problem)": "describe_error: constant exception messages are scanned from their raise sites",
-    "compute.status()": "ComputeDialog: compute.status() literals are scanned (MESSAGE_FUNCTIONS)",
-    "compute.status(self.mode.currentData())": "ComputeDialog: same",
-    "choice": "name-language picker: LANGUAGE_CHOICES are scanned",
-    "item.text()": "crater feature list: catalogue feature names",
-    "name": "status messages: catalogue feature names",
-    "feature.get('name_zh') or feature['name']": "feature_caption: catalogue Chinese caption or official name",
-    "features[report.suspect_index]['name']": "registration warning: catalogue feature name",
-    "template": "i18n.trf: the template is translated by tr() inside i18n itself",
+    "app.py:describe_error:detail": "OSError.strerror, shown as-is when no entry exists",
+    "app.py:describe_error:str(problem)": "constant exception messages are scanned from their raise sites",
+    "app.py:feature_caption:feature.get('name_zh') or feature['name']": "catalogue Chinese caption or official name",
+    "app.py:accept_identification:name": "recognised feature names from the catalogue",
+    "app.py:solve_manual:features[report.suspect_index]['name']": "suspect reference point: catalogue feature name",
+    "i18n.py:trf:template": "the template is translated by tr() inside i18n itself",
+    "ui/compute.py:__init__:compute.status()": "compute.status() literals are scanned (MESSAGE_FUNCTIONS)",
+    "ui/compute.py:__init__:compute.status(self.mode.currentData())": "same",
+    "ui/window.py:build_sidebar:choice": "name-language picker: LANGUAGE_CHOICES are scanned",
+    "ui/window.py:ui_refresh_crater_review:item.text()": "crater feature list: catalogue feature names",
 }
 
 
-def test_dynamic_tr_arguments_are_registered():
-    """Non-literal tr()/trf() arguments bypass the literal scan, so each must be accounted for."""
+def _enclosing_functions(tree):
+    """``id(node) → name of the innermost function containing it`` (module level: ``<module>``)."""
+    owner = {}
+    for function in ast.walk(tree):
+        if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for child in ast.walk(function):
+                owner[id(child)] = function.name  # ast.walk is outer-first, so inner functions win
+    return owner
+
+
+def dynamic_tr_arguments():
+    """``"file:function:expression" → [line, …]`` for every non-literal tr()/trf() first argument."""
     found = {}
     for path in _python_files():
-        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        owner = _enclosing_functions(tree)
+        for node in ast.walk(tree):
             if isinstance(node, ast.Call) and _call_name(node) in ("tr", "trf") and node.args \
                     and not isinstance(node.args[0], ast.Constant):
-                found.setdefault(ast.unparse(node.args[0]), []).append(f"{path.name}:{node.lineno}")
-    unregistered = {expression: where for expression, where in found.items() if expression not in DYNAMIC_ARGUMENTS}
+                key = f"{path.relative_to(PACKAGE).as_posix()}:{owner.get(id(node), '<module>')}:{ast.unparse(node.args[0])}"
+                found.setdefault(key, []).append(node.lineno)
+    return found
+
+
+def test_dynamic_tr_arguments_are_registered():
+    """Non-literal tr()/trf() arguments bypass the literal scan, so each call site must be accounted for.
+
+    Keys are file:function:expression, so a new ``tr(name)`` elsewhere needs its own justification.
+    """
+    found = dynamic_tr_arguments()
+    unregistered = {key: lines for key, lines in found.items() if key not in DYNAMIC_ARGUMENTS}
     assert unregistered == {}, f"register in DYNAMIC_ARGUMENTS or pass a literal template: {unregistered}"
     assert sorted(set(DYNAMIC_ARGUMENTS) - set(found)) == [], "stale DYNAMIC_ARGUMENTS entry"
 
