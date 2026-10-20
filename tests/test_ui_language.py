@@ -284,6 +284,28 @@ def test_english_combo_boxes_keep_simplified_project_values(english_window):
     assert window.project.language == "繁体中文"
 
 
+def test_english_feature_selectors_show_official_names(english_window):
+    """Search results and the DEM region picker show the USGS name alone in English."""
+    import re
+    window = english_window
+    window.feature_search.setText("Copernicus")
+    window.search_features("Copernicus")
+    texts = [window.feature_list.item(i).text() for i in range(window.feature_list.count())]
+    assert texts and all(re.search(r"[一-鿿]", text) is None for text in texts), texts
+    assert any(text.startswith("Copernicus  (") for text in texts), texts
+    window.search_terrain_features("Aristarchus")
+    entries = [window.terrain_center.itemText(i) for i in range(window.terrain_center.count())]
+    assert "Aristarchus" in entries, entries
+    assert all(re.search(r"[一-鿿]", entry) is None for entry in entries), entries
+
+
+def test_chinese_feature_selectors_keep_the_bilingual_caption(traditional_window):
+    window = traditional_window
+    window.search_features("Copernicus")
+    texts = [window.feature_list.item(i).text() for i in range(window.feature_list.count())]
+    assert any(text.startswith("哥白尼  ·  Copernicus  (") for text in texts), texts
+
+
 def test_english_error_dialog_text(english_window, monkeypatch):
     from moonlabeler import app as app_module
     shown = {}

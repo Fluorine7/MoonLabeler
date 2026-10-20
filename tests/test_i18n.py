@@ -484,12 +484,77 @@ def test_english_table_has_no_stale_entries():
     assert sorted(set(data["templates"]) - set(templates) - EXTRA_TEMPLATES) == []
 
 
+def _format_fields(text):
+    """``[(field, conversion, spec), …]`` as str.format sees them; raises on malformed syntax."""
+    import string
+    return sorted((name, conversion or "", spec or "")
+                  for _, name, spec, conversion in string.Formatter().parse(text) if name is not None)
+
+
 def test_english_templates_keep_their_placeholders():
+    """Same fields, conversions and format specs as the key (order may differ); no broken syntax."""
     data = _english_data()
     for table in ("strings", "templates"):
         for key, value in data[table].items():
             if value:
-                assert set(re.findall(r"\{(\w+)", value)) == set(re.findall(r"\{(\w+)", key)), (key, value)
+                assert _format_fields(value) == _format_fields(key), (key, value)
+
+
+def test_placeholder_check_rejects_broken_translations():
+    assert _format_fields("{count} 个候选") != _format_fields("{{count}} candidates"), "escaped field drops the count"
+    assert _format_fields("偏差 {rms:.2f}") != _format_fields("Deviation {rms:d}"), "changed spec would raise at run time"
+    assert _format_fields("{a} / {a}") != _format_fields("{a}"), "repeated fields are counted"
+    assert _format_fields("{name} · {w}") == _format_fields("{w} · {name}"), "field order may change"
+    with pytest.raises(ValueError):
+        _format_fields("保存 {name!")
+
+
+# tr()/trf() calls whose first argument is not a literal. Each one must be listed here with
+# the reason its value is already covered by the table; a new dynamic argument fails the test.
+DYNAMIC_ARGUMENTS = {
+    "detail": "describe_error: OSError.strerror, shown as-is when no entry exists",
+    "str(problem)": "describe_error: constant exception messages are scanned from their raise sites",
+    "compute.status()": "ComputeDialog: compute.status() literals are scanned (MESSAGE_FUNCTIONS)",
+    "compute.status(self.mode.currentData())": "ComputeDialog: same",
+    "choice": "name-language picker: LANGUAGE_CHOICES are scanned",
+    "item.text()": "crater feature list: catalogue feature names",
+    "name": "status messages: catalogue feature names",
+    "feature.get('name_zh') or feature['name']": "feature_caption: catalogue Chinese caption or official name",
+    "features[report.suspect_index]['name']": "registration warning: catalogue feature name",
+    "template": "i18n.trf: the template is translated by tr() inside i18n itself",
+}
+
+
+def test_dynamic_tr_arguments_are_registered():
+    """Non-literal tr()/trf() arguments bypass the literal scan, so each must be accounted for."""
+    found = {}
+    for path in _python_files():
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Call) and _call_name(node) in ("tr", "trf") and node.args \
+                    and not isinstance(node.args[0], ast.Constant):
+                found.setdefault(ast.unparse(node.args[0]), []).append(f"{path.name}:{node.lineno}")
+    unregistered = {expression: where for expression, where in found.items() if expression not in DYNAMIC_ARGUMENTS}
+    assert unregistered == {}, f"register in DYNAMIC_ARGUMENTS or pass a literal template: {unregistered}"
+    assert sorted(set(DYNAMIC_ARGUMENTS) - set(found)) == [], "stale DYNAMIC_ARGUMENTS entry"
+
+
+def test_nasa_download_failure_is_fully_translated():
+    """The advice-bearing template must win over the generic one (same literal text, more fields).
+
+    Uses the shipped ui_en.json, not the fixture table, because the collision is between two real entries.
+    """
+    from moonlabeler.sources import download_error_message
+    i18n._english_table.cache_clear()
+    try:
+        message = download_error_message("https://svs.gsfc.nasa.gov/5587/a.png", TimeoutError("timed out"))
+        result = i18n.to_english(message)
+        assert result.startswith("Could not download reference data from svs.gsfc.nasa.gov: connection or read timed out.")
+        assert not _has_cjk(result), result
+        assert result.count("\n\n") == message.count("\n\n"), "every advice paragraph is kept"
+        plain = download_error_message("https://pds.example.org/x", TimeoutError("timed out"))
+        assert i18n.to_english(plain) == "Could not download reference data from pds.example.org: connection or read timed out."
+    finally:
+        i18n._english_table.cache_clear()
 
 
 def test_every_english_entry_is_translated():

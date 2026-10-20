@@ -328,6 +328,12 @@ def feature_caption(feature):
     return tr(feature.get("name_zh") or feature["name"])
 
 
+def feature_choice(feature, separator=" · "):
+    """A selector entry: the caption, with the official name appended when it differs."""
+    caption = feature_caption(feature)
+    return caption if caption == feature["name"] else f"{caption}{separator}{feature['name']}"
+
+
 def describe_error(problem):
     """Translate an error for display.
 
@@ -1089,7 +1095,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         matches = [f for f in self.catalog if text in normalized(feature_search_text(f))]
         matches.sort(key=lambda f: f["diameter"], reverse=True)
         for f in matches[:100]:
-            item = QListWidgetItem(f"{f.get('name_zh') or f['name']}  ·  {f['name']}  ({f['diameter']:.0f} km)")
+            item = QListWidgetItem(f"{feature_choice(f, '  ·  ')}  ({f['diameter']:.0f} km)")
             item.setData(Qt.ItemDataRole.UserRole, f["id"])
             self.feature_list.addItem(item)
         self.update_manual_guide()
@@ -1476,7 +1482,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.terrain_center.blockSignals(True)
         self.terrain_center.clear()
         for feature in features[:100]:
-            self.terrain_center.addItem(f"{feature.get('name_zh') or feature['name']} · {feature['name']}", feature["id"])
+            self.terrain_center.addItem(feature_choice(feature), feature["id"])
         self.terrain_center.blockSignals(False)
         if hasattr(self, "terrain_shadows"):
             self.terrain_settings_changed()

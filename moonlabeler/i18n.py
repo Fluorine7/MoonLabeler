@@ -255,17 +255,25 @@ def _literal_length(key):
     return len(_PLACEHOLDER.sub("", key))
 
 
+def _template_rank(key):
+    """Most specific template first: more literal text, then more placeholders."""
+    return _literal_length(key), len(_PLACEHOLDER.findall(key))
+
+
 def to_english(text, _nested=False):
     """Translate Simplified interface text to English regardless of the active language.
 
-    Exact ``strings`` entries first, then ``templates`` (most literal text first) whose
-    captured pieces are translated once more; unknown text is returned unchanged.
+    Exact ``strings`` entries first, then ``templates`` whose captured pieces are
+    translated once more; unknown text is returned unchanged. Templates are tried
+    most-specific first: more literal text wins, and on a tie the key with more
+    placeholders (``…{detail}。{advice}`` before ``…{detail}。``), so a generic
+    pattern cannot swallow the extra paragraphs of a longer message.
     """
     strings, templates = _english_table()
     exact = strings.get(text)
     if exact is not None:
         return exact
-    for key in sorted(templates, key=_literal_length, reverse=True):
+    for key in sorted(templates, key=_template_rank, reverse=True):
         match = _template_pattern(key).fullmatch(text)
         if match is None:
             continue
