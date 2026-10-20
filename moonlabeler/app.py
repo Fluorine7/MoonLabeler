@@ -854,8 +854,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.registration_status.setText(tr("未配准"))
             self.identification_status.setText(tr("未识别"))
             self.identification_status.setToolTip("")
+            # Translate the template first, then insert the file name so it is never rewritten.
             timestamp = tr(f" · 文件名时间：{filename_utc:%Y-%m-%d %H:%M:%S} UTC") if filename_utc else ""
-            self.statusBar().showMessage(tr(f"{Path(path).name} · {image.shape[1]} × {image.shape[0]} 像素{timestamp}"))
+            self.statusBar().showMessage(tr(f"{{name}} · {image.shape[1]} × {image.shape[0]} 像素{timestamp}").format(name=Path(path).name))
         except Exception as exc:
             self.error(str(exc))
 
@@ -917,7 +918,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             else:
                 self.identification_status.setText(tr("未识别"))
             self.dirty = False
-            self.statusBar().showMessage(tr(f"已打开 {Path(path).name}"))
+            self.statusBar().showMessage(tr("已打开 {name}").format(name=Path(path).name))
         except Exception as exc:
             self.error(str(exc))
 
@@ -934,7 +935,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.project.save(path)
             self.project_path = Path(path)
             self.dirty = False
-            self.statusBar().showMessage(tr(f"已保存 {Path(path).name}"))
+            self.statusBar().showMessage(tr("已保存 {name}").format(name=Path(path).name))
             return True
         except Exception as exc:
             self.error(str(exc))
@@ -1406,7 +1407,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def accept_dem(self, result):
         self.dem_path, name, resolution = result
-        self.dem_status.setText(tr(f"{name} · 赤道采样约 {resolution:.3f} km"))
+        self.dem_status.setText(tr(f"{{name}} · 赤道采样约 {resolution:.3f} km").format(name=name))
         self.dem_status.setToolTip(self.dem_path)
         if self.project.matrix is None:
             self.project.annotation_relief.clear()
@@ -1512,7 +1513,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                               latitude=self.project.latitude, longitude=self.project.longitude,
                               terrain_path=self.dem_path, terrain_settings=self.terrain_parameters(), min_diameter=5)
             project.save(path.with_suffix(".moonlabel"))
-            self.statusBar().showMessage(tr(f"已保存 {path.name} 和对应参考工程。"))
+            self.statusBar().showMessage(tr("已保存 {name} 和对应参考工程。").format(name=path.name))
         except Exception as exc:
             self.error(str(exc))
 

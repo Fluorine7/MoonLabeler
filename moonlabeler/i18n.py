@@ -51,7 +51,10 @@ _ALIASES = {
 # Windows / POSIX paths and bare file names (with a known extension) are kept verbatim
 # when a formatted message is converted; a file is not renamed by the interface language.
 _PROTECTED = re.compile(
-    r"(?:[A-Za-z]:[\\/]|\.{1,2}[\\/]|[\\/])[^\s'\"“”「」()（）：:；;，,。]+"
+    # Drive-letter, dot-relative, UNC and POSIX-absolute paths. A bare slash between Chinese
+    # words (长/短半轴, 阿波罗 / 嫦娥) is ordinary punctuation, so a leading slash only counts
+    # when an ASCII path segment follows it.
+    r"(?:[A-Za-z]:[\\/]|\.{1,2}[\\/]|[\\/]{2}|/(?=[A-Za-z0-9_.~-]))[^\s'\"“”「」()（）：:；;，,。]+"
     r"|[^\s'\"“”「」()（）：:；;，,。\\/]+\.(?:png|jpe?g|tiff?|fits?|fts|svg|csv|moonlabel|lbl|img|npz|json|ini|txt|md|py|log)\b",
     re.IGNORECASE,
 )

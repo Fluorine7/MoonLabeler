@@ -14,18 +14,18 @@ pytestmark = pytest.mark.skipif(not zh_variant.available(), reason="OpenCC port 
 
 @pytest.fixture
 def traditional():
-    previous = i18n.current_language()
+    previous = (i18n._language, i18n._explicit)
     i18n.set_language(i18n.TRADITIONAL)
     yield
-    i18n.set_language(previous)
+    i18n._language, i18n._explicit = previous
 
 
 @pytest.fixture
 def simplified():
-    previous = i18n.current_language()
+    previous = (i18n._language, i18n._explicit)
     i18n.set_language(i18n.SIMPLIFIED)
     yield
-    i18n.set_language(previous)
+    i18n._language, i18n._explicit = previous
 
 
 def test_normalize_accepts_common_codes_and_labels():
@@ -49,13 +49,13 @@ def test_resolve_prefers_environment_then_preference(monkeypatch):
 
 
 def test_set_language_falls_back_to_simplified_for_unknown_codes():
-    previous = i18n.current_language()
+    previous = (i18n._language, i18n._explicit)
     try:
         assert i18n.set_language("fr") == i18n.SIMPLIFIED
         assert i18n.set_language("zh-TW") == i18n.TRADITIONAL
         assert i18n.is_traditional()
     finally:
-        i18n.set_language(previous)
+        i18n._language, i18n._explicit = previous
 
 
 def test_tr_is_identity_in_simplified(simplified):
@@ -129,6 +129,15 @@ def test_file_names_and_paths_are_never_rewritten(traditional):
         "[Errno 2] No such file or directory: 'C:/用户/工程/照片.png'"
     assert i18n.tr("无法读取 D:\\月面\\文件\\raw.tif 的像素") == "無法讀取 D:\\月面\\文件\\raw.tif 的像素"
     assert i18n.tr("原始照片已移动，请重新选择 ./照片/文件.jpg") == "原始照片已移動，請重新選擇 ./照片/文件.jpg"
+    assert i18n.tr("无法读取 /home/用户/文件.fits") == "無法讀取 /home/用户/文件.fits"
+    assert i18n.tr(r"无法读取 \\nas\月面\文件.tif") == "無法讀取 \\\\nas\\月面\\文件.tif"
+
+
+def test_slashes_between_words_are_not_treated_as_paths(traditional):
+    assert i18n.tr("长/短半轴 12.0 / 10.0 px；方向 20.0°") == "長/短半軸 12.0 / 10.0 px；方向 20.0°"
+    assert i18n.tr("着陆点（阿波罗 / 嫦娥）") == "著陸點（阿波羅 / 嫦娥）"
+    assert i18n.tr("导出 PNG / SVG 或保存工程") == "匯出 PNG / SVG 或儲存專案"
+    assert i18n.tr("大 / 中 / 小：1.80% / 1.50% / 1.20%") == "大 / 中 / 小：1.80% / 1.50% / 1.20%"
 
 
 def test_system_language_defaults_to_simplified_for_unknown_regions(monkeypatch):

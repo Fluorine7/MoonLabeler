@@ -21,16 +21,22 @@ def app():
 
 
 @pytest.fixture
-def traditional_window(app):
+def language_state():
+    """Restore both the resolved language and the explicit-choice flag afterwards."""
+    previous = (i18n._language, i18n._explicit)
+    yield
+    i18n._language, i18n._explicit = previous
+
+
+@pytest.fixture
+def traditional_window(app, language_state):
     from moonlabeler.app import MainWindow
-    previous = i18n.current_language()
     i18n.set_language(i18n.TRADITIONAL)
     window = MainWindow()
     try:
         yield window
     finally:
         window.close()
-        i18n.set_language(previous)
 
 
 def test_widgets_show_traditional_text(traditional_window):
@@ -63,6 +69,19 @@ def test_combo_boxes_keep_simplified_project_values(traditional_window):
     assert window.project.kind == "全部"
 
 
+def test_status_messages_keep_file_names_verbatim(traditional_window, monkeypatch, tmp_path):
+    """Display points translate the template first and insert the file name afterwards."""
+    from moonlabeler import app as app_module
+    window = traditional_window
+    project_path = tmp_path / "月球（原图） 文件 备份.moonlabel"
+    monkeypatch.setattr(app_module.QFileDialog, "getSaveFileName", staticmethod(lambda *args, **kwargs: (str(project_path), "")))
+    window.project.image_path = str(tmp_path / "照片.png")
+    window.image = app_module.np.zeros((4, 4, 3), dtype=app_module.np.uint8)
+    window.save_project()
+    assert window.statusBar().currentMessage() == "已儲存 月球（原图） 文件 备份.moonlabel"
+    assert project_path.exists()
+
+
 def test_error_dialog_text_is_translated(traditional_window, monkeypatch):
     from moonlabeler import app as app_module
     shown = {}
@@ -72,19 +91,15 @@ def test_error_dialog_text_is_translated(traditional_window, monkeypatch):
     assert traditional_window.statusBar().currentMessage() == "操作未完成。"
 
 
-def test_language_dialog_lists_native_names(app):
+def test_language_dialog_lists_native_names(app, language_state):
     from moonlabeler.ui.language import LanguageDialog
-    previous = i18n.current_language()
     i18n.set_language(i18n.TRADITIONAL)
-    try:
-        dialog = LanguageDialog(i18n.TRADITIONAL)
-        combo = dialog.findChild(type(dialog.combo), "uiLanguage") or dialog.combo
-        assert [combo.itemText(i) for i in range(combo.count())] == ["简体中文", "繁體中文"]
-        assert [combo.itemData(i) for i in range(combo.count())] == list(i18n.LANGUAGES)
-        assert dialog.selected() == i18n.TRADITIONAL
-        assert dialog.windowTitle() == "介面語言"
-    finally:
-        i18n.set_language(previous)
+    dialog = LanguageDialog(i18n.TRADITIONAL)
+    combo = dialog.findChild(type(dialog.combo), "uiLanguage") or dialog.combo
+    assert [combo.itemText(i) for i in range(combo.count())] == ["简体中文", "繁體中文"]
+    assert [combo.itemData(i) for i in range(combo.count())] == list(i18n.LANGUAGES)
+    assert dialog.selected() == i18n.TRADITIONAL
+    assert dialog.windowTitle() == "介面語言"
 
 
 class _FakePreferences:
@@ -162,14 +177,10 @@ def test_restart_relaunches_module_from_repository_root(traditional_window, monk
     assert cwd == str(app_module.ROOT)
 
 
-def test_simplified_window_is_unchanged(app):
+def test_simplified_window_is_unchanged(app, language_state):
     from moonlabeler.app import MainWindow
-    previous = i18n.current_language()
     i18n.set_language(i18n.SIMPLIFIED)
-    try:
-        window = MainWindow()
-        assert window.identify_button.text() == "自动识别并标注"
-        assert window.kind.itemData(0) == "全部"
-        window.close()
-    finally:
-        i18n.set_language(previous)
+    window = MainWindow()
+    assert window.identify_button.text() == "自动识别并标注"
+    assert window.kind.itemData(0) == "全部"
+    window.close()
