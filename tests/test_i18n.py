@@ -111,3 +111,53 @@ def test_phrase_table_is_keyed_on_traditional_text():
 
 def test_environment_pin_used_by_the_test_suite():
     assert os.environ.get(i18n.ENV_VARIABLE) == "zh-CN"
+
+
+def test_phrase_pass_is_single_longest_match(traditional):
+    # A replacement is never re-scanned by a shorter key; identity entries protect longer words.
+    assert i18n.tr("最低 6 原图像素") == "最低 6 原圖像素"
+    assert i18n.tr("边缘支持度 0.80，用于排序") == "邊緣支持度 0.80，用於排序"
+    assert i18n.tr("点击选中；请核对坑缘和地名。") == "點選以選取；請核對坑緣和地名。"
+    assert i18n.tr("按公开坐标标注，使用小档字号。") == "按公開座標標註，使用最小字級。"
+    assert i18n.tr("可检查代理中此域名的线路") == "可檢查代理伺服器中此網域的線路"
+
+
+def test_file_names_and_paths_are_never_rewritten(traditional):
+    assert i18n.tr("已保存 文件名-计算工程.png") == "已儲存 文件名-计算工程.png"
+    assert i18n.tr("已打开 demo.moonlabel") == "已開啟 demo.moonlabel"
+    assert i18n.tr("[Errno 2] No such file or directory: 'C:/用户/工程/照片.png'") == \
+        "[Errno 2] No such file or directory: 'C:/用户/工程/照片.png'"
+    assert i18n.tr("无法读取 D:\\月面\\文件\\raw.tif 的像素") == "無法讀取 D:\\月面\\文件\\raw.tif 的像素"
+    assert i18n.tr("原始照片已移动，请重新选择 ./照片/文件.jpg") == "原始照片已移動，請重新選擇 ./照片/文件.jpg"
+
+
+def test_system_language_defaults_to_simplified_for_unknown_regions(monkeypatch):
+    monkeypatch.setattr(i18n, "_system_locale_name", lambda: "zh_MY")
+    assert i18n.system_language() == i18n.SIMPLIFIED
+    monkeypatch.setattr(i18n, "_system_locale_name", lambda: "zh_HK")
+    assert i18n.system_language() == i18n.TRADITIONAL
+    monkeypatch.setattr(i18n, "_system_locale_name", lambda: None)
+    assert i18n.system_language() == i18n.SIMPLIFIED
+
+
+@pytest.fixture
+def pristine_state(monkeypatch):
+    """Run with no language resolved yet and restore the module state afterwards."""
+    previous = (i18n._language, i18n._explicit)
+    monkeypatch.setattr(i18n, "_language", None)
+    monkeypatch.setattr(i18n, "_explicit", False)
+    yield
+    i18n._language, i18n._explicit = previous
+
+
+def test_initialize_respects_explicit_choice_but_applies_startup_order_otherwise(pristine_state, monkeypatch):
+    monkeypatch.setenv(i18n.ENV_VARIABLE, "zh-CN")
+    i18n.set_language("zh-TW")
+    assert i18n.initialize("zh-CN") == i18n.TRADITIONAL, "explicit set_language wins over main()"
+    monkeypatch.setattr(i18n, "_language", None)
+    monkeypatch.setattr(i18n, "_explicit", False)
+    assert i18n.initialize("zh-TW") == i18n.SIMPLIFIED, "environment beats the saved preference"
+    monkeypatch.delenv(i18n.ENV_VARIABLE)
+    monkeypatch.setattr(i18n, "_explicit", False)
+    assert i18n.initialize("zh-TW") == i18n.TRADITIONAL, "saved preference beats the locale"
+    assert i18n.current_language() == i18n.TRADITIONAL

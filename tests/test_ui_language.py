@@ -87,6 +87,81 @@ def test_language_dialog_lists_native_names(app):
         i18n.set_language(previous)
 
 
+class _FakePreferences:
+    def __init__(self, **values):
+        self.values = dict(values)
+
+    def value(self, key, default=None):
+        return self.values.get(key, default)
+
+    def setValue(self, key, value):
+        self.values[key] = value
+
+    def sync(self):
+        pass
+
+
+def test_language_dialog_preselects_pending_saved_preference(traditional_window, monkeypatch):
+    """A saved-but-not-yet-active choice must not be reverted by reopening the dialog."""
+    from moonlabeler.ui import language as language_module
+    from PySide6.QtWidgets import QDialog
+    seen = []
+
+    class FakeDialog:
+        def __init__(self, current, parent=None):
+            seen.append(current)
+
+        def exec(self):
+            return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(language_module, "LanguageDialog", FakeDialog)
+    window = traditional_window
+    window.compute_preferences = _FakePreferences(**{i18n.PREFERENCE_KEY: "zh-CN"})
+    window.choose_ui_language()
+    assert seen == ["zh-CN"], "dialog shows the saved preference, not the language currently running"
+    window.compute_preferences = _FakePreferences()
+    window.choose_ui_language()
+    assert seen[-1] == i18n.TRADITIONAL, "without a saved preference it falls back to the active language"
+
+
+def test_restart_failure_keeps_the_window_open(traditional_window, monkeypatch):
+    from moonlabeler import app as app_module
+    from PySide6.QtGui import QCloseEvent
+    shown = {}
+    monkeypatch.setattr(app_module.QProcess, "startDetached", staticmethod(lambda *args: (False, 0)))
+    monkeypatch.setattr(app_module.QMessageBox, "warning", lambda parent, title, text: shown.update(text=text))
+    window = traditional_window
+    window.confirm_discard = lambda: True
+    window.restart_requested = True
+    event = QCloseEvent()
+    window.closeEvent(event)
+    assert not event.isAccepted()
+    assert window.restart_requested is False
+    assert "無法自動重新啟動" in shown["text"]
+
+
+def test_restart_relaunches_module_from_repository_root(traditional_window, monkeypatch, tmp_path):
+    from moonlabeler import app as app_module
+    from PySide6.QtGui import QCloseEvent
+    calls = []
+    monkeypatch.setattr(app_module.QProcess, "startDetached", staticmethod(lambda *args: (calls.append(args), (True, 4242))[1]))
+    photo = tmp_path / "moon.png"
+    photo.write_bytes(b"")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(app_module.sys, "argv", ["run_app.py", "moon.png"])
+    window = traditional_window
+    window.confirm_discard = lambda: True
+    window.restart_requested = True
+    event = QCloseEvent()
+    window.closeEvent(event)
+    assert event.isAccepted()
+    program, arguments, cwd = calls[0]
+    assert program == app_module.sys.executable
+    assert arguments[:2] == ["-m", "moonlabeler"]
+    assert arguments[2] == str(photo.resolve()), "relative photo path is made absolute before the cwd changes"
+    assert cwd == str(app_module.ROOT)
+
+
 def test_simplified_window_is_unchanged(app):
     from moonlabeler.app import MainWindow
     previous = i18n.current_language()

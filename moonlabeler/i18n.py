@@ -9,20 +9,26 @@ Chinese the lookup order is:
 1. an exact entry in ``data/ui_zh_TW.json`` ``"strings"`` (hand-curated
    sentences whose wording differs from a mechanical conversion);
 2. otherwise OpenCC ``s2tw`` character conversion (shared with the name
-   language in :mod:`zh_variant`) followed by the ``"phrases"`` table, which
-   swaps mainland software vocabulary for the Taiwan equivalents
-   (保存→儲存, 導出→匯出, 文件→檔案 …). This path also covers f-strings and
-   exception messages whose exact text is only known at run time.
+   language in :mod:`zh_variant`) followed by one longest-match pass over the
+   ``"phrases"`` table, which swaps mainland software vocabulary for the
+   Taiwan equivalents (保存→儲存, 導出→匯出, 文件→檔案 …). Keys are matched
+   against the OpenCC output, and replaced text is never re-processed, so an
+   identity entry such as 原圖像素→原圖像素 protects a longer word from the
+   shorter 圖像→影像 rule. This path also covers f-strings and exception
+   messages whose exact text is only known at run time. File names and
+   filesystem paths embedded in such text are left untouched.
 
-The active language is resolved lazily from, in order: an explicit
+The active language is resolved from, in order: an explicit
 :func:`set_language` call, the ``MOONLABELER_UI_LANG`` environment variable
 (used by the test-suite to pin Simplified), the saved preference handed to
-:func:`resolve`, and finally the system locale. Changing the preference takes
-effect after the application restarts; widgets are not retranslated live.
+:func:`initialize` by ``main()``, and finally the system locale. Changing the
+preference takes effect after the application restarts; widgets are not
+retranslated live.
 """
 import json
 import locale
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -42,7 +48,16 @@ _ALIASES = {
     TRADITIONAL: ("zh-tw", "zh_tw", "zh-hant", "zh_hant", "zh-hk", "zh_hk", "zh-mo", "zh_mo", "traditional", "繁體中文", "繁体中文"),
 }
 
+# Windows / POSIX paths and bare file names (with a known extension) are kept verbatim
+# when a formatted message is converted; a file is not renamed by the interface language.
+_PROTECTED = re.compile(
+    r"(?:[A-Za-z]:[\\/]|\.{1,2}[\\/]|[\\/])[^\s'\"“”「」()（）：:；;，,。]+"
+    r"|[^\s'\"“”「」()（）：:；;，,。\\/]+\.(?:png|jpe?g|tiff?|fits?|fts|svg|csv|moonlabel|lbl|img|npz|json|ini|txt|md|py|log)\b",
+    re.IGNORECASE,
+)
+
 _language = None
+_explicit = False
 
 
 def normalize(code):
@@ -58,9 +73,7 @@ def normalize(code):
     return None
 
 
-def system_language():
-    """Traditional for zh_TW / zh_HK / zh_MO system locales, Simplified otherwise."""
-    name = None
+def _system_locale_name():
     try:
         from PySide6.QtCore import QLocale
         name = QLocale.system().name()
@@ -71,7 +84,12 @@ def system_language():
             name = locale.getlocale()[0]
         except Exception:  # pragma: no cover
             name = None
-    return normalize(name) if name and name.lower().startswith("zh") else SIMPLIFIED
+    return name
+
+
+def system_language():
+    """Traditional for zh_TW / zh_HK / zh_MO system locales, Simplified otherwise (incl. zh_MY)."""
+    return normalize(_system_locale_name()) or SIMPLIFIED
 
 
 def resolve(preference=None):
@@ -80,9 +98,21 @@ def resolve(preference=None):
 
 
 def set_language(code):
-    """Fix the active interface language; unknown codes fall back to Simplified."""
-    global _language
+    """Fix the active interface language explicitly; unknown codes fall back to Simplified.
+
+    An explicit choice is never overridden by :func:`initialize`.
+    """
+    global _language, _explicit
     _language = normalize(code) or SIMPLIFIED
+    _explicit = True
+    return _language
+
+
+def initialize(preference=None):
+    """Apply the start-up resolution (environment, saved preference, locale) unless set explicitly."""
+    global _language
+    if not _explicit:
+        _language = resolve(preference)
     return _language
 
 
@@ -102,22 +132,41 @@ def _table():
     with open(DATA_PATH, encoding="utf-8") as handle:
         data = json.load(handle)
     strings = data.get("strings", {})
-    # Longest phrases first so that e.g. 文件名→檔名 wins over 文件→檔案.
-    phrases = sorted(((k, v) for k, v in data.get("phrases", {}).items()), key=lambda item: -len(item[0]))
-    return strings, tuple(phrases)
+    phrases = dict(data.get("phrases", {}))
+    # One alternation, longest key first: a single pass means a replacement is never
+    # re-scanned by a shorter key, and identity entries act as protected words.
+    pattern = re.compile("|".join(re.escape(key) for key in sorted(phrases, key=len, reverse=True))) if phrases else None
+    return strings, phrases, pattern
+
+
+def _apply_phrases(text):
+    _, phrases, pattern = _table()
+    if pattern is None:
+        return text
+    return pattern.sub(lambda match: phrases[match.group(0)], text)
+
+
+def _convert_segment(text):
+    if not text:
+        return text
+    return _apply_phrases(zh_variant.to_traditional(text))
 
 
 @lru_cache(maxsize=8192)
 def to_traditional(text):
     """Translate Simplified interface text to Traditional regardless of the active language."""
-    strings, phrases = _table()
+    strings, _, _ = _table()
     exact = strings.get(text)
     if exact is not None:
         return exact
-    converted = zh_variant.to_traditional(text)
-    for source, target in phrases:
-        converted = converted.replace(source, target)
-    return converted
+    pieces = []
+    cursor = 0
+    for match in _PROTECTED.finditer(text):
+        pieces.append(_convert_segment(text[cursor:match.start()]))
+        pieces.append(match.group(0))
+        cursor = match.end()
+    pieces.append(_convert_segment(text[cursor:]))
+    return "".join(pieces)
 
 
 def tr(text):

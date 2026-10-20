@@ -423,7 +423,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             return detection, recognition, geometry, lat, lon
         def failure(message):
             self.identification_status.setText(tr("参考点配准失败，请核对取点") if known else tr("识别失败，可改用手动校准"))
-            self.identification_status.setToolTip(message)
+            self.identification_status.setToolTip(tr(message))
             self.show_crater_review()
             self.error(message)
         self.identification_status.setText(tr("正在按参考点配准…") if known else tr("正在识别…"))
@@ -720,7 +720,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if self.busy:
             return
         from .ui.language import LanguageDialog
-        dialog = LanguageDialog(i18n.current_language(), self)
+        # Preselect the saved preference: a change that is waiting for a restart must not be
+        # silently reverted by reopening the dialog and pressing OK.
+        saved = i18n.normalize(self.compute_preferences.value(i18n.PREFERENCE_KEY)) or i18n.current_language()
+        dialog = LanguageDialog(saved, self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         code = dialog.selected()
@@ -1859,13 +1862,34 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.restart_requested = False
             event.ignore()
         elif self.confirm_discard():
+            if self.restart_requested:
+                self.restart_requested = False
+                if not self.restart_application():
+                    # Keep the window: the preference is saved, the user can reopen manually.
+                    event.ignore()
+                    self.error(tr("无法自动重新启动 MoonLabeler，请手动重新打开。界面语言设置已保存。"))
+                    return
             self.clear_terrain_preview()
             event.accept()
-            if self.restart_requested:
-                QProcess.startDetached(sys.executable, sys.argv[1:] if getattr(sys, "frozen", False) else ["-m", "moonlabeler", *sys.argv[1:]], os.getcwd())
         else:
             self.restart_requested = False
             event.ignore()
+
+    def restart_application(self):
+        """Launch a fresh MoonLabeler process; return False when it could not be started.
+
+        Source checkouts are relaunched as ``python -m moonlabeler`` from the repository
+        root so the module is found even when the original process was started through
+        ``run_app.py`` from another directory; relative file arguments are made absolute.
+        """
+        arguments = [str(Path(arg).resolve()) if Path(arg).exists() else arg for arg in sys.argv[1:]]
+        if getattr(sys, "frozen", False):
+            program, cwd = sys.executable, os.getcwd()
+        else:
+            program, arguments, cwd = sys.executable, ["-m", "moonlabeler", *arguments], str(ROOT)
+        result = QProcess.startDetached(program, arguments, cwd)
+        started = result[0] if isinstance(result, tuple) else result
+        return bool(started)
 
 
 def main():
@@ -1874,7 +1898,7 @@ def main():
     application.setApplicationName("MoonLabeler")
     application.setOrganizationName("MoonLabeler")
     preferences = QSettings(str(CACHE/'preferences.ini'), QSettings.Format.IniFormat)
-    i18n.set_language(i18n.resolve(preferences.value(i18n.PREFERENCE_KEY)))
+    i18n.initialize(preferences.value(i18n.PREFERENCE_KEY))
     window = MainWindow()
     window.showMaximized()
     if len(sys.argv) > 1:
