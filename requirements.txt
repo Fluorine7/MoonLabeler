@@ -4,3 +4,4 @@ Pillow>=11,<13
 opencv-contrib-python-headless>=4.10,<5
 skyfield>=1.49,<2
 pyshp>=2.3,<4
+opencc-python-reimplemented>=0.1.7,<0.2

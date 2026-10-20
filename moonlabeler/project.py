@@ -21,6 +21,11 @@ from .registration import transform_points
 from .eyepiece import distort_points, distortion_jacobian
 from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR, landing_marker_radius
 from .annotation_relief import catalogue_rim, contour_center, MIN_OUTLINE_DIAMETER_KM, MAX_HEIGHT_KM
+from .zh_variant import to_traditional
+
+# Label name language choices shown in the UI and accepted in project files.
+LANGUAGE_CHOICES = ("双语", "英文", "中文", "繁体中文", "双语（繁体）")
+TRADITIONAL_LANGUAGES = ("繁体中文", "双语（繁体）")
 
 DEFAULT_FONT_PERCENT = 1.8
 DEFAULT_FONT_STEP_PERCENT = .3
@@ -127,7 +132,7 @@ def _validate_project_data(data):
     for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color'):
         if key in style and not isinstance(style[key], str):
             _invalid_field(f'style.{key}')
-    if 'language' in style and style['language'] not in ('双语', '英文', '中文'):
+    if 'language' in style and style['language'] not in LANGUAGE_CHOICES:
         _invalid_field('style.language')
     if 'color' in style:
         try:
@@ -406,9 +411,11 @@ class Project:
         if override is not None:
             return override
         name, zh = feature["name"], feature.get("name_zh", "")
-        if self.language == "中文":
+        if self.language in TRADITIONAL_LANGUAGES:
+            zh = to_traditional(zh)
+        if self.language in ("中文", "繁体中文"):
             return zh or name
-        if self.language == "双语" and zh:
+        if self.language in ("双语", "双语（繁体）") and zh:
             return f"{zh} · {name}"
         return name
 

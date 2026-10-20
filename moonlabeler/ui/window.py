@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QListView, QTabWidget, QSizePolicy,
 )
 from .capture import CaptureField
+from ..project import LANGUAGE_CHOICES
 
 LABEL_DRAG_HINT = f"按住 {'Cmd' if sys.platform == 'darwin' else 'Ctrl'} 拖动标签"
 
@@ -748,7 +749,7 @@ class WindowUiMixin:
         group = QGroupBox("名称与文字")
         form = self.ui_form(group)
         self.language = self.ui_combo()
-        self.language.addItems(["双语", "英文", "中文"])
+        self.language.addItems(list(LANGUAGE_CHOICES))
         self.language.currentTextChanged.connect(self.style_changed)
         form.addRow("名称语言", self.language)
         self.font_size = QDoubleSpinBox()
@@ -831,7 +832,7 @@ class WindowUiMixin:
         restore = QPushButton("恢复名称与默认位置")
         restore.clicked.connect(self.reset_labels)
         apply_box.addWidget(restore)
-        self.language.setToolTip("中文译名未收录时显示官方原名。")
+        self.language.setToolTip("中文译名未收录时显示官方原名。繁体选项由简体译名经 OpenCC 转换。")
         # The label list absorbs any surplus page height on tall windows.
         labels_layout.addWidget(group, 1)
         self.catalog_button = QPushButton(f"更新 USGS 地名（现有 {len(self.catalog):,} 项）")
