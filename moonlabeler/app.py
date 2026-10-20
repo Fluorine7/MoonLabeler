@@ -71,7 +71,7 @@ def qimage(array):
 
 class WorkerSignals(QObject):
     result = Signal(object)
-    error = Signal(str)
+    error = Signal(object)  # the exception itself, so OSError paths can be shown verbatim
     finished = Signal()
 
 
@@ -86,7 +86,7 @@ class Worker(QRunnable):
             self.signals.result.emit(self.function())
         except Exception as exc:
             traceback.print_exc()
-            self.signals.error.emit(str(exc))
+            self.signals.error.emit(exc)
         finally:
             self.signals.finished.emit()
 
@@ -423,7 +423,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             return detection, recognition, geometry, lat, lon
         def failure(message):
             self.identification_status.setText(tr("参考点配准失败，请核对取点") if known else tr("识别失败，可改用手动校准"))
-            self.identification_status.setToolTip(tr(message))
+            self.identification_status.setToolTip(self.error_text(message))
             self.show_crater_review()
             self.error(message)
         self.identification_status.setText(tr("正在按参考点配准…") if known else tr("正在识别…"))
@@ -693,7 +693,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                         writer.writerow([Path(self.project.image_path).name, index+1, f"{c.x:.3f}", f"{c.y:.3f}", f"{c.major:.3f}", f"{c.minor:.3f}", f"{c.angle:.3f}", "" if c.support is None else f"{c.support:.3f}", c.method])
                 self.statusBar().showMessage(tr("CSV 已保存"))
             except OSError as exc:
-                self.error(str(exc))
+                self.error(exc)
 
     def run_background(self, title, function, success, failure=None):
         if self.busy:
@@ -737,9 +737,27 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.restart_requested = True
             self.close()
 
-    def error(self, text):
+    def error(self, problem):
+        """Report a failure; ``problem`` is an exception or a Simplified message string."""
         self.statusBar().showMessage(tr("操作未完成。"))
-        QMessageBox.warning(self, "MoonLabeler", tr(text))
+        QMessageBox.warning(self, "MoonLabeler", self.error_text(problem))
+
+    @staticmethod
+    def error_text(problem):
+        """Translate an error for display.
+
+        Messages raised by MoonLabeler itself are Simplified sentences without
+        paths and are translated whole. An OSError carries the offending path
+        separately, so only its description is translated and the path(s) are
+        appended verbatim; the interface language must never rewrite a file name.
+        """
+        if isinstance(problem, OSError) and problem.filename is not None:
+            detail = problem.strerror or type(problem).__name__
+            names = [str(problem.filename)]
+            if problem.filename2 is not None:
+                names.append(str(problem.filename2))
+            return tr(detail) + "\n" + "\n".join(names)
+        return tr(str(problem))
 
     def sync_capture_time(self, *args):
         # date remains the single timestamp source for geometry and projects.
@@ -858,7 +876,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             timestamp = tr(f" · 文件名时间：{filename_utc:%Y-%m-%d %H:%M:%S} UTC") if filename_utc else ""
             self.statusBar().showMessage(tr(f"{{name}} · {image.shape[1]} × {image.shape[0]} 像素{timestamp}").format(name=Path(path).name))
         except Exception as exc:
-            self.error(str(exc))
+            self.error(exc)
 
     def set_image(self, image):
         self.clear_terrain_preview()
@@ -920,7 +938,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.dirty = False
             self.statusBar().showMessage(tr("已打开 {name}").format(name=Path(path).name))
         except Exception as exc:
-            self.error(str(exc))
+            self.error(exc)
 
     def save_project(self):
         if self.image is None:
@@ -938,7 +956,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.statusBar().showMessage(tr("已保存 {name}").format(name=Path(path).name))
             return True
         except Exception as exc:
-            self.error(str(exc))
+            self.error(exc)
             return False
 
     def sync_controls(self):
@@ -1294,7 +1312,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.statusBar().showMessage(tr("校准完成"))
             self.dirty = True
         except Exception as exc:
-            self.error(str(exc))
+            self.error(exc)
 
     def accept_auto(self, result, *, reference_project=None):
         match, geometry, matrix, reference_utc, latitude, longitude = result
@@ -1367,7 +1385,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.run_background(tr("正在匹配本地参考照片…"), work,
                                 lambda result: self.accept_auto(result, reference_project=reference_project))
         except Exception as exc:
-            self.error(str(exc))
+            self.error(exc)
 
     def terrain_parameters(self):
         return {"center_id": self.terrain_center.currentData(), "width_km": self.terrain_width.value(),
@@ -1515,7 +1533,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             project.save(path.with_suffix(".moonlabel"))
             self.statusBar().showMessage(tr("已保存 {name} 和对应参考工程。").format(name=path.name))
         except Exception as exc:
-            self.error(str(exc))
+            self.error(exc)
 
     def match_terrain_reference(self):
         if self.image is None or self.terrain_reference is None:
@@ -1811,7 +1829,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 self.render_png(path if path.lower().endswith(".png") else path+".png")
                 self.statusBar().showMessage(tr("PNG 已导出"))
             except Exception as exc:
-                self.error(str(exc))
+                self.error(exc)
 
     def export_vector(self):
         if self.image is None or self.project.matrix is None:
@@ -1823,7 +1841,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 export_svg(path if path.lower().endswith(".svg") else path+".svg", self.image, self.annotation_entries(), self.project, self.annotation_leaders())
                 self.statusBar().showMessage(tr("SVG 已导出"))
             except Exception as exc:
-                self.error(str(exc))
+                self.error(exc)
 
     def update_catalog(self):
         def success(features):

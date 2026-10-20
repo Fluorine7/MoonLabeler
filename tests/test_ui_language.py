@@ -89,6 +89,35 @@ def test_error_dialog_text_is_translated(traditional_window, monkeypatch):
     traditional_window.error("请先打开照片。")
     assert shown["text"] == "請先開啟照片。"
     assert traditional_window.statusBar().currentMessage() == "操作未完成。"
+    # Exceptions raised by MoonLabeler itself are translated whole, like strings.
+    traditional_window.error(ValueError("参考工程未配准"))
+    assert shown["text"] == "參考專案未配準"
+
+
+def test_os_error_paths_are_shown_verbatim(traditional_window, monkeypatch):
+    from moonlabeler import app as app_module
+    shown = {}
+    monkeypatch.setattr(app_module.QMessageBox, "warning", lambda parent, title, text: shown.update(text=text))
+    path = "C:/用户/文件 备份/月球（原图）.png"
+    traditional_window.error(FileNotFoundError(2, "No such file or directory", path))
+    assert shown["text"] == "No such file or directory\n" + path
+    posix = "/用户/工程/照片.png"
+    traditional_window.error(PermissionError(13, "拒绝访问", posix))
+    assert shown["text"].endswith("\n" + posix), "a POSIX path with a Chinese first directory stays verbatim"
+    assert shown["text"].splitlines()[0] == "拒絕訪問", "the description itself is still translated"
+    # Rename-style errors carry two paths; both stay untouched.
+    traditional_window.error(FileExistsError(17, "File exists", path, None, posix))
+    assert shown["text"] == "File exists\n" + path + "\n" + posix
+
+
+def test_background_failure_delivers_the_exception_object(traditional_window, monkeypatch):
+    from moonlabeler import app as app_module
+    received = []
+    monkeypatch.setattr(app_module.QMessageBox, "warning", lambda parent, title, text: received.append(text))
+    worker = app_module.Worker(lambda: (_ for _ in ()).throw(FileNotFoundError(2, "No such file or directory", "D:/月面/文件 1.png")))
+    worker.signals.error.connect(traditional_window.error)
+    worker.run()
+    assert received == ["No such file or directory\nD:/月面/文件 1.png"]
 
 
 def test_language_dialog_lists_native_names(app, language_state):
