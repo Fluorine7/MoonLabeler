@@ -75,7 +75,7 @@ def test_manual_additions_and_fallback_are_not_attributed_to_lpnd():
 
 
 def test_all_supplied_entries_load_offline_without_changing_original_terms():
-    snapshot = json.loads((PACKAGE_DATA/'lunar_chinese_names.json').read_text())
+    snapshot = json.loads((PACKAGE_DATA/'lunar_chinese_names.json').read_text(encoding="utf-8"))
     names = snapshot['names']
     features = [{'name': name} for name in names]
     translate_catalog(features)
@@ -95,7 +95,7 @@ def test_all_supplied_entries_load_offline_without_changing_original_terms():
 
 
 def test_expanded_snapshot_does_not_replace_active_catalogue_geometry():
-    features = json.loads((PACKAGE_DATA/'catalog.json').read_text())['features']
+    features = json.loads((PACKAGE_DATA/'catalog.json').read_text(encoding="utf-8"))['features']
     before = deepcopy(features)
     translate_catalog(features)
     assert len(features) == 9087
@@ -109,7 +109,7 @@ def test_expanded_snapshot_does_not_replace_active_catalogue_geometry():
 def test_unlisted_satellite_inherits_primary_translation_with_derived_flag():
     feature = {'name': 'Clavius Z'}
     # Z is not an explicitly translated Clavius satellite in the supplied snapshot.
-    names = json.loads((PACKAGE_DATA/'lunar_chinese_names.json').read_text())['names']
+    names = json.loads((PACKAGE_DATA/'lunar_chinese_names.json').read_text(encoding="utf-8"))['names']
     assert feature['name'] not in names
     translate_catalog([feature])
     assert feature['name_zh'] == '克拉维斯 Z'

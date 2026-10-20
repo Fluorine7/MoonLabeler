@@ -333,11 +333,11 @@ def nasa_reference(utc, cache):
     hour = utc.replace(minute=0, second=0, microsecond=0)
     index = int((hour - datetime(2026, 1, 1, tzinfo=timezone.utc)).total_seconds() // 3600)
     root = Path(cache) / "nasa-2026"
-    data = json.loads(download(NASA_2026 + "mooninfo_2026.json", root / "mooninfo.json").read_text())
+    data = json.loads(download(NASA_2026 + "mooninfo_2026.json", root / "mooninfo.json").read_text(encoding="utf-8"))
     record = data[index]
     directory = NASA_2026 + "frames/3840x2160_16x9_30p/plain/"
     links = Links()
-    listing = download(directory, root / "frames.html").read_text()
+    listing = download(directory, root / "frames.html").read_text(encoding="utf-8")
     links.feed(listing)
     sample = next((u for u in links.hrefs if re.search(r"moon\.\d+\.(tif|png|jpg)$", u)), None)
     if sample is None:

@@ -29,11 +29,11 @@ DATA = ROOT / 'examples/auto-polar-more-059'
 def test_blind_northern_photo(key, landmarks):
     if not (DATA / 'manifest.json').exists() or not (ROOT / '.cache/terrain/LDEM_16.IMG').exists():
         pytest.skip('Local photographs and cached terrain required')
-    item = next(row for row in json.loads((DATA / 'manifest.json').read_text()) if row['key'] == key)
+    item = next(row for row in json.loads((DATA / 'manifest.json').read_text(encoding="utf-8")) if row['key'] == key)
     image = read_image(DATA / item['file'])
     geometry = compute_geometry(datetime.fromisoformat(item['utc']), ROOT / '.cache/ephemeris')
     result = identify_from_terrain(image, geometry, ROOT / '.cache')
-    catalog = json.loads((ROOT / 'moonlabeler/data/catalog.json').read_text())['features']
+    catalog = json.loads((ROOT / 'moonlabeler/data/catalog.json').read_text(encoding="utf-8"))['features']
     projected_geometry = result.projection_geometry or geometry
     for name, (x, y, tolerance) in landmarks.items():
         feature = next(feature for feature in catalog if feature['name'] == name)

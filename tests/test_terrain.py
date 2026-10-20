@@ -53,7 +53,7 @@ SCALING_FACTOR = 0.5
 PRODUCT_ID = "REGIONAL_TEST"
 '''
     path = tmp_path/"test.lbl"
-    path.write_text(label)
+    path.write_text(label, encoding="utf-8")
     dem = ElevationMap.load(path)
     try:
         assert dem.sample([.75, .75], [-.75, -.25]) == pytest.approx([0, .05])

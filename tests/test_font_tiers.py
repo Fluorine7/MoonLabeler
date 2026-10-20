@@ -58,9 +58,9 @@ def test_tiers_persist_and_pre_tier_projects_remain_uniform(tmp_path):
     loaded = Project.load(path)
     assert loaded.font_percent == 1.8 and loaded.font_step_percent == .3
     assert loaded.label_font_sizes(features, (2000, 2000, 3)) == dict(Large=36, Medium=30, Small=24)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     del data['style']['font_step_percent']
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     legacy = Project.load(path)
     assert legacy.font_step_percent == 0
     assert set(legacy.label_font_sizes(features, (2000, 2000, 3)).values()) == {36}

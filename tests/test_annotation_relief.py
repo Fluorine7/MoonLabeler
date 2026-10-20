@@ -16,7 +16,7 @@ from moonlabeler.annotation_relief import prepare_annotation_relief, catalogue_r
 
 
 def test_0708_sphere_registration_does_not_receive_a_second_height_shift():
-    record = json.loads((Path(__file__).parent/'fixtures/0708-sphere-registration.json').read_text())
+    record = json.loads((Path(__file__).parent/'fixtures/0708-sphere-registration.json').read_text(encoding="utf-8"))
     catalog = [dict(id=row['name'], name=row['name'], lat=row['height'][0], lon=row['height'][1],
                     diameter=20., kind='Crater, craters') for row in record['positions']]
     p = Project(geometry=Geometry.from_dict(record['geometry']), matrix=np.array(record['matrix']),
@@ -248,9 +248,9 @@ def test_saved_invalid_height_is_rejected_before_display(tmp_path, height):
     p.image_path = str(tmp_path/'photo.png')
     path = tmp_path/'bad.moonlabel'
     p.save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data['annotation_relief']['points'][f['id']][2] = height
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match='工程'):
         Project.load(path)
 
@@ -261,9 +261,9 @@ def test_legacy_project_without_snapshot_keeps_original_sphere(tmp_path):
     p.image_path = str(tmp_path/'photo.png')
     path = tmp_path/'legacy.moonlabel'
     p.save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data.pop('annotation_relief')
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     restored = Project.load(path)
     assert not restored.annotation_relief
     expected = restored.photo_points(restored.geometry.project([0.], [60.])[0])
