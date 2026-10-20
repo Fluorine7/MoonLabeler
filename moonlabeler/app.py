@@ -287,6 +287,49 @@ class CraterOverlay(QGraphicsItem):
 
 
 
+class RecognitionFailure(ValueError):
+    """Every automatic registration strategy failed.
+
+    Keeps the underlying exceptions instead of flattening them into one string,
+    so :func:`describe_error` can translate the labels while leaving any file
+    path inside an OSError untouched. ``str()`` stays the Simplified summary
+    used by logs and tracebacks.
+    """
+
+    def __init__(self, candidate_count, causes):
+        self.candidate_count = candidate_count
+        self.causes = list(causes)  # (Simplified label, exception)
+        super().__init__(self.render(lambda text: text))
+
+    def summary(self):
+        return f"检测到 {self.candidate_count} 个疑似坑缘；未通过自动配准验证。"
+
+    def render(self, translate, describe=str):
+        lines = [translate(self.summary())]
+        lines += [translate(label) + describe(cause) for label, cause in self.causes]
+        return "\n".join(lines)
+
+
+def describe_error(problem):
+    """Translate an error for display.
+
+    Messages raised by MoonLabeler itself are Simplified sentences without
+    paths and are translated whole. An OSError carries the offending path
+    separately, so only its description is translated and the path(s) are
+    appended verbatim; the interface language must never rewrite a file name.
+    A :class:`RecognitionFailure` renders each underlying error the same way.
+    """
+    if isinstance(problem, RecognitionFailure):
+        return problem.render(tr, describe_error)
+    if isinstance(problem, OSError) and problem.filename is not None:
+        detail = problem.strerror or type(problem).__name__
+        names = [str(problem.filename)]
+        if problem.filename2 is not None:
+            names.append(str(problem.filename2))
+        return tr(detail) + "\n" + "\n".join(names)
+    return tr(str(problem))
+
+
 class MainWindow(WindowUiMixin, QMainWindow):
     def __init__(self):
         super().__init__()
@@ -413,7 +456,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
                             try:
                                 recognition = identify_from_terrain(image, geometry, CACHE, catalog=catalog)
                             except (ValueError, OSError) as terrain_error:
-                                raise ValueError(tr(f"检测到 {len(detection.candidates)} 个疑似坑缘；未通过自动配准验证。\n纹理参考：{atlas_error}\n轮廓参考：{limb_error}\n坑群参考：{exc}\n高程参考：{terrain_error}")) from terrain_error
+                                raise RecognitionFailure(len(detection.candidates), [
+                                    ("纹理参考：", atlas_error), ("轮廓参考：", limb_error),
+                                    ("坑群参考：", exc), ("高程参考：", terrain_error)]) from terrain_error
             if recognition.projection_surface == 'terrain':
                 # The accepted automatic relief fit used the basic LOLA map,
                 # not an unrelated map currently selected in the preview UI.
@@ -742,22 +787,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.statusBar().showMessage(tr("操作未完成。"))
         QMessageBox.warning(self, "MoonLabeler", self.error_text(problem))
 
-    @staticmethod
-    def error_text(problem):
-        """Translate an error for display.
-
-        Messages raised by MoonLabeler itself are Simplified sentences without
-        paths and are translated whole. An OSError carries the offending path
-        separately, so only its description is translated and the path(s) are
-        appended verbatim; the interface language must never rewrite a file name.
-        """
-        if isinstance(problem, OSError) and problem.filename is not None:
-            detail = problem.strerror or type(problem).__name__
-            names = [str(problem.filename)]
-            if problem.filename2 is not None:
-                names.append(str(problem.filename2))
-            return tr(detail) + "\n" + "\n".join(names)
-        return tr(str(problem))
+    error_text = staticmethod(describe_error)
 
     def sync_capture_time(self, *args):
         # date remains the single timestamp source for geometry and projects.

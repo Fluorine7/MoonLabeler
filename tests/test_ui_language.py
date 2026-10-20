@@ -110,6 +110,30 @@ def test_os_error_paths_are_shown_verbatim(traditional_window, monkeypatch):
     assert shown["text"] == "File exists\n" + path + "\n" + posix
 
 
+def test_recognition_failure_keeps_nested_os_error_paths(traditional_window, monkeypatch):
+    """The all-strategies-failed error renders each cause separately; nested paths stay verbatim."""
+    from moonlabeler import app as app_module
+    shown = {}
+    monkeypatch.setattr(app_module.QMessageBox, "warning", lambda parent, title, text: shown.update(text=text))
+    posix = "/用户/工程/照片.png"
+    failure = app_module.RecognitionFailure(7, [
+        ("纹理参考：", ValueError("纹理对应点太少或过于集中，未采用配准。")),
+        ("轮廓参考：", ValueError("没有可用的月盘轮廓。")),
+        ("坑群参考：", ValueError("可用坑缘不足七处，无法独立验证自动识别。")),
+        ("高程参考：", PermissionError(13, "Permission denied", posix)),
+    ])
+    # Logs and tracebacks keep the Simplified summary with the raw causes.
+    assert str(failure).splitlines()[0] == "检测到 7 个疑似坑缘；未通过自动配准验证。"
+    assert posix in str(failure)
+    traditional_window.error(failure)
+    lines = shown["text"].splitlines()
+    assert lines[0] == "偵測到 7 個疑似坑緣；未通過自動配準驗證。"
+    assert lines[1] == "紋理參考：紋理對應點太少或過於集中，未採用配準。"
+    assert lines[3] == "坑群參考：可用坑緣不足七處，無法獨立驗證自動辨識。"
+    assert lines[4] == "高程參考：Permission denied"
+    assert lines[5] == posix
+
+
 def test_background_failure_delivers_the_exception_object(traditional_window, monkeypatch):
     from moonlabeler import app as app_module
     received = []
