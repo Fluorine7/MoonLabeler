@@ -41,13 +41,13 @@ from moonlabeler.sources import read_image
 def test_project_rejects_invalid_fields_before_gui_consumes_them(tmp_path, field, value):
     path = tmp_path/'invalid.moonlabel'
     Project(image_path=str(tmp_path/'photo.png')).save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     owner = data
     parts = field.split('.')
     for part in parts[:-1]:
         owner = owner[part]
     owner[parts[-1]] = value
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match='工程'):
         Project.load(path)
 
@@ -59,10 +59,10 @@ def test_legacy_project_preserves_unknown_ids_extensions_and_pixel_font(tmp_path
                       labels={'unavailable': {'text': None, 'position': [-5, 8], 'future_option': 'keep'}},
                       terrain_settings={'center_id': None})
     project.save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data['style'].pop('font_percent')
     data['style']['future_option'] = 'ignore'
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     loaded = Project.load(path)
     loaded.update_font_size((100, 100, 3))
     assert loaded.font_size == 80

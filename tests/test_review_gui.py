@@ -27,9 +27,9 @@ def test_invalid_project_keeps_current_photo_labels_and_controls(monkeypatch, tm
         previous_labels = json.loads(json.dumps(window.project.labels))
         path = tmp_path/'invalid.moonlabel'
         window.project.save(path)
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         data['style']['font_percent'] = 'bad'
-        path.write_text(json.dumps(data))
+        path.write_text(json.dumps(data), encoding="utf-8")
         monkeypatch.setattr(window, 'confirm_discard', lambda: True)
         window.open_project(str(path))
         assert errors, 'Invalid project was accepted without an error'
@@ -57,9 +57,9 @@ def test_changing_label_limit_keeps_legacy_font_outside_default_ui_range(monkeyp
     Image.fromarray(np.full((100, 100, 3), 100, np.uint8)).save(photo)
     path = tmp_path/'legacy.moonlabel'
     Project(image_path=str(photo), font_size=80).save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data['style'].pop('font_percent')
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     try:
         window.open_project(str(path))
         assert window.project.font_size == 80

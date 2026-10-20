@@ -15,14 +15,14 @@ from moonlabeler.sources import DataDownloadError, download, read_image
 
 def test_nasa_tls_timeout_has_manual_fallback_and_keeps_cached_data(tmp_path, monkeypatch):
     target = tmp_path / 'mooninfo.json'
-    target.write_text('existing validated cache')
+    target.write_text('existing validated cache', encoding="utf-8")
     def fail(*args, **kwargs):
         raise URLError('The handshake operation timed out')
     monkeypatch.setattr('moonlabeler.sources.urlopen', fail)
     with pytest.raises(DataDownloadError, match='HTTPS 握手超时') as exc:
         download('https://svs.gsfc.nasa.gov/vis/mooninfo.json', target, force=True)
     assert '地形点' in str(exc.value)
-    assert target.read_text() == 'existing validated cache'
+    assert target.read_text(encoding="utf-8") == 'existing validated cache'
     assert not target.with_suffix('.json.part').exists()
 
 

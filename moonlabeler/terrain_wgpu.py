@@ -30,7 +30,7 @@ def _get_context():
                 if adapter is None or adapter.info.get('adapter_type') not in ('IntegratedGPU', 'DiscreteGPU'):
                     raise RuntimeError('No hardware GPU available')
                 device = adapter.request_device_sync(label='MoonLabeler terrain')
-                shader = device.create_shader_module(code=(Path(__file__).parent/'data'/'terrain.wgsl').read_text())
+                shader = device.create_shader_module(code=(Path(__file__).parent/'data'/'terrain.wgsl').read_text(encoding="utf-8"))
                 pipeline = device.create_compute_pipeline(layout='auto', compute={'module': shader, 'entry_point': 'main'})
                 _context = (wgpu, adapter, device, pipeline)
             except Exception as exc:
