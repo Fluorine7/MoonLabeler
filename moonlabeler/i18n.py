@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2026 Fluorine Zhu
-"""User-interface language: Simplified Chinese (source text) or Traditional Chinese.
+"""User-interface language: Simplified Chinese (source text), Traditional Chinese or English.
 
 All interface strings in the code base are written in Simplified Chinese and
-passed through :func:`tr` at the point where they are shown. For Traditional
-Chinese the lookup order is:
+passed through :func:`tr` at the point where they are shown. Messages with
+variable parts are written as one template and shown with :func:`trf`, which
+translates the template first and inserts the values afterwards, so file
+names and numbers are never rewritten and every language sees one sentence.
+
+For Traditional Chinese the lookup order is:
 
 1. an exact entry in ``data/ui_zh_TW.json`` ``"strings"`` (hand-curated
    sentences whose wording differs from a mechanical conversion);
@@ -17,6 +21,21 @@ Chinese the lookup order is:
    shorter 圖像→影像 rule. This path also covers f-strings and exception
    messages whose exact text is only known at run time. File names and
    filesystem paths embedded in such text are left untouched.
+
+English has no mechanical conversion, so every sentence is looked up in
+``data/ui_en.json``:
+
+1. ``"strings"``: exact source text → English. This covers static ``tr()``
+   literals, :func:`trf` templates (keyed on the template with its ``{name}``
+   placeholders), project-value captions and constant exception messages.
+2. ``"templates"``: only for text that is already formatted before it reaches
+   :func:`tr`, i.e. f-string exception messages raised by the core modules and
+   :func:`moonlabeler.compute.status`. Each key's ``{name}`` placeholders match
+   any text; the whole message must match, and the captured pieces are looked
+   up once more (one level) before being inserted into the English template.
+   Keys with more literal text are tried first.
+3. Otherwise, or while an entry's value is still empty, the source text is
+   shown unchanged.
 
 The active language is resolved from, in order: an explicit
 :func:`set_language` call, the ``MOONLABELER_UI_LANG`` environment variable
@@ -36,17 +55,26 @@ from . import zh_variant
 
 SIMPLIFIED = "zh-CN"
 TRADITIONAL = "zh-TW"
-LANGUAGES = (SIMPLIFIED, TRADITIONAL)
+ENGLISH = "en"
+LANGUAGES = (SIMPLIFIED, TRADITIONAL, ENGLISH)
 # Native-script names for the language picker; never passed through tr().
-LANGUAGE_NAMES = {SIMPLIFIED: "简体中文", TRADITIONAL: "繁體中文"}
+LANGUAGE_NAMES = {SIMPLIFIED: "简体中文", TRADITIONAL: "繁體中文", ENGLISH: "English"}
 ENV_VARIABLE = "MOONLABELER_UI_LANG"
 PREFERENCE_KEY = "ui/language"
 DATA_PATH = Path(__file__).resolve().parent / "data" / "ui_zh_TW.json"
+EN_DATA_PATH = Path(__file__).resolve().parent / "data" / "ui_en.json"
 
 _ALIASES = {
     SIMPLIFIED: ("zh-cn", "zh_cn", "zh-hans", "zh_hans", "zh-sg", "zh_sg", "zh", "simplified", "简体中文", "簡體中文"),
     TRADITIONAL: ("zh-tw", "zh_tw", "zh-hant", "zh_hant", "zh-hk", "zh_hk", "zh-mo", "zh_mo", "traditional", "繁體中文", "繁体中文"),
+    ENGLISH: ("en", "en-us", "en_us", "en-gb", "en_gb", "english"),
 }
+# Any other English locale (en_AU, en-IN …) and Windows names such as "English_United States".
+_ENGLISH_LOCALE = re.compile(r"en(?:[-_]|$)|english")
+# Chinese locales without a Traditional region (zh_MY, Windows "Chinese (Simplified)_…") keep the
+# Simplified source text, as before; so do "C" / "POSIX", which carry no language at all.
+_SOURCE_LOCALES = re.compile(r"zh|chinese|c$|posix$")
+_PLACEHOLDER = re.compile(r"\{(\w+)\}")
 
 # Windows / POSIX paths and bare file names (with a known extension) are kept verbatim
 # when a formatted message is converted; a file is not renamed by the interface language.
@@ -63,16 +91,22 @@ _language = None
 _explicit = False
 
 
-def normalize(code):
-    """Map a language code or label to ``zh-CN`` / ``zh-TW``; ``None`` when unknown."""
-    if not code:
-        return None
+def _locale_text(code):
     text = str(code).strip().lower()
     # Strip encodings such as ``zh_TW.UTF-8`` reported by locale.getlocale().
-    text = text.split(".")[0].split("@")[0]
+    return text.split(".")[0].split("@")[0]
+
+
+def normalize(code):
+    """Map a language code or label to ``zh-CN`` / ``zh-TW`` / ``en``; ``None`` when unknown."""
+    if not code:
+        return None
+    text = _locale_text(code)
     for language, aliases in _ALIASES.items():
         if text in aliases:
             return language
+    if _ENGLISH_LOCALE.match(text):
+        return ENGLISH
     return None
 
 
@@ -91,8 +125,20 @@ def _system_locale_name():
 
 
 def system_language():
-    """Traditional for zh_TW / zh_HK / zh_MO system locales, Simplified otherwise (incl. zh_MY)."""
-    return normalize(_system_locale_name()) or SIMPLIFIED
+    """Language for the system locale.
+
+    Traditional for zh_TW / zh_HK / zh_MO, Simplified for every other Chinese locale
+    (incl. zh_MY) and when no locale is reported, English for any other language.
+    """
+    name = _system_locale_name()
+    if not name:
+        return SIMPLIFIED
+    language = normalize(name)
+    if language:
+        return language
+    if _SOURCE_LOCALES.match(_locale_text(name)):
+        return SIMPLIFIED
+    return ENGLISH
 
 
 def resolve(preference=None):
@@ -128,6 +174,10 @@ def current_language():
 
 def is_traditional():
     return current_language() == TRADITIONAL
+
+
+def is_english():
+    return current_language() == ENGLISH
 
 
 @lru_cache(maxsize=None)
@@ -172,12 +222,89 @@ def to_traditional(text):
     return "".join(pieces)
 
 
+@lru_cache(maxsize=None)
+def _english_table():
+    """``(strings, templates)`` from ``ui_en.json``; entries still empty are left out."""
+    try:
+        with open(EN_DATA_PATH, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except FileNotFoundError:
+        data = {}
+    strings = {key: value for key, value in data.get("strings", {}).items() if value}
+    templates = {key: value for key, value in data.get("templates", {}).items() if value}
+    return strings, templates
+
+
+@lru_cache(maxsize=None)
+def _template_pattern(key):
+    """Compile a template key: ``{name}`` matches any text, everything else literally."""
+    parts = []
+    seen = set()
+    cursor = 0
+    for match in _PLACEHOLDER.finditer(key):
+        parts.append(re.escape(key[cursor:match.start()]))
+        name = match.group(1)
+        parts.append(f"(?P={name})" if name in seen else f"(?P<{name}>.+?)")
+        seen.add(name)
+        cursor = match.end()
+    parts.append(re.escape(key[cursor:]))
+    return re.compile("".join(parts), re.DOTALL)
+
+
+def _literal_length(key):
+    return len(_PLACEHOLDER.sub("", key))
+
+
+def to_english(text, _nested=False):
+    """Translate Simplified interface text to English regardless of the active language.
+
+    Exact ``strings`` entries first, then ``templates`` (most literal text first) whose
+    captured pieces are translated once more; unknown text is returned unchanged.
+    """
+    strings, templates = _english_table()
+    exact = strings.get(text)
+    if exact is not None:
+        return exact
+    for key in sorted(templates, key=_literal_length, reverse=True):
+        match = _template_pattern(key).fullmatch(text)
+        if match is None:
+            continue
+        values = match.groupdict()
+        if not _nested:
+            values = {name: to_english(value, _nested=True) for name, value in values.items()}
+        try:
+            return templates[key].format(**values)
+        except (KeyError, IndexError, ValueError):
+            return text
+    return text
+
+
 def tr(text):
     """Return ``text`` in the active interface language.
 
-    ``text`` is the Simplified source string (static literal or an already
-    formatted f-string). Empty values and non-strings are returned unchanged.
+    ``text`` is the Simplified source string (static literal, a :func:`trf`
+    template or an already formatted exception message). Empty values and
+    non-strings are returned unchanged.
     """
-    if not text or not isinstance(text, str) or current_language() != TRADITIONAL:
+    if not text or not isinstance(text, str):
         return text
-    return to_traditional(text)
+    language = current_language()
+    if language == TRADITIONAL:
+        return to_traditional(text)
+    if language == ENGLISH:
+        return to_english(text)
+    return text
+
+
+def trf(template, *args, **kwargs):
+    """Translate ``template`` and then fill in its ``{…}`` fields.
+
+    Values are inserted after translation, so numbers, file names and paths are
+    never rewritten; pass Chinese values through :func:`tr` before handing them in.
+    A translation whose fields do not match falls back to the source template.
+    """
+    translated = tr(template)
+    try:
+        return translated.format(*args, **kwargs)
+    except (KeyError, IndexError, ValueError):
+        return template.format(*args, **kwargs)

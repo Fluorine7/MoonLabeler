@@ -34,9 +34,15 @@ from PySide6.QtWidgets import (
 )
 from .capture import CaptureField
 from ..project import LANGUAGE_CHOICES
-from ..i18n import tr
+from ..i18n import tr, trf
 
-LABEL_DRAG_HINT = f"按住 {'Cmd' if sys.platform == 'darwin' else 'Ctrl'} 拖动标签"
+# Qt's ControlModifier is Command on macOS.
+LABEL_DRAG_KEY = 'Cmd' if sys.platform == 'darwin' else 'Ctrl'
+
+
+def label_drag_hint():
+    """The "hold Ctrl and drag a label" hint in the interface language."""
+    return trf("按住 {key} 拖动标签", key=LABEL_DRAG_KEY)
 
 
 class WidePopupComboBox(QComboBox):
@@ -130,15 +136,16 @@ class WindowUiMixin:
         index = self.crater_list.currentRow()
         candidate = self.crater_candidates[index] if 0 <= index < len(self.crater_candidates) else None
         self.ui_crater_selection.setText(
-            tr(f"候选 {index+1:02d} · ({candidate.x:.0f}, {candidate.y:.0f}) · 半径 {(candidate.major+candidate.minor)/2:.0f} px")
+            trf("候选 {number:02d} · ({x:.0f}, {y:.0f}) · 半径 {radius:.0f} px",
+                number=index+1, x=candidate.x, y=candidate.y, radius=(candidate.major+candidate.minor)/2)
             if candidate else tr("未选择候选坑"))
         item = self.crater_feature.currentItem()
-        name = tr(f"地名：{item.text()}") if item is not None else tr("地名：未选择")
+        name = trf("地名：{name}", name=tr(item.text())) if item is not None else tr("地名：未选择")
         self.ui_crater_name.setText(self.ui_crater_name.fontMetrics().elidedText(
             name, Qt.TextElideMode.ElideRight, max(120, self.crater_action_panel.width()-20)))
         self.ui_crater_name.setToolTip(name)
         count = len(self.project.anchors)
-        self.crater_finish_button.setText(tr(f"查看参考点（{count}）") if count else tr("查看参考点"))
+        self.crater_finish_button.setText(trf("查看参考点（{count}）", count=count) if count else tr("查看参考点"))
         self.ui_refresh_crater_hits_view()
         self.ui_update_registration_height()
 
@@ -188,7 +195,7 @@ class WindowUiMixin:
     def ui_update_time_summary(self, *args):
         """Keep imported/saved seconds visible even with the minute editor open."""
         self.capture_time_toggle.setText(
-            tr(f"具体时间 · UTC {self.capture_time.time().toString('HH:mm:ss')}"))
+            trf("具体时间 · UTC {time}", time=self.capture_time.time().toString('HH:mm:ss')))
 
     def ui_sync_capture_fields(self):
         day, time = self.date.date(), self.date.time()
@@ -392,7 +399,7 @@ class WindowUiMixin:
         form = self.ui_form(group)
         self.capture_mode = WidePopupComboBox()
         for caption, mode in ((tr("自动"), "auto"), (tr("相机直拍"), "direct"), (tr("目镜后"), "afocal")):
-            self.capture_mode.addItem(tr(caption), mode)
+            self.capture_mode.addItem(caption, mode)
         self.capture_mode.setToolTip(
             tr("自动：必要时尝试畸变校正；相机直拍：跳过目镜畸变校正；"
             "目镜后：允许校正，仍先尝试普通配准。\n"
@@ -840,7 +847,7 @@ class WindowUiMixin:
         self.language.setToolTip(tr("中文译名未收录时显示官方原名。繁体选项由简体译名经 OpenCC 转换。"))
         # The label list absorbs any surplus page height on tall windows.
         labels_layout.addWidget(group, 1)
-        self.catalog_button = QPushButton(tr(f"更新 USGS 地名（现有 {len(self.catalog):,} 项）"))
+        self.catalog_button = QPushButton(trf("更新 USGS 地名（现有 {count:,} 项）", count=len(self.catalog)))
         self.catalog_button.clicked.connect(self.update_catalog)
         labels_layout.addWidget(self.catalog_button)
         labels_layout.addStretch()
@@ -888,8 +895,8 @@ class WindowUiMixin:
         header_box.setSpacing(12)
         self.canvas_title = QLabel(tr("月面照片"))
         self.canvas_title.setObjectName("canvasTitle")
-        self.canvas_details = QLabel(tr(f"滚轮缩放 · {LABEL_DRAG_HINT} · 双击编辑文字"))
-        self.canvas.setToolTip(tr(f"滚轮缩放 · 拖动平移\n{LABEL_DRAG_HINT} · 双击编辑文字"))
+        self.canvas_details = QLabel(trf("滚轮缩放 · {hint} · 双击编辑文字", hint=label_drag_hint()))
+        self.canvas.setToolTip(trf("滚轮缩放 · 拖动平移\n{hint} · 双击编辑文字", hint=label_drag_hint()))
         self.canvas_details.setObjectName("canvasDetails")
         header_box.addWidget(self.canvas_title)
         header_box.addStretch()

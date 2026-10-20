@@ -152,7 +152,7 @@ def test_language_dialog_lists_native_names(app, language_state):
     i18n.set_language(i18n.TRADITIONAL)
     dialog = LanguageDialog(i18n.TRADITIONAL)
     combo = dialog.findChild(type(dialog.combo), "uiLanguage") or dialog.combo
-    assert [combo.itemText(i) for i in range(combo.count())] == ["简体中文", "繁體中文"]
+    assert [combo.itemText(i) for i in range(combo.count())] == ["简体中文", "繁體中文", "English"]
     assert [combo.itemData(i) for i in range(combo.count())] == list(i18n.LANGUAGES)
     assert dialog.selected() == i18n.TRADITIONAL
     assert dialog.windowTitle() == "介面語言"
@@ -231,6 +231,81 @@ def test_restart_relaunches_module_from_repository_root(traditional_window, monk
     assert arguments[:2] == ["-m", "moonlabeler"]
     assert arguments[2] == str(photo.resolve()), "relative photo path is made absolute before the cwd changes"
     assert cwd == str(app_module.ROOT)
+
+
+# Injected so the English tests do not depend on the state of ui_en.json.
+EN_STRINGS = {
+    "自动识别并标注": "Identify and Label",
+    "全部": "All",
+    "双语": "Bilingual",
+    "英文": "English",
+    "中文": "Chinese",
+    "繁体中文": "Traditional Chinese",
+    "双语（繁体）": "Bilingual (Traditional)",
+    "请先打开照片。": "Please open a photo first.",
+    "操作未完成。": "Operation not completed.",
+    "检测到 {count} 个疑似坑缘；未通过自动配准验证。": "Found {count} possible crater rims; automatic registration failed.",
+    "纹理参考：": "Texture reference: ",
+    "没有可用的月盘轮廓。": "No usable lunar limb.",
+}
+EN_TEMPLATES = {"工程字段无效：{field}。": "Invalid project field: {field}."}
+
+
+@pytest.fixture
+def english_window(app, language_state, monkeypatch):
+    from moonlabeler.app import MainWindow
+    monkeypatch.setattr(i18n, "_english_table", lambda: (dict(EN_STRINGS), dict(EN_TEMPLATES)))
+    i18n.set_language(i18n.ENGLISH)
+    window = MainWindow()
+    try:
+        yield window
+    finally:
+        window.close()
+
+
+def test_widgets_show_english_text(english_window):
+    window = english_window
+    assert window.identify_button.text() == "Identify and Label"
+    assert "正七价的氟离子" in window.windowTitle(), "author's pen name must stay verbatim"
+    # Strings without an English entry yet fall back to the Simplified source text.
+    assert window.workspace_tabs.tabText(0) == "校准"
+
+
+def test_english_combo_boxes_keep_simplified_project_values(english_window):
+    window = english_window
+    assert window.kind.itemText(0) == "All"
+    assert window.kind.itemData(0) == "全部"
+    labels = [window.language.itemText(i) for i in range(window.language.count())]
+    values = [window.language.itemData(i) for i in range(window.language.count())]
+    assert values == list(LANGUAGE_CHOICES)
+    assert labels == ["Bilingual", "English", "Chinese", "Traditional Chinese", "Bilingual (Traditional)"]
+    window.language.setCurrentIndex(window.language.findData("繁体中文"))
+    window.apply_label_settings()
+    assert window.project.language == "繁体中文"
+
+
+def test_english_error_dialog_text(english_window, monkeypatch):
+    from moonlabeler import app as app_module
+    shown = {}
+    monkeypatch.setattr(app_module.QMessageBox, "warning", lambda parent, title, text: shown.update(text=text))
+    english_window.error("请先打开照片。")
+    assert shown["text"] == "Please open a photo first."
+    assert english_window.statusBar().currentMessage() == "Operation not completed."
+    # Formatted core messages are matched against templates.
+    assert app_module.describe_error(ValueError("工程字段无效：utc。")) == "Invalid project field: utc."
+    path = "C:/用户/工程/照片.png"
+    english_window.error(FileNotFoundError(2, "No such file or directory", path))
+    assert shown["text"] == "No such file or directory\n" + path
+
+
+def test_english_recognition_failure_translates_the_summary_template(english_window, monkeypatch):
+    from moonlabeler import app as app_module
+    failure = app_module.RecognitionFailure(5, [("纹理参考：", ValueError("没有可用的月盘轮廓。"))])
+    assert str(failure).splitlines()[0] == "检测到 5 个疑似坑缘；未通过自动配准验证。"
+    assert app_module.describe_error(failure).splitlines() == [
+        "Found 5 possible crater rims; automatic registration failed.",
+        "Texture reference: No usable lunar limb.",
+    ]
 
 
 def test_simplified_window_is_unchanged(app, language_state):
