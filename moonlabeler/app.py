@@ -301,6 +301,10 @@ class RecognitionFailure(ValueError):
         self.causes = list(causes)  # (Simplified label, exception)
         super().__init__(self.render(lambda text: text))
 
+    def __reduce__(self):
+        # Exceptions with extra constructor arguments need this to survive pickling.
+        return (type(self), (self.candidate_count, self.causes))
+
     def summary(self):
         return f"检测到 {self.candidate_count} 个疑似坑缘；未通过自动配准验证。"
 

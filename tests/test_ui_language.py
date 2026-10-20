@@ -125,6 +125,9 @@ def test_recognition_failure_keeps_nested_os_error_paths(traditional_window, mon
     # Logs and tracebacks keep the Simplified summary with the raw causes.
     assert str(failure).splitlines()[0] == "检测到 7 个疑似坑缘；未通过自动配准验证。"
     assert posix in str(failure)
+    import pickle
+    restored = pickle.loads(pickle.dumps(failure))
+    assert str(restored) == str(failure) and restored.candidate_count == 7
     traditional_window.error(failure)
     lines = shown["text"].splitlines()
     assert lines[0] == "偵測到 7 個疑似坑緣；未通過自動配準驗證。"
