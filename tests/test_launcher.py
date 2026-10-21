@@ -33,7 +33,7 @@ echo RUN_MOONLABELER
         assert outcome.returncode == 0 and 'RUN_MOONLABELER' in outcome.stdout
     else:
         assert outcome.returncode != 0
-        assert '3.11' in outcome.stdout
+        assert '3.12' in outcome.stdout
         assert 'RUN_MOONLABELER' not in outcome.stdout
         assert python.exists()
 
