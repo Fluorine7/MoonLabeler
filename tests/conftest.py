@@ -11,5 +11,12 @@ previous value afterwards; tests of the resolution order patch the variable
 themselves with ``monkeypatch``.
 """
 import os
+import sys
 
 os.environ["MOONLABELER_UI_LANG"] = "zh-CN"
+
+# The offscreen platform plugin on Windows has no font database unless told
+# where the system fonts live; without one, text renders as nothing and the
+# SVG/PNG typography tests see empty images.
+if sys.platform == "win32" and os.path.isdir(r"C:\Windows\Fonts"):
+    os.environ.setdefault("QT_QPA_FONTDIR", r"C:\Windows\Fonts")
