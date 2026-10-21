@@ -367,4 +367,6 @@ def test_external_oserror_without_filename_preserves_path(traditional_window, tm
         read_image(path)
     assert error.value.filename is None
     assert describe_error(error.value) == str(error.value)
-    assert str(path) in describe_error(error.value)
+    # Pillow quotes paths with repr(), which doubles Windows backslashes.
+    assert path.parent.name in describe_error(error.value)
+    assert path.name in describe_error(error.value)
