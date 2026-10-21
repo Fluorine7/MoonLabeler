@@ -45,7 +45,7 @@ cd MoonLabeler
 ```
 
 也可在 macOS 双击 `start-mac.command`。首次启动会创建虚拟环境并安装依赖；已有环境的依赖不满足当前版本要求时也会更新。
-其他系统可通过 Python 启动，相关界面尚未完成平台实测：
+其他系统可通过 Python 启动，相关界面尚未完成平台实测。Ubuntu / Debian 还需安装 Qt 的系统库和中文字体：`sudo apt-get install libegl1 libopengl0 libgl1 fonts-noto-cjk`。
 
 ```bash
 python3 -m venv .venv
