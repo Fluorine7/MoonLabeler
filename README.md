@@ -45,6 +45,8 @@ cd MoonLabeler
 ```
 
 也可在 macOS 双击 `start-mac.command`。首次启动会创建虚拟环境并安装依赖。
+
+Windows 可用 `pwsh -File build-windows.ps1` 打包成免安装的 `dist/MoonLabeler/MoonLabeler.exe`（PyInstaller 单文件夹，附带 JPL 星历与 FITS 支持；缓存位于 `%LOCALAPPDATA%/MoonLabeler/cache`）。
 其他系统可通过 Python 启动，相关界面尚未完成平台实测：
 
 ```bash
@@ -156,7 +158,7 @@ Set `MOONLABELER_COMPUTE=cpu` to disable acceleration, or `auto` for automatic s
 The font tiers use projected equivalent-area diameter: large at **2%** or more of the image's short side, medium at **0.8%–2%**, and small below **0.8%**. This includes foreshortening and the camera transform; filtering the catalogue does not change a formation's tier. Rilles and other long terrain use catalogue extent. Tier sizes drive collision bounds, PNG and SVG together and are saved in projects. Older projects keep their uniform text; to enable tiers, set the maximum size to **1.8%**, decrement to **0.3%**, then regenerate. The calculation is batched and does not rerun recognition or read elevation data.
 
 Requires **Python 3.11+**. Development and native UI testing are primarily on macOS.
-Clone the repository and run `./start-mac.command` on macOS, or create a virtual environment, install `requirements.txt`, and run `python -m moonlabeler` as shown above. Windows and Linux have not received native UI validation.
+Clone the repository and run `./start-mac.command` on macOS, or create a virtual environment, install `requirements.txt`, and run `python -m moonlabeler` as shown above. On Windows, `pwsh -File build-windows.ps1` produces a portable `dist/MoonLabeler/MoonLabeler.exe` (PyInstaller one-folder build with the JPL kernels and FITS support bundled; the cache lives in `%LOCALAPPDATA%/MoonLabeler/cache`). Linux has not received native UI validation.
 
 Opening a new photograph returns to Calibration and collapses assistance. WinJUPOS filenames populate UTC automatically; other filenames retain the current date and time. The initial default is **15:00 UTC**. Check or change the capture date in the separate year, month and day fields, then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours and minutes in separate fields; seconds saved in older projects are retained. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; crater refinement and the terrain fallback use about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
 

@@ -49,7 +49,20 @@ from .sources import load_catalog, read_image, nasa_reference, refresh_catalog, 
 from .terrain import ElevationMap, download_basic_dem, render_region
 
 ROOT = Path(__file__).resolve().parent.parent
-CACHE = Path(os.environ.get("MOONLABELER_CACHE", str(Path.home() / "Library/Caches/MoonLabeler" if getattr(sys, "frozen", False) else ROOT / ".cache")))
+
+
+def default_cache():
+    """Per-user cache for frozen builds; a source checkout keeps ``.cache`` next to the package."""
+    if not getattr(sys, "frozen", False):
+        return ROOT / ".cache"
+    if sys.platform == "win32":
+        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "MoonLabeler" / "cache"
+    if sys.platform == "darwin":
+        return Path.home() / "Library/Caches/MoonLabeler"
+    return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "MoonLabeler"
+
+
+CACHE = Path(os.environ.get("MOONLABELER_CACHE", str(default_cache())))
 
 
 def prepare_cache():
