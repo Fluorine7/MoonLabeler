@@ -19,8 +19,9 @@ def test_font_families_are_cjk_capable_on_every_platform():
     assert label_font_families("双语", platform="darwin")[0] == "PingFang SC"
     assert label_font_families("繁体中文", platform="darwin")[0] == "PingFang TC"
     windows = label_font_families("双语", platform="win32")
-    assert windows[0] == "Microsoft YaHei" and "Microsoft JhengHei" in windows
-    assert label_font_families("双语（繁体）", platform="win32")[0] == "Microsoft JhengHei"
+    assert windows == ["Microsoft YaHei", "Microsoft JhengHei", "Noto Sans SC", "Noto Sans TC", "Segoe UI"]
+    assert label_font_families("双语（繁体）", platform="win32") == [
+        "Microsoft JhengHei", "Microsoft YaHei", "Noto Sans TC", "Noto Sans SC", "Segoe UI"]
     assert "PingFang SC" not in windows  # Qt would substitute Tahoma, which has no CJK glyphs.
     assert label_font_families("中文", platform="linux")[0].startswith("Noto Sans CJK")
 

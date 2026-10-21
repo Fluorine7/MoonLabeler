@@ -161,3 +161,27 @@ def test_project_save_keeps_absolute_image_path_when_no_relative_path_exists(tmp
     data = json.loads(target.read_text(encoding="utf-8"))
     assert _os.path.isabs(data["image_path"])
     assert Project.load(target).image_path == str(image.resolve())
+
+
+def test_project_save_keeps_absolute_dem_path_when_no_relative_path_exists(tmp_path, monkeypatch):
+    """A DEM on another drive must not break saving either (Codex review P1)."""
+    image = tmp_path / "photo.png"
+    Image.new("RGB", (20, 20)).save(image)
+    dem = tmp_path / "LDEM.LBL"
+    dem.write_text("PDS", encoding="utf-8")
+    import os as _os
+    real_relpath = _os.path.relpath
+    def cross_drive(path, start=None):
+        if _os.path.basename(str(path)) == "LDEM.LBL":
+            raise ValueError("path is on mount 'Z:', start on mount 'C:'")
+        return real_relpath(path, start)
+    monkeypatch.setattr(_os.path, "relpath", cross_drive)
+    target = tmp_path / "dem.moonlabel"
+    Project(image_path=str(image), terrain_path=str(dem)).save(target)
+    monkeypatch.setattr(_os.path, "relpath", real_relpath)
+    data = json.loads(target.read_text(encoding="utf-8"))
+    assert data["image_path"] == "photo.png"  # Same drive stays relative.
+    assert _os.path.isabs(data["terrain"]["dem_path"])
+    loaded = Project.load(target)
+    assert loaded.image_path == str(image.resolve())
+    assert loaded.terrain_path == str(dem.resolve())

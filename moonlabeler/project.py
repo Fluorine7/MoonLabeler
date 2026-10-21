@@ -47,7 +47,8 @@ def label_font_families(language="双语", platform=None):
         return ["PingFang TC" if traditional else "PingFang SC", "PingFang SC", "Hiragino Sans"]
     if platform == "win32":
         chinese = ["Microsoft JhengHei", "Microsoft YaHei"] if traditional else ["Microsoft YaHei", "Microsoft JhengHei"]
-        return chinese + ["Noto Sans TC", "Noto Sans SC", "Segoe UI"]
+        noto = ["Noto Sans TC", "Noto Sans SC"] if traditional else ["Noto Sans SC", "Noto Sans TC"]
+        return chinese + noto + ["Segoe UI"]
     return ["Noto Sans CJK TC" if traditional else "Noto Sans CJK SC", "Noto Sans CJK SC", "Source Han Sans",
             "WenQuanYi Micro Hei", "DejaVu Sans"]
 
@@ -243,6 +244,20 @@ def _validate_project_data(data):
             _invalid_field('geometry.utc')
 
 
+def _portable_path(target, base):
+    """Path to store in a project: relative to the project when possible.
+
+    On Windows a file on another drive has no relative path and
+    os.path.relpath raises ValueError; keep the resolved absolute path then.
+    Loading joins ``base / stored`` and an absolute right-hand side wins.
+    """
+    target = Path(target).resolve()
+    try:
+        return os.path.relpath(target, base)
+    except ValueError:
+        return str(target)
+
+
 def _ellipse_parameters(pixels):
     if len(pixels) < 6 or not np.isfinite(pixels).all():
         return None
@@ -374,15 +389,9 @@ class Project:
 
     def save(self, path):
         path = Path(path)
-        image = Path(self.image_path).resolve()
-        try:
-            image_path = os.path.relpath(image, path.parent.resolve())
-        except ValueError:
-            # Windows: the photograph lives on another drive than the project,
-            # where no relative path exists. Keep the absolute path instead.
-            image_path = str(image)
+        base = path.parent.resolve()
         data = {"format": "MoonLabeler", "version": 2,
-                "image_path": image_path,
+                "image_path": _portable_path(self.image_path, base),
                 "utc": self.utc, "capture_mode": self.capture_mode,
                 "geometry": self.geometry.to_dict() if self.geometry else None,
                 "matrix": self.matrix.tolist() if self.matrix is not None else None,
@@ -393,7 +402,7 @@ class Project:
                 "annotation_relief": self.annotation_relief,
                 "projection_surface": self.projection_surface,
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
-                "terrain": {"dem_path": os.path.relpath(Path(self.terrain_path).resolve(), path.parent.resolve()) if self.terrain_path else "",
+                "terrain": {"dem_path": _portable_path(self.terrain_path, base) if self.terrain_path else "",
                             "settings": self.terrain_settings},
                 "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape")}}
         write_json(path, data)
