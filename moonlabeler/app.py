@@ -142,6 +142,11 @@ class Canvas(QGraphicsView):
         event.acceptProposedAction()
 
 
+def default_name_language():
+    """Name language for a new photo: Traditional names under the Traditional interface."""
+    return "双语（繁体）" if i18n.is_traditional() else "双语"
+
+
 def label_font(pixel_size, project=None):
     """CJK-capable label font; bold unless the project asks for normal weight."""
     font = QFont()
@@ -368,7 +373,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.resize(1440, 930)
         self.setMinimumSize(1100, 720)
         self.setStyleSheet(STYLE)
-        self.project = Project()
+        self.project = Project(language=default_name_language())
         self.image = None
         self.catalog = load_catalog(CACHE)
         self.compute_preferences = QSettings(str(CACHE/'preferences.ini'), QSettings.Format.IniFormat)
@@ -938,7 +943,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         try:
             image = read_image(path)
             filename_utc = winjupos_capture_time(path)
-            self.project = Project(image_path=str(Path(path).resolve()), utc=(filename_utc or self.utc()).isoformat())
+            self.project = Project(image_path=str(Path(path).resolve()), utc=(filename_utc or self.utc()).isoformat(),
+                                   language=default_name_language())
             self.project_path = None
             self.set_image(image)
             self.sync_controls()
@@ -1610,7 +1616,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             project = Project(image_path=str(path.resolve()), utc=self.terrain_geometry.utc,
                               geometry=self.terrain_geometry, matrix=self.terrain_reference.matrix,
                               latitude=self.project.latitude, longitude=self.project.longitude,
-                              terrain_path=self.dem_path, terrain_settings=self.terrain_parameters(), min_diameter=5)
+                              terrain_path=self.dem_path, terrain_settings=self.terrain_parameters(), min_diameter=5,
+                              language=default_name_language())
             project.save(path.with_suffix(".moonlabel"))
             self.statusBar().showMessage(trf("已保存 {name} 和对应参考工程。", name=path.name))
         except Exception as exc:

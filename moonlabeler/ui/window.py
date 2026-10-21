@@ -762,6 +762,7 @@ class WindowUiMixin:
         self.language = self.ui_combo()
         for choice in LANGUAGE_CHOICES:
             self.language.addItem(tr(choice), choice)
+        self.language.setCurrentIndex(max(0, self.language.findData(self.project.language)))
         self.language.currentTextChanged.connect(self.style_changed)
         form.addRow(tr("名称语言"), self.language)
         self.font_size = QDoubleSpinBox()
