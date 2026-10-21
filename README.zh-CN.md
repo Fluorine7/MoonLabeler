@@ -166,7 +166,7 @@ NASA 在线参考保留在“参考 → 影像匹配”中，当前仅支持 202
 ## 验证
 
 ```bash
-.venv/bin/python -m pip install pytest
+.venv/bin/python -m pip install ".[dev]"
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q
 ```
 
@@ -203,3 +203,7 @@ Copyright © 2026 Fluorine Zhu。代码采用 GNU GPL v3.0 或更新版本，见
 自动识别仅将高程与阴影参考计算交给 GPU；精确投影、纹理匹配、配准精修与标注继续使用 CPU。采样保留高程格内小数位置，灰度取整、阴影临界像素由 CPU 复核，另做分布抽样检查。首次执行包含内核编译。GPU 不可用、内存不足、计算失败或检查不符时回退，不要求用户更换显卡。小参考图和超过 GPU 缓冲预算的 DEM 继续使用 CPU。
 
 旧版可选 `.[apple-gpu]` 安装仍可使用 MLX / Metal 作为 Apple 兼容后端；新安装建议统一使用 `.[gpu]`。未安装 GPU 组件也不影响功能。这不是神经网络识别，不需要训练模型。
+
+## 安全更新
+
+更新源码时也要更新实际虚拟环境及打包环境，并使用仍受维护且已安装最新安全补丁的 Python。[2026-10-22 审计记录](docs/security-audit-2026-10-22.md) 列出修复版本、检查范围和仍需关注的原生组件；旧安装包需要重新构建后才会包含这些更新。

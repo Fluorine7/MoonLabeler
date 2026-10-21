@@ -6,6 +6,14 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## Unreleased / 待发布
+
+合入 mjrtmj 的 Windows UTF-8 读写、繁体及英文界面、平台中文字体与字重、跨磁盘工程保存修复（PR #1–#4）。补齐繁体地名检索、英文候选列表、外部图片错误中的路径保护及已有 macOS 环境的依赖更新检查。
+
+补声明 certifi 并提高 Pillow、Qt、OpenCV、pytest、setuptools 安全版本基线；增加三平台测试和依赖审计工作流。审计覆盖实际 Python 环境、可选依赖、GPU 后端 Rust 锁文件和部分原生组件；OpenCV 内嵌原生库及旧发布包的限制见 [2026-10-22 审计记录](docs/security-audit-2026-10-22.md)。
+
+Integrates mjrtmj's Windows encoding, Traditional/English UI, platform fonts and cross-drive save contributions, with fixes for Traditional search, candidate captions, opaque error paths and existing-environment upgrades. Raises security dependency baselines and adds cross-platform tests and dependency audits. See the audit record for remaining native-component and historical-binary limitations.
+
 ## 0.7.12
 
 修复 0.7.11 混用配准表面基准的标注回归。`0708.jpg` 按已知日期 2026-07-08、未知 UTC 暂按 15:00 复现，实际走球面阴影参考及视角微调，0.7.11 却给最终落点追加高程；傅科、布格等处额外位移约 16–18 px。现在由配准结果明确记录 sphere / terrain，只有真正使用高程表面拟合的结果才采用高程标注；其他路径保留原参考球面坐标。自动高程路径的标注与拟合使用同一基础 DEM，预览选择和新导入 DEM 不覆盖已拟合快照。手动高程拟合及视觉中心功能保留。

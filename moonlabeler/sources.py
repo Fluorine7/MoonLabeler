@@ -22,6 +22,8 @@ import cv2
 import numpy as np
 from PIL import Image, ImageOps
 
+from .zh_variant import to_traditional
+
 USGS_URL = "https://asc-planetarynames-data.s3.us-west-2.amazonaws.com/MOON_nomenclature_center_pts.zip"
 NASA_2026 = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/"
 PACKAGE_DATA = Path(__file__).parent / "data"
@@ -118,7 +120,9 @@ def translate_catalog(features):
 
 
 def feature_search_text(feature):
-    return " ".join([feature["name"], feature.get("name_zh", ""), *feature.get("name_zh_aliases", [])])
+    names = [feature["name"], feature.get("name_zh", ""), *feature.get("name_zh_aliases", [])]
+    variants = dict.fromkeys([*names, *(to_traditional(name) for name in names)])
+    return " ".join(name for name in variants if name)
 
 
 class DataDownloadError(ValueError):
