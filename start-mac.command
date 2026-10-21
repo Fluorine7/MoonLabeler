@@ -4,18 +4,18 @@
 set -e
 cd "$(dirname "$0")"
 python_is_supported() {
-    "$1" -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' >/dev/null 2>&1
+    "$1" -c 'import sys; raise SystemExit(sys.version_info < (3, 12))' >/dev/null 2>&1
 }
 if [[ -d .venv ]]; then
     if [[ ! -x .venv/bin/python ]] || ! python_is_supported .venv/bin/python; then
-        print "当前 .venv 的 Python 无法运行，或版本低于 3.11。"
-        print "请用 Python 3.11 或更高版本手动重建 .venv 后再启动；当前环境未改动。"
+        print "当前 .venv 的 Python 无法运行，或版本低于 3.12。"
+        print "请用 Python 3.12 或更高版本手动重建 .venv 后再启动；当前环境未改动。"
         exit 1
     fi
 fi
 if [[ ! -x .venv/bin/python ]]; then
     task_python=""
-    for candidate in /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3.11 /opt/homebrew/bin/python3 /usr/local/bin/python3.12 /usr/local/bin/python3; do
+    for candidate in /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3.13 /opt/homebrew/bin/python3 /usr/local/bin/python3.12 /usr/local/bin/python3; do
         if [[ -x "$candidate" ]] && python_is_supported "$candidate"; then
             task_python="$candidate"
             break
@@ -28,13 +28,13 @@ if [[ ! -x .venv/bin/python ]]; then
         fi
     fi
     if [[ -z "$task_python" ]]; then
-        print "请先安装 Python 3.11 或更高版本。"
+        print "请先安装 Python 3.12 或更高版本。"
         read -k 1
         exit 1
     fi
     "$task_python" -m venv .venv
 fi
-if ! .venv/bin/python -c 'import PySide6, numpy, PIL, cv2, skyfield, shapefile, certifi, opencc; assert hasattr(cv2, "ximgproc")' >/dev/null 2>&1 || ! .venv/bin/python -m pip install --dry-run --no-index --disable-pip-version-check -r requirements.txt >/dev/null 2>&1; then
+if ! .venv/bin/python -c 'import PySide6, numpy, PIL, cv2, skyfield, shapefile, certifi, opencc, imagecodecs; assert hasattr(cv2, "ximgproc")' >/dev/null 2>&1 || ! .venv/bin/python -m pip install --dry-run --no-index --disable-pip-version-check -r requirements.txt >/dev/null 2>&1; then
     if .venv/bin/python -c 'import importlib.metadata as m; m.version("opencv-python-headless")' >/dev/null 2>&1; then
         .venv/bin/python -m pip uninstall -y opencv-python-headless
     fi

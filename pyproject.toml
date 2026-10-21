@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [{name = "Fluorine Zhu"}]
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dynamic = ["dependencies"]
 
 [project.urls]
