@@ -7,6 +7,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
 from moonlabeler import i18n, zh_variant
@@ -297,6 +298,10 @@ def test_english_feature_selectors_show_official_names(english_window):
     entries = [window.terrain_center.itemText(i) for i in range(window.terrain_center.count())]
     assert "Aristarchus" in entries, entries
     assert all(re.search(r"[一-鿿]", entry) is None for entry in entries), entries
+    window.search_crater_features("Kepler")
+    candidates = [window.crater_feature.item(i).text() for i in range(window.crater_feature.count())]
+    assert "Kepler" in candidates
+    assert all(re.search(r"[一-鿿]", entry) is None for entry in candidates), candidates
 
 
 def test_chinese_feature_selectors_keep_the_bilingual_caption(traditional_window):
@@ -337,3 +342,29 @@ def test_simplified_window_is_unchanged(app, language_state):
     assert window.identify_button.text() == "自动识别并标注"
     assert window.kind.itemData(0) == "全部"
     window.close()
+
+
+def test_traditional_names_are_searchable_in_all_selectors(traditional_window):
+    window = traditional_window
+    window.search_features("靜海")
+    assert any(window.feature_list.item(i).data(Qt.ItemDataRole.UserRole) == "3691"
+               for i in range(window.feature_list.count()))
+    window.search_terrain_features("靜海")
+    assert window.terrain_center.findData("3691") >= 0
+    window.search_crater_features("開普勒")
+    assert any("Kepler" in window.crater_feature.item(i).text()
+               for i in range(window.crater_feature.count()))
+
+
+def test_external_oserror_without_filename_preserves_path(traditional_window, tmp_path):
+    from PIL import UnidentifiedImageError
+    from moonlabeler.app import describe_error
+    from moonlabeler.sources import read_image
+    path = tmp_path / "月球 文件" / "照片.png"
+    path.parent.mkdir()
+    path.write_bytes(b"invalid image")
+    with pytest.raises(UnidentifiedImageError) as error:
+        read_image(path)
+    assert error.value.filename is None
+    assert describe_error(error.value) == str(error.value)
+    assert str(path) in describe_error(error.value)

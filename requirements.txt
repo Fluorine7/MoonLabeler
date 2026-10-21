@@ -1,7 +1,8 @@
-PySide6-Essentials>=6.8,<7
+PySide6-Essentials>=6.12,<7
 numpy>=2,<3
-Pillow>=11,<13
-opencv-contrib-python-headless>=4.10,<5
+Pillow>=13,<14
+opencv-contrib-python-headless>=4.14.0.94,<5
+certifi>=2026.10.19
 skyfield>=1.49,<2
 pyshp>=2.3,<4
 opencc-python-reimplemented>=0.1.7,<0.2

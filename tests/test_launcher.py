@@ -36,3 +36,32 @@ echo RUN_MOONLABELER
         assert '3.11' in outcome.stdout
         assert 'RUN_MOONLABELER' not in outcome.stdout
         assert python.exists()
+
+
+@pytest.mark.parametrize('requirements_met', [False, True])
+def test_launcher_refreshes_importable_but_outdated_dependencies(tmp_path, requirements_met):
+    zsh = shutil.which('zsh')
+    if zsh is None:
+        pytest.skip('The macOS launcher requires zsh')
+    launcher = tmp_path / 'start-mac.command'
+    shutil.copyfile(Path(__file__).parents[1] / 'start-mac.command', launcher)
+    python = tmp_path / '.venv' / 'bin' / 'python'
+    python.parent.mkdir(parents=True)
+    python.write_text("""#!/bin/sh
+if [ "$1" = "-c" ]; then
+    exit 0
+fi
+if [ "$1" = "-m" ] && [ "$2" = "pip" ]; then
+    case "$*" in
+        *--dry-run*) exit %d ;;
+        *uninstall*) exit 0 ;;
+        *install*) echo REFRESH_REQUIREMENTS; exit 0 ;;
+    esac
+fi
+echo RUN_MOONLABELER
+""" % (0 if requirements_met else 1), encoding='utf-8')
+    python.chmod(0o755)
+    outcome = subprocess.run([zsh, str(launcher)], capture_output=True, text=True,
+                             input='\n', timeout=5)
+    assert outcome.returncode == 0 and 'RUN_MOONLABELER' in outcome.stdout
+    assert ('REFRESH_REQUIREMENTS' in outcome.stdout) == (not requirements_met)

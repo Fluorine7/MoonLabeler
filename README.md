@@ -44,7 +44,7 @@ cd MoonLabeler
 ./start-mac.command
 ```
 
-也可在 macOS 双击 `start-mac.command`。首次启动会创建虚拟环境并安装依赖。
+也可在 macOS 双击 `start-mac.command`。首次启动会创建虚拟环境并安装依赖；已有环境的依赖不满足当前版本要求时也会更新。
 其他系统可通过 Python 启动，相关界面尚未完成平台实测：
 
 ```bash
@@ -52,7 +52,8 @@ python3 -m venv .venv
 # macOS / Linux
 source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install --upgrade "pip>=26.2" "setuptools>=83"
+python -m pip install --upgrade -r requirements.txt
 python -m moonlabeler
 ```
 
@@ -71,6 +72,10 @@ python -m moonlabeler
 设置 `MOONLABELER_COMPUTE=cpu` 可强制关闭 GPU，`auto` 恢复自动选择；环境变量优先于界面。旧值 `metal` 兼容为 `auto`。未安装 GPU 组件也可正常使用全部功能。
 
 FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打开示例”** 测试内置的合成工程；它用于演示编辑与校准流程，不用于证明实拍识别准确率。
+
+### 安全更新
+
+更新源码后需同步更新实际虚拟环境和打包环境。运行上面的依赖更新命令，并使用维护中的 Python 安全补丁版本（2026-10-22 基线：3.11.17、3.12.15、3.13.16 或 3.14.8；较新版本可用）。只更新 requirements.txt 不会替换旧的 Python/OpenSSL 或已发布安装包。依赖与原生组件的检查范围、修复及未解决事项见 [安全审计记录](docs/security-audit-2026-10-22.md)。
 
 ### 使用与限制
 
@@ -116,7 +121,7 @@ Copyright © 2026 **Fluorine Zhu**。MoonLabeler 代码按 **GNU General Public 
 
 ## English
 
-MoonLabeler is a Python / Qt desktop application for registering lunar photographs and placing editable terrain labels. It supports full-disk and close-up images, rotation, and mirrored views. The current application interface is in Chinese.
+MoonLabeler is a Python / Qt desktop application for registering lunar photographs and placing editable terrain labels. It supports full-disk and close-up images, rotation, and mirrored views. The interface supports Simplified Chinese, Traditional Chinese and English.
 
 ### Features
 
@@ -213,7 +218,7 @@ Third-party photographers' test images and derived exports remain local and are 
 ### Tests
 
 ```bash
-python -m pip install pytest
+python -m pip install ".[dev]"
 QT_QPA_PLATFORM=offscreen python -m pytest -q
 ```
 

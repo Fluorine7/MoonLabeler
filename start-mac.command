@@ -34,7 +34,7 @@ if [[ ! -x .venv/bin/python ]]; then
     fi
     "$task_python" -m venv .venv
 fi
-if ! .venv/bin/python -c 'import PySide6, numpy, PIL, cv2, skyfield, shapefile; assert hasattr(cv2, "ximgproc")' >/dev/null 2>&1; then
+if ! .venv/bin/python -c 'import PySide6, numpy, PIL, cv2, skyfield, shapefile, certifi, opencc; assert hasattr(cv2, "ximgproc")' >/dev/null 2>&1 || ! .venv/bin/python -m pip install --dry-run --no-index --disable-pip-version-check -r requirements.txt >/dev/null 2>&1; then
     if .venv/bin/python -c 'import importlib.metadata as m; m.version("opencv-python-headless")' >/dev/null 2>&1; then
         .venv/bin/python -m pip uninstall -y opencv-python-headless
     fi
