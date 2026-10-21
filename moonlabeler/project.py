@@ -9,6 +9,7 @@ import os
 import heapq
 import math
 import re
+import sys
 from xml.sax.saxutils import escape
 
 import cv2
@@ -26,6 +27,29 @@ from .zh_variant import to_traditional
 # Label name language choices shown in the UI and accepted in project files.
 LANGUAGE_CHOICES = ("双语", "英文", "中文", "繁体中文", "双语（繁体）")
 TRADITIONAL_LANGUAGES = ("繁体中文", "双语（繁体）")
+
+# Label text weight accepted in project files; bold keeps CJK strokes legible
+# under the dark halo and on phone screens.
+FONT_WEIGHT_CHOICES = ("bold", "normal")
+DEFAULT_FONT_WEIGHT = "bold"
+
+
+def label_font_families(language="双语", platform=None):
+    """Ordered CJK-capable font families for label text on this platform.
+
+    PingFang only exists on macOS; on Windows Qt silently substituted Tahoma,
+    which has no CJK glyphs, so Chinese fell back glyph-by-glyph to a thin
+    system font while Latin stayed crisp.
+    """
+    platform = sys.platform if platform is None else platform
+    traditional = language in TRADITIONAL_LANGUAGES
+    if platform == "darwin":
+        return ["PingFang TC" if traditional else "PingFang SC", "PingFang SC", "Hiragino Sans"]
+    if platform == "win32":
+        chinese = ["Microsoft JhengHei", "Microsoft YaHei"] if traditional else ["Microsoft YaHei", "Microsoft JhengHei"]
+        return chinese + ["Noto Sans TC", "Noto Sans SC", "Segoe UI"]
+    return ["Noto Sans CJK TC" if traditional else "Noto Sans CJK SC", "Noto Sans CJK SC", "Source Han Sans",
+            "WenQuanYi Micro Hei", "DejaVu Sans"]
 
 DEFAULT_FONT_PERCENT = 1.8
 DEFAULT_FONT_STEP_PERCENT = .3
@@ -129,7 +153,7 @@ def _validate_project_data(data):
     for key in ('illuminated_only', 'optimize_layout', 'crater_outlines', 'show_landing_sites'):
         if key in style and type(style[key]) is not bool:
             _invalid_field(f'style.{key}')
-    for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color'):
+    for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color', 'font_weight'):
         if key in style and not isinstance(style[key], str):
             _invalid_field(f'style.{key}')
     if 'language' in style and style['language'] not in LANGUAGE_CHOICES:
@@ -267,6 +291,7 @@ class Project:
     font_size: int = 24
     font_percent: float | None = DEFAULT_FONT_PERCENT
     font_step_percent: float = DEFAULT_FONT_STEP_PERCENT
+    font_weight: str = DEFAULT_FONT_WEIGHT
     color: str = "#f5f5f2"
     show_landing_sites: bool = False
     landing_color: str = DEFAULT_LANDING_COLOR
@@ -364,7 +389,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": os.path.relpath(Path(self.terrain_path).resolve(), path.parent.resolve()) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape")}}
         write_json(path, data)
 
     @classmethod
@@ -397,10 +422,12 @@ class Project:
         project.font_percent = None  # Older projects only store a pixel size.
         project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "font_step_percent", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape"):
+            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
+        if project.font_weight not in FONT_WEIGHT_CHOICES:
+            project.font_weight = DEFAULT_FONT_WEIGHT
         refinement = project.identification.get('refinement') or {}
         default_surface = 'terrain' if refinement.get('relief_aware') is True else 'sphere'
         project.projection_surface = data.get('projection_surface', default_surface)
@@ -651,7 +678,9 @@ def export_svg(path, image, entries, project, leaders=None):
     lines = [f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{w}" height="{h}" viewBox="0 0 {w} {h}">',
              '<title>MoonLabeler annotated photograph</title>',
              f'<image id="photograph" width="{w}" height="{h}" xlink:href="data:image/png;base64,{embedded}"/>',
-             '<g id="annotations" font-family="PingFang SC, sans-serif">']
+             '<g id="annotations" font-family="{}, sans-serif" font-weight="{}">'.format(
+                 escape(", ".join(label_font_families(project.language)), {'"': '&quot;'}),
+                 "bold" if project.font_weight == "bold" else "normal")]
     for feature, anchor, position in entries:
         fid = escape(feature["id"], {'"': '&quot;'})
         color = escape(project.label_color(feature), {'"': '&quot;'})

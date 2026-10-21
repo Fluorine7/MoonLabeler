@@ -43,7 +43,7 @@ from .annotation_relief import prepare_annotation_relief
 from .geometry import compute_geometry, MOON_RADIUS_KM
 from .layout import LabelBox, arrange_labels, leader_segment
 from .landing_sites import is_landing_site, landing_marker_radius
-from .project import Project, export_svg, DEFAULT_FONT_PERCENT, font_tier_percentages
+from .project import Project, export_svg, DEFAULT_FONT_PERCENT, font_tier_percentages, label_font_families
 from .registration import calibration_report, transform_points, auto_register
 from .sources import load_catalog, read_image, nasa_reference, refresh_catalog, feature_search_text, COMMON_FEATURES
 from .terrain import ElevationMap, download_basic_dem, render_region
@@ -142,6 +142,15 @@ class Canvas(QGraphicsView):
         event.acceptProposedAction()
 
 
+def label_font(pixel_size, project=None):
+    """CJK-capable label font; bold unless the project asks for normal weight."""
+    font = QFont()
+    font.setFamilies(label_font_families(project.language if project else "双语"))
+    font.setPixelSize(pixel_size)
+    font.setWeight(QFont.Weight.Normal if project is not None and project.font_weight == "normal" else QFont.Weight.Bold)
+    return font
+
+
 class Annotation(QGraphicsItem):
     def __init__(self, feature, anchor, text, project, moved, edit, *, font_size=None):
         super().__init__()
@@ -150,8 +159,7 @@ class Annotation(QGraphicsItem):
         self.font_size = project.font_size if font_size is None else font_size
         self.color = project.label_color(feature)
         self.outline_segments = []
-        self.font = QFont("PingFang SC")
-        self.font.setPixelSize(self.font_size)
+        self.font = label_font(self.font_size, project)
         self.path = QPainterPath()
         self.path.addText(0, self.font_size, self.font, text)
         self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
@@ -273,8 +281,7 @@ class CraterOverlay(QGraphicsItem):
         painter.drawLine(QPointF(-5, 0), QPointF(5, 0))
         painter.drawLine(QPointF(0, -5), QPointF(0, 5))
         if self.active:
-            font = QFont("PingFang SC")
-            font.setPixelSize(12)
+            font = label_font(12)
             path = QPainterPath()
             path.addText(8, -5, font, str(self.index+1))
             shadow = QPen(QColor("#111821"), 2.)
@@ -400,7 +407,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.displayed_font_step_percent = self.ui_font_step.value()
         self.update_manual_guide()
         self.statusBar().showMessage(trf("滚轮缩放 · 拖动平移 · {hint}", hint=label_drag_hint()))
-        self.empty_hint = self.canvas.scene().addText(tr("打开或拖入照片"), QFont("PingFang SC", 20))
+        self.empty_hint = self.canvas.scene().addText(tr("打开或拖入照片"), label_font(26))
         self.empty_hint.setDefaultTextColor(QColor("#718399"))
         self.empty_hint.setPos(70, 100)
 
@@ -1059,6 +1066,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.optimize_layout.setChecked(self.project.optimize_layout)
         self.crater_outlines.setChecked(self.project.crater_outlines)
         self.crater_outline_shape.setCurrentIndex(self.crater_outline_shape.findData(self.project.crater_outline_shape))
+        self.font_weight.setCurrentIndex(max(0, self.font_weight.findData(self.project.font_weight)))
         self.pending_color = self.project.color
         self.color_button.setText(trf("文字与引线颜色：{color}", color=self.pending_color))
         self.style_pending = False
@@ -1689,6 +1697,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.project.font_step_percent = self.ui_font_step.value()
         for key, value in (("min_diameter", self.diameter.value()), ("kind", self.kind.currentData()),
                            ("max_labels", self.maximum.value()), ("language", self.language.currentData()),
+                           ("font_weight", self.font_weight.currentData()),
                            ("illuminated_only", self.lit.isChecked()),
                            ("show_landing_sites", self.landing_sites_toggle.isChecked()),
                            ("landing_color", self.pending_landing_color),
