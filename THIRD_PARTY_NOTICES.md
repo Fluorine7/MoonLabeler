@@ -72,6 +72,7 @@ Dependencies are installed separately, not vendored into this repository. Their 
 - Qt / PySide6 — [Qt for Python licensing](https://doc.qt.io/qtforpython-6/licenses.html).
 - NumPy — [NumPy license](https://github.com/numpy/numpy/blob/main/LICENSE.txt).
 - Pillow — [Pillow license](https://github.com/python-pillow/Pillow/blob/main/LICENSE).
+- imagecodecs (high-bit-depth RGB TIFF decoding) — [BSD-3-Clause license and bundled-library notices](https://github.com/cgohlke/imagecodecs/blob/v2026.10.10/LICENSE). Only its TIFF decoder is used; its wheel retains the upstream native-library notices.
 - OpenCV — [OpenCV license](https://github.com/opencv/opencv/blob/4.x/LICENSE).
 - Skyfield — [Skyfield license](https://github.com/skyfielders/python-skyfield/blob/master/LICENSE).
 - PyShp — [PyShp license](https://github.com/GeospatialPython/pyshp/blob/master/LICENSE.TXT).

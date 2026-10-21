@@ -36,7 +36,7 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 
 ### 从源码运行
 
-需要 **Python 3.11 或更高版本**。主要在 macOS 上开发与测试。
+需要 **Python 3.12 或更高版本**。主要在 macOS 上开发与测试。
 
 ```bash
 git clone https://github.com/Fluorine7/MoonLabeler.git
@@ -75,7 +75,9 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 ### 安全更新
 
-更新源码后需同步更新实际虚拟环境和打包环境。运行上面的依赖更新命令，并使用维护中的 Python 安全补丁版本（2026-10-22 基线：3.11.17、3.12.15、3.13.16 或 3.14.8；较新版本可用）。只更新 requirements.txt 不会替换旧的 Python/OpenSSL 或已发布安装包。依赖与原生组件的检查范围、修复及未解决事项见 [安全审计记录](docs/security-audit-2026-10-22.md)。
+更新源码后需同步更新实际虚拟环境和打包环境。运行上面的依赖更新命令，并使用维护中的 Python 安全补丁版本（2026-10-22 基线：3.12.15、3.13.16 或 3.14.8；较新版本可用）。只更新 requirements.txt 不会替换旧的 Python/OpenSSL 或已发布安装包。依赖与原生组件的检查范围、修复及未解决事项见 [安全审计记录](docs/security-audit-2026-10-22.md)。
+
+高位深 RGB TIFF 由 imagecodecs 的 libtiff 4.7.2 或更新版本解码，启动环境需安装更新后的依赖。照片文件不再交给 OpenCV 解码；OpenCV 继续用于配准、坑缘检测等像素处理。
 
 ### 使用与限制
 
@@ -160,7 +162,9 @@ Set `MOONLABELER_COMPUTE=cpu` to disable acceleration, or `auto` for automatic s
 
 The font tiers use projected equivalent-area diameter: large at **2%** or more of the image's short side, medium at **0.8%–2%**, and small below **0.8%**. This includes foreshortening and the camera transform; filtering the catalogue does not change a formation's tier. Rilles and other long terrain use catalogue extent. Tier sizes drive collision bounds, PNG and SVG together and are saved in projects. Older projects keep their uniform text; to enable tiers, set the maximum size to **1.8%**, decrement to **0.3%**, then regenerate. The calculation is batched and does not rerun recognition or read elevation data.
 
-Requires **Python 3.11+**. Development and native UI testing are primarily on macOS.
+High-bit-depth RGB TIFFs use imagecodecs with libtiff 4.7.2 or newer. Update the installed requirements when updating the source. Image files are decoded outside OpenCV; its registration and crater-detection algorithms continue to process decoded pixels.
+
+Requires **Python 3.12+**. Development and native UI testing are primarily on macOS.
 Clone the repository and run `./start-mac.command` on macOS, or create a virtual environment, install `requirements.txt`, and run `python -m moonlabeler` as shown above. Windows and Linux have not received native UI validation.
 
 Opening a new photograph returns to Calibration and collapses assistance. WinJUPOS filenames populate UTC automatically; other filenames retain the current date and time. The initial default is **15:00 UTC**. Check or change the capture date in the separate year, month and day fields, then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours and minutes in separate fields; seconds saved in older projects are retained. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; crater refinement and the terrain fallback use about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
