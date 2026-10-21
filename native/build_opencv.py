@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import shutil
 import ssl
@@ -87,7 +88,8 @@ def main():
                f'-DPYTHON3_INCLUDE_DIR={sysconfig.get_path("include")}',
                f'-DPYTHON3_NUMPY_INCLUDE_DIRS={numpy.get_include()}']
     if sys.platform == 'darwin':
-        command.append('-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0')
+        command.extend(['-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0',
+                        f'-DCMAKE_OSX_ARCHITECTURES={platform.machine()}'])
     environment = os.environ.copy()
     if sys.platform == 'win32':
         from setuptools._distutils.compilers.C.msvc import _get_vc_env

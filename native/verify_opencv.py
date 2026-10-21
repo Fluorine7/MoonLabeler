@@ -33,7 +33,14 @@ def verify():
         raise AssertionError(f'Remove legacy wheel {distribution.metadata["Name"]}')
     manifest = json.loads((path.parent/'build-manifest.json').read_text(encoding='utf-8'))
     assert set(manifest['modules']) == EXPECTED and manifest['codec_sources'] == []
+    architectures = None
     if sys.platform == 'darwin':
+        architectures = subprocess.check_output(['lipo', '-archs', str(path)], text=True).split()
+        metadata = importlib.metadata.distribution('moonlabeler').read_text('WHEEL')
+        tags = [line[5:] for line in metadata.splitlines() if line.startswith('Tag: ')]
+        target = 'universal2' if set(architectures) == {'arm64', 'x86_64'} else architectures[0]
+        assert len(architectures) == 1 or target == 'universal2', architectures
+        assert tags and all(tag.endswith('_'+target) for tag in tags), (architectures, tags)
         command = ['otool', '-L', str(path)]
     elif sys.platform == 'win32':
         tool = shutil.which('dumpbin')
@@ -49,7 +56,7 @@ def verify():
     forbidden = re.compile(r'(?i)(libtiff|libjpeg|libpng|libwebp|openjp|openexr|ilmimf|avcodec|avformat|avutil|swscale|ffmpeg|gstreamer)')
     assert not forbidden.search(linked), linked
     return {'opencv': cv2.__version__, 'binary': str(path), 'bytes': path.stat().st_size,
-            'modules': sorted(modules), 'codec_api': [], 'legacy_wheels': [],
+            'modules': sorted(modules), 'architectures': architectures, 'codec_api': [], 'legacy_wheels': [],
             'native_dependencies': linked, 'build': manifest}
 
 
