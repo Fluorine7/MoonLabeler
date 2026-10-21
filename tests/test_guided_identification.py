@@ -38,7 +38,12 @@ def test_manual_point_enables_guided_action_but_does_not_enable_a_full_manual_fi
         window.show()
         application.processEvents()
         window.show_manual_points()
-        application.processEvents()
+        # The reveal is deferred until the fold has finished expanding; each
+        # resize pass may reschedule it, so give the event loop a few turns.
+        for _ in range(5):
+            application.processEvents()
+            if window.ui_reference_scroll_target is None:
+                break
         button = window.guided_identify_button
         rect = QRect(button.mapTo(window.scroll.viewport(), QPoint(0, 0)), button.size())
         assert button.isVisible() and window.scroll.viewport().rect().contains(rect)

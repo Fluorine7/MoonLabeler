@@ -86,3 +86,33 @@ def test_gui_offers_traditional_and_regenerates_labels():
     shown =[window.project.label_text(item.feature) for item in window.annotation_items]
     assert shown and all(" · " in text for text in shown if any("一" <= ch <= "鿿" for ch in text))
     assert all(zh_variant.to_traditional(text) == text for text in shown), shown[:5]
+
+
+def test_new_photo_defaults_to_traditional_names_under_traditional_interface(tmp_path):
+    import os
+    import numpy as np
+    from PIL import Image
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+    from moonlabeler import i18n
+    from moonlabeler.app import MainWindow, default_name_language
+
+    QApplication.instance() or QApplication([])
+    photo = tmp_path / "moon.png"
+    Image.fromarray(np.zeros((64, 64, 3), np.uint8)).save(photo)
+    previous = i18n.current_language()
+    try:
+        i18n.set_language(i18n.TRADITIONAL)
+        assert default_name_language() == "双语（繁体）"
+        window = MainWindow()
+        window.error = lambda message: (_ for _ in ()).throw(AssertionError(message))
+        assert window.project.language == window.language.currentData() == "双语（繁体）"
+        window.open_image(str(photo))
+        assert window.project.language == window.language.currentData() == "双语（繁体）"
+        window.dirty = False
+        window.close()
+        i18n.set_language(i18n.SIMPLIFIED)
+        assert default_name_language() == "双语"
+        assert MainWindow().project.language == "双语"
+    finally:
+        i18n.set_language(previous)

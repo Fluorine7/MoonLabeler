@@ -142,3 +142,46 @@ def test_sixteen_bit_tiff_import_is_display_scaled(tmp_path):
     result = read_image(path)
     assert result.shape == (200,300,3) and result.dtype == np.uint8
     assert result.max() == 255 and result.min() == 0
+
+
+def test_project_save_keeps_absolute_image_path_when_no_relative_path_exists(tmp_path, monkeypatch):
+    """Windows: photo on D:, project on C: — os.path.relpath raises ValueError."""
+    image = tmp_path / "photo.png"
+    Image.new("RGB", (20, 20)).save(image)
+    import os as _os
+    real_relpath = _os.path.relpath
+    def cross_drive(path, start=None):
+        raise ValueError("path is on mount 'D:', start on mount 'C:'")
+    monkeypatch.setattr(_os.path, "relpath", cross_drive)
+    project = Project(image_path=str(image))
+    target = tmp_path / "other" / "cross.moonlabel"
+    target.parent.mkdir()
+    project.save(target)
+    monkeypatch.setattr(_os.path, "relpath", real_relpath)
+    data = json.loads(target.read_text(encoding="utf-8"))
+    assert _os.path.isabs(data["image_path"])
+    assert Project.load(target).image_path == str(image.resolve())
+
+
+def test_project_save_keeps_absolute_dem_path_when_no_relative_path_exists(tmp_path, monkeypatch):
+    """A DEM on another drive must not break saving either (Codex review P1)."""
+    image = tmp_path / "photo.png"
+    Image.new("RGB", (20, 20)).save(image)
+    dem = tmp_path / "LDEM.LBL"
+    dem.write_text("PDS", encoding="utf-8")
+    import os as _os
+    real_relpath = _os.path.relpath
+    def cross_drive(path, start=None):
+        if _os.path.basename(str(path)) == "LDEM.LBL":
+            raise ValueError("path is on mount 'Z:', start on mount 'C:'")
+        return real_relpath(path, start)
+    monkeypatch.setattr(_os.path, "relpath", cross_drive)
+    target = tmp_path / "dem.moonlabel"
+    Project(image_path=str(image), terrain_path=str(dem)).save(target)
+    monkeypatch.setattr(_os.path, "relpath", real_relpath)
+    data = json.loads(target.read_text(encoding="utf-8"))
+    assert data["image_path"] == "photo.png"  # Same drive stays relative.
+    assert _os.path.isabs(data["terrain"]["dem_path"])
+    loaded = Project.load(target)
+    assert loaded.image_path == str(image.resolve())
+    assert loaded.terrain_path == str(dem.resolve())
