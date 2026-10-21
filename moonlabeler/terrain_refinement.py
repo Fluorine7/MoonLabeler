@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2026 Fluorine Zhu
 """Local reference refinement using the same small, cached LOLA DEM."""
-import cv2
+from ._opencv import cv2
 import numpy as np
 from .geometry import surface_vectors
 from .registration import transform_points, _gray

@@ -10,7 +10,7 @@ Hough ellipse pass are replaced by configurable radii and edge support checks.
 from dataclasses import dataclass
 import math
 
-import cv2
+from ._opencv import cv2
 import numpy as np
 
 

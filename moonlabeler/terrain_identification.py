@@ -10,7 +10,7 @@ and competing poses validate a result; catalogue labels share its map pose.
 """
 import math
 
-import cv2
+from ._opencv import cv2
 import numpy as np
 
 from .identification import IdentificationError, IdentificationResult

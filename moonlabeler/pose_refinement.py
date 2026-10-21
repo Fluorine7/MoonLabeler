@@ -7,7 +7,7 @@ observing site or measured libration. No per-crater deformation is allowed.
 """
 from dataclasses import dataclass, replace
 import numpy as np
-import cv2
+from ._opencv import cv2
 from .geometry import Geometry, unit
 from .registration import transform_points
 

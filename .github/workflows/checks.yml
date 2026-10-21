@@ -16,11 +16,12 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 45
     env:
       QT_QPA_PLATFORM: offscreen
       PYTHONUTF8: "0"
       PYTHONIOENCODING: utf-8
+      CMAKE_BUILD_PARALLEL_LEVEL: "2"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -34,9 +35,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libegl1 libopengl0 libgl1 fonts-noto-cjk
       - name: Install current packaging tools
-        run: python -m pip install --upgrade "pip>=26.2" "setuptools>=83" wheel
-      - name: Install application and optional features
-        run: python -m pip install ".[dev,fits,gpu,apple-gpu]"
+        run: python -m pip install --upgrade "pip>=26.2" "setuptools>=83" wheel "cmake>=3.31,<5" "ninja>=1.11,<2" "numpy>=2.5.4,<3" "certifi>=2026.10.19"
+      - name: Build application wheel with minimal OpenCV
+        run: python -m pip wheel --no-deps --no-build-isolation -w wheelhouse .
+      - name: Install the built wheel and optional features
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess, sys
+          wheel = next(Path("wheelhouse").glob("*.whl")).resolve()
+          subprocess.check_call([sys.executable, "-m", "pip", "install", f"moonlabeler[dev,fits,gpu,apple-gpu] @ {wheel.as_uri()}"])
+      - name: Verify native modules, codecs, and linked libraries
+        run: python native/verify_opencv.py --output native-verification.json
       - name: Record the complete environment before installing the auditor
         run: python -m pip freeze --all --exclude moonlabeler > audit-requirements.txt
       - name: Install auditor
@@ -45,3 +55,11 @@ jobs:
         run: python -m pip_audit --disable-pip --no-deps -r audit-requirements.txt
       - name: Run tests
         run: python -m pytest -q
+      - name: Preserve tested wheel and native verification
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: minimal-opencv-${{ matrix.os }}
+          path: |
+            wheelhouse/*.whl
+            native-verification.json
+          if-no-files-found: error

@@ -9,7 +9,7 @@ Seed triangles propose a pose; other crater observations must verify it.
 from dataclasses import dataclass
 import math
 
-import cv2
+from ._opencv import cv2
 import numpy as np
 
 from .geometry import MOON_RADIUS_KM, Geometry

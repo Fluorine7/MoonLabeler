@@ -9,7 +9,7 @@ Only the existing small DEM is used; no extra map database is required.
 """
 from itertools import combinations
 
-import cv2
+from ._opencv import cv2
 import numpy as np
 
 from .geometry import MOON_RADIUS_KM
