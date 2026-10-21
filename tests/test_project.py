@@ -142,3 +142,22 @@ def test_sixteen_bit_tiff_import_is_display_scaled(tmp_path):
     result = read_image(path)
     assert result.shape == (200,300,3) and result.dtype == np.uint8
     assert result.max() == 255 and result.min() == 0
+
+
+def test_project_save_keeps_absolute_image_path_when_no_relative_path_exists(tmp_path, monkeypatch):
+    """Windows: photo on D:, project on C: — os.path.relpath raises ValueError."""
+    image = tmp_path / "photo.png"
+    Image.new("RGB", (20, 20)).save(image)
+    import os as _os
+    real_relpath = _os.path.relpath
+    def cross_drive(path, start=None):
+        raise ValueError("path is on mount 'D:', start on mount 'C:'")
+    monkeypatch.setattr(_os.path, "relpath", cross_drive)
+    project = Project(image_path=str(image))
+    target = tmp_path / "other" / "cross.moonlabel"
+    target.parent.mkdir()
+    project.save(target)
+    monkeypatch.setattr(_os.path, "relpath", real_relpath)
+    data = json.loads(target.read_text(encoding="utf-8"))
+    assert _os.path.isabs(data["image_path"])
+    assert Project.load(target).image_path == str(image.resolve())

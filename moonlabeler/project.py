@@ -375,8 +375,14 @@ class Project:
     def save(self, path):
         path = Path(path)
         image = Path(self.image_path).resolve()
+        try:
+            image_path = os.path.relpath(image, path.parent.resolve())
+        except ValueError:
+            # Windows: the photograph lives on another drive than the project,
+            # where no relative path exists. Keep the absolute path instead.
+            image_path = str(image)
         data = {"format": "MoonLabeler", "version": 2,
-                "image_path": os.path.relpath(image, path.parent.resolve()),
+                "image_path": image_path,
                 "utc": self.utc, "capture_mode": self.capture_mode,
                 "geometry": self.geometry.to_dict() if self.geometry else None,
                 "matrix": self.matrix.tolist() if self.matrix is not None else None,
