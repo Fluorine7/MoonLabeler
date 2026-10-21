@@ -12,7 +12,7 @@ import re
 import sys
 from xml.sax.saxutils import escape
 
-import cv2
+from ._opencv import cv2
 import numpy as np
 from PIL import Image, ImageColor
 

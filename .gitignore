@@ -28,3 +28,6 @@ dist/
 /examples/recognition-regressions.json
 
 /.python-runtime/
+
+/wheelhouse/
+/native-verification.json

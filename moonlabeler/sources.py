@@ -17,7 +17,7 @@ import ssl
 import zipfile
 
 import certifi
-import cv2
+from ._opencv import cv2
 import imagecodecs
 import numpy as np
 from PIL import Image, ImageOps

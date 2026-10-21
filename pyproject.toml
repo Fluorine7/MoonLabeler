@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=83"]
+requires = ["setuptools>=83", "cmake>=3.31,<5", "ninja>=1.11,<2", "numpy>=2.5.4,<3", "certifi>=2026.10.19"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -30,7 +30,7 @@ moonlabeler = "moonlabeler.app:main"
 dependencies = {file = "requirements.txt"}
 
 [tool.setuptools.packages.find]
-include = ["moonlabeler*"]
+include = ["moonlabeler*", "cv2"]
 
 [tool.setuptools.package-data]
 moonlabeler = ["data/*.json", "data/*.jpg", "data/*.wgsl"]

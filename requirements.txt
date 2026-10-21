@@ -1,9 +1,8 @@
 PySide6-Essentials>=6.12,<7
-numpy>=2,<3
+numpy>=2.5.4,<3
 Pillow>=13,<14
 imagecodecs>=2026.10.10,<2027
-opencv-contrib-python-headless>=4.14.0.94,<5
 certifi>=2026.10.19
-skyfield>=1.49,<2
-pyshp>=2.3,<4
+skyfield>=1.55,<2
+pyshp>=3.1.6,<4
 opencc-python-reimplemented>=0.1.7,<0.2

@@ -7,7 +7,7 @@ out textures AND a long independently measured illuminated limb must validate
 it. This is an image-derived correction, not a camera/libration measurement.
 The photograph itself is never resampled.
 """
-import cv2
+from ._opencv import cv2
 import numpy as np
 from .geometry import surface_vectors
 from .identification import IdentificationError, IdentificationResult

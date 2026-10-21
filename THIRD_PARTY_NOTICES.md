@@ -67,13 +67,13 @@ Data origin and credit remain separate from the GPL licensing of application cod
 
 ## Runtime dependencies
 
-Dependencies are installed separately, not vendored into this repository. Their upstream licenses and notices accompany their distributions:
+Most dependencies are installed separately. OpenCV is the exception: the application wheel contains its private minimal native build, with upstream notices. Other licenses accompany the dependency distributions:
 
 - Qt / PySide6 — [Qt for Python licensing](https://doc.qt.io/qtforpython-6/licenses.html).
 - NumPy — [NumPy license](https://github.com/numpy/numpy/blob/main/LICENSE.txt).
 - Pillow — [Pillow license](https://github.com/python-pillow/Pillow/blob/main/LICENSE).
 - imagecodecs (high-bit-depth RGB TIFF decoding) — [BSD-3-Clause license and bundled-library notices](https://github.com/cgohlke/imagecodecs/blob/v2026.10.10/LICENSE). Only its TIFF decoder is used; its wheel retains the upstream native-library notices.
-- OpenCV — [OpenCV license](https://github.com/opencv/opencv/blob/4.x/LICENSE).
+- OpenCV 4.14.0 / opencv_contrib — compiled from pinned source into the private `_moonlabeler_opencv` extension, using array-processing modules and an EdgeDrawing-only contrib subset. [Apache-2.0 license](https://github.com/opencv/opencv/blob/4.14.0/LICENSE). Original source headers and algorithm bodies are preserved; a small generated header/CMake module selects EdgeDrawing without the other contrib dependencies. The wheel includes OpenCV/contrib, BSD, SoftFloat/fdlibm, KAZE/AKAZE, MSCR and zlib notices next to the native binary. No upstream opencv-python wheel is bundled.
 - Skyfield — [Skyfield license](https://github.com/skyfielders/python-skyfield/blob/master/LICENSE).
 - PyShp — [PyShp license](https://github.com/GeospatialPython/pyshp/blob/master/LICENSE.TXT).
 - Astropy (optional FITS support) — [Astropy license](https://github.com/astropy/astropy/blob/main/LICENSE.rst).

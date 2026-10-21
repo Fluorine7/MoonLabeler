@@ -44,7 +44,8 @@ cd MoonLabeler
 ./start-mac.command
 ```
 
-也可在 macOS 双击 `start-mac.command`。首次启动会创建虚拟环境并安装依赖；已有环境的依赖不满足当前版本要求时也会更新。
+也可在 macOS 双击 `start-mac.command`。首次启动会创建虚拟环境、安装依赖并构建最小 OpenCV；需先安装 Xcode Command Line Tools（`xcode-select --install`）。已有环境会移除旧 OpenCV 安装包，缺少最小构建时自动重建。后续启动复用已有构建。
+源码构建还需要 C++ 编译器：Windows 安装 Visual Studio Build Tools 的“使用 C++ 的桌面开发”组件；Linux 安装 `build-essential`。CMake / Ninja 由 Python 构建环境安装。
 其他系统可通过 Python 启动，相关界面尚未完成平台实测。Ubuntu / Debian 还需安装 Qt 的系统库和中文字体：`sudo apt-get install libegl1 libopengl0 libgl1 fonts-noto-cjk`。
 
 ```bash
@@ -53,7 +54,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade "pip>=26.2" "setuptools>=83"
-python -m pip install --upgrade -r requirements.txt
+python -m pip uninstall -y opencv-python opencv-contrib-python opencv-python-headless opencv-contrib-python-headless
+python -m pip install --upgrade .
 python -m moonlabeler
 ```
 
@@ -77,7 +79,7 @@ FITS 可选依赖：`python -m pip install astropy`。打开后可点 **“打�
 
 更新源码后需同步更新实际虚拟环境和打包环境。运行上面的依赖更新命令，并使用维护中的 Python 安全补丁版本（2026-10-22 基线：3.12.15、3.13.16 或 3.14.8；较新版本可用）。只更新 requirements.txt 不会替换旧的 Python/OpenSSL 或已发布安装包。依赖与原生组件的检查范围、修复及未解决事项见 [安全审计记录](docs/security-audit-2026-10-22.md)。
 
-高位深 RGB TIFF 由 imagecodecs 的 libtiff 4.7.2 或更新版本解码，启动环境需安装更新后的依赖。照片文件不再交给 OpenCV 解码；OpenCV 继续用于配准、坑缘检测等像素处理。
+高位深 RGB TIFF 由 imagecodecs 的 libtiff 4.7.2 或更新版本解码，启动环境需安装更新后的依赖。照片文件不交给 OpenCV 解码。应用 wheel 内置固定源码构建的私有 OpenCV，仅含 core、imgproc、flann、features2d、calib3d、Python 绑定及 EdgeDrawing；不编译 imgcodecs / videoio / highgui、libtiff、OpenJPEG、OpenEXR、FFmpeg 等媒体组件。配准、坑缘检测继续使用上游算法。`requirements.txt` 仅列外部运行依赖；首次安装或更新应用需运行 `pip install .`，只安装依赖文件不会构建原生扩展。
 
 ### 使用与限制
 
@@ -162,10 +164,10 @@ Set `MOONLABELER_COMPUTE=cpu` to disable acceleration, or `auto` for automatic s
 
 The font tiers use projected equivalent-area diameter: large at **2%** or more of the image's short side, medium at **0.8%–2%**, and small below **0.8%**. This includes foreshortening and the camera transform; filtering the catalogue does not change a formation's tier. Rilles and other long terrain use catalogue extent. Tier sizes drive collision bounds, PNG and SVG together and are saved in projects. Older projects keep their uniform text; to enable tiers, set the maximum size to **1.8%**, decrement to **0.3%**, then regenerate. The calculation is batched and does not rerun recognition or read elevation data.
 
-High-bit-depth RGB TIFFs use imagecodecs with libtiff 4.7.2 or newer. Update the installed requirements when updating the source. Image files are decoded outside OpenCV; its registration and crater-detection algorithms continue to process decoded pixels.
+High-bit-depth RGB TIFFs use imagecodecs with libtiff 4.7.2 or newer. Update the installed requirements when updating the source. The application bundles a pinned minimal OpenCV build: array-processing modules plus the unchanged upstream EdgeDrawing implementation. Image/video codecs and their old TIFF/OpenJPEG/OpenEXR/FFmpeg components are excluded from the native build, while image files are decoded by Pillow/imagecodecs. Registration, crater detection, PNG and SVG export are regression-tested on all three operating systems.
 
 Requires **Python 3.12+**. Development and native UI testing are primarily on macOS.
-Clone the repository and run `./start-mac.command` on macOS, or create a virtual environment, install `requirements.txt`, and run `python -m moonlabeler` as shown above. Windows and Linux have not received native UI validation.
+Clone the repository and run `./start-mac.command` on macOS, or create a virtual environment and run `python -m pip install .`, then `python -m moonlabeler`. Building from source requires a C++ compiler: Xcode Command Line Tools on macOS, Visual Studio Build Tools with Desktop development with C++ on Windows, or build-essential on Linux. CMake and Ninja are installed by the Python build environment. The application wheel contains its private minimal OpenCV extension; installing only requirements.txt does not build it. Uninstall the four upstream OpenCV wheel variants when migrating an existing environment, as shown above. Windows and Linux have not received native UI validation.
 
 Opening a new photograph returns to Calibration and collapses assistance. WinJUPOS filenames populate UTC automatically; other filenames retain the current date and time. The initial default is **15:00 UTC**. Check or change the capture date in the separate year, month and day fields, then click **自动识别并标注** (Identify and annotate). Expand **具体时间** (Exact time), collapsed by default, to edit UTC hours and minutes in separate fields; seconds saved in older projects are retained. Collapsing it or changing the date retains the chosen time; a reset button restores 15:00 UTC. An observing location is optional; omitting it uses a geocentric approximation. Image processing is local. About 20 MB of JPL ephemerides are downloaded on first use; crater refinement and the terrain fallback use about 33 MB of LOLA elevation data. Both are cached; automatic identification does not require NASA SVS image downloads or AI model weights.
 

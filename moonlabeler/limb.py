@@ -9,7 +9,7 @@ Short polar arcs, weak textures, and competing orientations are rejected.
 """
 import math
 
-import cv2
+from ._opencv import cv2
 import numpy as np
 
 from .atlas import render_atlas

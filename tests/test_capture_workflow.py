@@ -4,8 +4,8 @@
 import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
+from PIL import Image
 import numpy as np
-import cv2
 from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
@@ -132,7 +132,7 @@ def test_new_photo_returns_to_calibration_collapses_assistance_and_keeps_timesta
             toggle.setChecked(True)
         window.workspace_tabs.setCurrentIndex(1)
         path = tmp_path/'new-photo.png'
-        assert cv2.imwrite(str(path), np.zeros((500, 600, 3), np.uint8))
+        Image.fromarray(np.zeros((500, 600, 3), np.uint8)).save(path)
         window.dirty = False
         window.open_image(str(path))
         app.processEvents()
@@ -198,7 +198,7 @@ def test_open_winjupos_photo_imports_seconds_and_project_retains_override(tmp_pa
     window = MainWindow()
     try:
         path = tmp_path/'2026-08-31-2137_7-Moon_lapl3_ap311(1).png'
-        assert cv2.imwrite(str(path), np.zeros((200, 300, 3), np.uint8))
+        Image.fromarray(np.zeros((200, 300, 3), np.uint8)).save(path)
         window.open_image(str(path))
         assert window.utc().isoformat() == '2026-08-31T21:37:42+00:00'
         assert '21:37:42' in window.statusBar().currentMessage()

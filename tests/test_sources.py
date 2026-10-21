@@ -89,7 +89,7 @@ def sixteen_bit_rgb_photo():
 def test_sixteen_bit_rgb_tiff_preserves_signal_and_rgb_order(tmp_path):
     path = tmp_path / 'linear-color.tif'
     pixels = sixteen_bit_rgb_photo()
-    assert cv2.imwrite(str(path), pixels[:, :, ::-1])
+    path.write_bytes(imagecodecs.tiff_encode(pixels))
     result = read_image(path)
     assert result.shape == pixels.shape and result.dtype == np.uint8
     assert result.min() == 0 and result.max() == 255
@@ -122,7 +122,7 @@ def set_tiff_orientation(path, orientation):
 @pytest.mark.parametrize('orientation', [2, 6])
 def test_sixteen_bit_rgb_tiff_retains_exif_orientation(tmp_path, orientation):
     path = tmp_path / 'oriented-color.tif'
-    assert cv2.imwrite(str(path), sixteen_bit_rgb_photo()[:, :, ::-1])
+    path.write_bytes(imagecodecs.tiff_encode(sixteen_bit_rgb_photo()))
     original = read_image(path)
     set_tiff_orientation(path, orientation)
     source_bytes = path.read_bytes()
@@ -144,12 +144,9 @@ def test_eight_bit_jpeg_retains_exif_orientation(tmp_path):
     assert np.array_equal(read_image(path), expected)
 
 
-@pytest.fixture(autouse=True)
-def forbid_opencv_file_decoders(monkeypatch):
-    def forbidden(*args, **kwargs):
-        raise AssertionError('Encoded image bytes must not reach OpenCV codecs')
-    monkeypatch.setattr(cv2, 'imread', forbidden)
-    monkeypatch.setattr(cv2, 'imdecode', forbidden)
+def test_opencv_has_no_file_or_video_codec_api():
+    for name in ('imread', 'imdecode', 'imwrite', 'imencode', 'VideoCapture', 'VideoWriter', 'imshow'):
+        assert not hasattr(cv2, name), name
 
 
 def test_application_does_not_call_opencv_file_or_video_codecs():

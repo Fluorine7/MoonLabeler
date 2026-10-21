@@ -34,10 +34,16 @@ if [[ ! -x .venv/bin/python ]]; then
     fi
     "$task_python" -m venv .venv
 fi
-if ! .venv/bin/python -c 'import PySide6, numpy, PIL, cv2, skyfield, shapefile, certifi, opencc, imagecodecs; assert hasattr(cv2, "ximgproc")' >/dev/null 2>&1 || ! .venv/bin/python -m pip install --dry-run --no-index --disable-pip-version-check -r requirements.txt >/dev/null 2>&1; then
-    if .venv/bin/python -c 'import importlib.metadata as m; m.version("opencv-python-headless")' >/dev/null 2>&1; then
-        .venv/bin/python -m pip uninstall -y opencv-python-headless
-    fi
+if ! .venv/bin/python -c 'import PySide6, numpy, PIL, skyfield, shapefile, certifi, opencc, imagecodecs' >/dev/null 2>&1 || ! .venv/bin/python -m pip install --dry-run --no-index --disable-pip-version-check -r requirements.txt >/dev/null 2>&1; then
     .venv/bin/python -m pip install -r requirements.txt
+fi
+# Old OpenCV wheels must not leave their bundled media libraries in this venv.
+legacy_opencv="$(.venv/bin/python -c 'import importlib.metadata as m; names=("opencv-python", "opencv-contrib-python", "opencv-python-headless", "opencv-contrib-python-headless"); installed={d.metadata["Name"].lower() for d in m.distributions()}; print(" ".join(n for n in names if n in installed))')"
+if [[ -n "$legacy_opencv" ]]; then
+    .venv/bin/python -m pip uninstall -y ${=legacy_opencv}
+fi
+if ! .venv/bin/python -c 'from moonlabeler._opencv import cv2; assert hasattr(cv2, "ximgproc"); assert not hasattr(cv2, "imread")' >/dev/null 2>&1; then
+    print "正在构建不含图像 / 视频解码器的 OpenCV；首次需要 Xcode Command Line Tools。"
+    .venv/bin/python -m pip install --no-deps .
 fi
 exec .venv/bin/python -m moonlabeler "$@"
