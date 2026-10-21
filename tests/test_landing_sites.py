@@ -78,16 +78,16 @@ def test_data_and_project_roundtrip_are_independent(tmp_path):
     loaded = Project.load(path)
     assert loaded.show_landing_sites and loaded.landing_color == '#88ffee'
     assert loaded.labels == project.labels
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     for key in ('show_landing_sites', 'landing_color'):
         del data['style'][key]
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     old = Project.load(path)
     assert not old.show_landing_sites and old.landing_color == DEFAULT_LANDING_COLOR
     for key, value in (('show_landing_sites', 'yes'), ('landing_color', 'not-a-color')):
         invalid = json.loads(json.dumps(data))
         invalid['style'][key] = value
-        path.write_text(json.dumps(invalid))
+        path.write_text(json.dumps(invalid), encoding="utf-8")
         with pytest.raises(ValueError, match=key):
             Project.load(path)
 

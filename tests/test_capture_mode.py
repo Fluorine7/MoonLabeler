@@ -21,9 +21,9 @@ def test_capture_mode_roundtrip_and_legacy_default(tmp_path, mode):
     project = Project(capture_mode=mode)
     project.save(path)
     assert Project.load(path).capture_mode == mode
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     del data['capture_mode']
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     assert Project.load(path).capture_mode == 'auto'
 
 

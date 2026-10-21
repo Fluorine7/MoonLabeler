@@ -114,7 +114,7 @@ def test_full_moon_prominent_craters_survive_selection_and_layout(maximum, step)
     photo = source/'1001.jpg'
     if not photo.exists():
         pytest.skip("User's full-Moon photograph is unavailable")
-    pose = json.loads((Path(__file__).parent/'fixtures/1001-registration.json').read_text())
+    pose = json.loads((Path(__file__).parent/'fixtures/1001-registration.json').read_text(encoding="utf-8"))
     application = QApplication.instance() or QApplication([])
     window = MainWindow()
     try:

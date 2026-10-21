@@ -18,7 +18,7 @@ def crowded_labels():
 
 
 def test_crowded_layout_keeps_baseline_positions_and_omissions():
-    expected = json.loads((Path(__file__).parent/'fixtures/label-layout-061.json').read_text())
+    expected = json.loads((Path(__file__).parent/'fixtures/label-layout-061.json').read_text(encoding="utf-8"))
     placed, omitted = arrange_labels(crowded_labels(), 800, 600, gap=8, max_labels=50)
     assert {key: list(rect) for key, rect in placed.items()} == expected['placed']
     assert sorted(omitted) == expected['omitted']

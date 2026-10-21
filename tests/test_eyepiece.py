@@ -177,9 +177,9 @@ def test_project_rejects_malformed_lens_metadata(tmp_path, value):
     p.identification['lens_distortion'] = dict(center=[500., 400.], scale=500., k=.2)
     path = tmp_path/'lens.moonlabel'
     p.save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data['automatic_recognition']['lens_distortion']['k'] = value
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match='lens_distortion'):
         Project.load(path)
 

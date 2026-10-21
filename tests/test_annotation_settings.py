@@ -70,17 +70,17 @@ def test_relative_font_scales_with_photo_and_survives_save(tmp_path):
     image = np.zeros((400, 600, 3), np.uint8)
     loaded.update_font_size(image.shape)
     export_svg(tmp_path/"photo.svg", image, [({"id": "a", "name": "A"}, [50, 60], [80, 90])], loaded)
-    assert f'font-size="{loaded.font_size}"' in (tmp_path/"photo.svg").read_text()
+    assert f'font-size="{loaded.font_size}"' in (tmp_path/"photo.svg").read_text(encoding="utf-8")
 
 
 def test_legacy_project_keeps_original_pixel_font_size(tmp_path):
     path = tmp_path/"legacy.moonlabel"
     project = Project(image_path=str(tmp_path/"photo.png"), font_size=80)
     project.save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data["style"].pop("font_percent", None)
     data["style"].pop("crater_outline_shape", None)
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     loaded = Project.load(path)
     assert loaded.crater_outline_shape == 'ellipse'
     loaded.update_font_size((4864, 3811, 3))
@@ -92,13 +92,13 @@ def test_legacy_project_keeps_original_pixel_font_size(tmp_path):
 def test_chinese_translation_overlays_existing_cached_catalog(tmp_path):
     rows = [{"id": str(i), "name": name, "name_zh": ""} for i, name in
             enumerate(("Mare Insularum", "Copernicus", "Copernicus D", "Unknown A"))]
-    (tmp_path/"catalog.json").write_text(json.dumps({"features": rows}))
+    (tmp_path/"catalog.json").write_text(json.dumps({"features": rows}), encoding="utf-8")
     translated = load_catalog(tmp_path)
     assert translated[0]["name_zh"] == "岛海"
     assert translated[1]["name_zh"] == "哥白尼"
     assert translated[2]["name_zh"] == "哥白尼 D"
     assert translated[3]["name_zh"] == ""
-    assert json.loads((tmp_path/"catalog.json").read_text())["features"] == rows
+    assert json.loads((tmp_path/"catalog.json").read_text(encoding="utf-8"))["features"] == rows
 
 
 def test_previous_chinese_names_remain_searchable():
@@ -139,7 +139,7 @@ def test_real_copernicus_photo_includes_main_crater_with_lighting_filter():
     if not photograph.exists():
         import pytest
         pytest.skip("User's photograph is unavailable")
-    pose = json.loads((Path(__file__).parent/"fixtures/0807-registration.json").read_text())
+    pose = json.loads((Path(__file__).parent/"fixtures/0807-registration.json").read_text(encoding="utf-8"))
     image = read_image(photograph)
     project = Project(geometry=Geometry.from_dict(pose["geometry"]), matrix=np.array(pose["matrix"]), min_diameter=5)
     features = project.visible_features(load_catalog(source/".cache"), image.shape, image=image)
@@ -183,6 +183,6 @@ def test_large_projected_crater_has_elliptical_outline_and_svg_path(tmp_path):
     points = np.array(outline[0])
     assert .65 < np.ptp(points[:, 0])/np.ptp(points[:, 1]) < .8
     export_svg(tmp_path/"rings.svg", np.zeros(shape, np.uint8), [(big, [400, 400], [500, 500])], project)
-    assert 'class="crater-outline"' in (tmp_path/"rings.svg").read_text()
+    assert 'class="crater-outline"' in (tmp_path/"rings.svg").read_text(encoding="utf-8")
     project.crater_outlines = False
     assert not project.crater_outline(big, shape)
