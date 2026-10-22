@@ -12,6 +12,7 @@ import subprocess
 import sys
 import sysconfig
 import tarfile
+import tempfile
 from urllib.request import urlopen
 
 import certifi
@@ -64,11 +65,31 @@ def edge_module(contrib, destination):
         'ocv_define_module(ximgproc opencv_core opencv_imgproc WRAP python)\n', encoding='utf-8')
 
 
+def ascii_build_dir(requested):
+    """Keep Windows generators out of non-ASCII paths and concurrent builds apart."""
+    if str(requested).isascii():
+        return requested
+    root = Path(os.environ.get('MOONLABELER_OPENCV_BUILD_ROOT') or tempfile.gettempdir()).resolve()
+    if not str(root).isascii():
+        raise RuntimeError('Windows OpenCV build needs an ASCII-only directory. '
+                           'Set MOONLABELER_OPENCV_BUILD_ROOT to a writable ASCII path, '
+                           'for example C:/Temp/MoonLabeler.')
+    root.mkdir(parents=True, exist_ok=True)
+    destination = Path(tempfile.mkdtemp(prefix='moonlabeler-opencv-', dir=root))
+    print(f'Non-ASCII build path; using {destination}', flush=True)
+    return destination
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--build-dir', type=Path, required=True)
     args = parser.parse_args()
+    if sys.platform == 'win32':
+        # MSVC and OpenCV's generators read generated files (CPU dispatch headers, the
+        # bindings config) in the ANSI code page, so a checkout under a non-ASCII path
+        # fails with mojibake file names. Build under an ASCII temporary path instead.
+        args.build_dir = ascii_build_dir(args.build_dir)
     args.build_dir.mkdir(parents=True, exist_ok=True)
     # Local developers can reuse sources already fetched and verified in the
     # same controlled session. CI always downloads/checks the pinned archives.
@@ -80,6 +101,14 @@ def main():
     extra = args.build_dir/'edgedrawing'
     edge_module(contrib, extra)
     cmake_build = args.build_dir/'cmake'
+    cache = cmake_build/'CMakeCache.txt'
+    if cache.exists():
+        # Build isolation gives every run a fresh temporary environment, so the ninja
+        # path cached by an earlier attempt may be gone and CMake then refuses to configure.
+        cached = [line.split('=', 1)[1] for line in cache.read_text(encoding='utf-8').splitlines()
+                  if line.startswith('CMAKE_MAKE_PROGRAM:')]
+        if cached and not Path(cached[0]).exists():
+            shutil.rmtree(cmake_build)
     command = ['cmake', '-S', str(opencv), '-B', str(cmake_build),
                '-C', str(Path(__file__).with_name('minimal.cmake')), '-G', 'Ninja',
                '-DCMAKE_POLICY_VERSION_MINIMUM=3.5',
@@ -90,10 +119,20 @@ def main():
     if sys.platform == 'darwin':
         command.extend(['-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0',
                         f'-DCMAKE_OSX_ARCHITECTURES={platform.machine()}'])
+    if sys.platform == 'win32':
+        # Build isolation runs this from a virtual environment, which has no libs/
+        # directory; without the import library CMake marks python3 unavailable
+        # and the opencv_python3 target never exists.
+        library = Path(sys.base_prefix)/'libs'/f'python{sys.version_info[0]}{sys.version_info[1]}.lib'
+        if library.exists():
+            command.append(f'-DPYTHON3_LIBRARY={library.as_posix()}')
     environment = os.environ.copy()
     if sys.platform == 'win32':
         from setuptools._distutils.compilers.C.msvc import _get_vc_env
         environment.update({key.upper(): value for key, value in _get_vc_env('x86_amd64').items()})
+        # The bindings generator (gen2.py) reads the UTF-8 config CMake writes with the
+        # locale encoding, so a checkout path with non-ASCII characters breaks the build.
+        environment.setdefault('PYTHONUTF8', '1')
     subprocess.run(command, check=True, env=environment)
     jobs = os.environ.get('CMAKE_BUILD_PARALLEL_LEVEL', str(min(8, os.cpu_count() or 2)))
     subprocess.run(['cmake', '--build', str(cmake_build), '--target', 'opencv_python3',

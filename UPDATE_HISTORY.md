@@ -14,6 +14,7 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 
 - 合入 mjrtmj 的贡献（PR #1–#4）：新增繁体中文与英文界面、繁体及双语繁体地名、平台中文字体和字重选项；界面语言选择保存在本机，重新启动后生效。
 - 修复 Windows 非 UTF-8 默认编码下的资源 / 工程读写，以及照片、DEM 与工程跨磁盘时的路径保存。
+- 新增 Windows x64 免安装版与云端打包流程（PR #12、#13）：Release 中下载 ZIP，完整解压后运行 `MoonLabeler.exe`，无需自行安装 Python 或编译器。内含最小 OpenCV、FITS 支持、示例、使用说明、许可和四份 JPL 星历；打包前解析星历，下载失败即停止，云端冒烟检查启动与完整缓存复制。Windows、macOS 和 Linux 打包模式分别使用各自的用户缓存目录。
 - 补齐繁体地名检索和英文候选列表；错误提示保留原始文件路径，避免翻译改写路径；自动识别失败时继续保留已有配准、参考点和标签。
 
 ### 安全与原生构建
@@ -22,6 +23,7 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 - 高位深 RGB TIFF 改由 imagecodecs（2026.10.10 起）的 **libtiff 4.7.2 或更新版本**解码，保留 16 位样本、分离平面及方向处理；其他照片由 Pillow 解码。照片文件不再交给 OpenCV 解码。
 - 以应用 wheel 内的**私有最小 OpenCV 4.14.0**替代通用 OpenCV 安装包。仅构建 core、imgproc、flann、features2d、calib3d、Python 绑定及保留上游 EdgeDrawing 实现的 ximgproc；不编译 imgcodecs、videoio、highgui 和旧 TIFF / OpenJPEG / OpenEXR / FFmpeg 等媒体组件，移除此前仍随完整 wheel 分发的闲置解码代码（PR #10、#11）。
 - 固定 OpenCV / contrib 源码提交并核验下载摘要；应用 wheel 附带构建清单和第三方许可。构建检查同时核对编译输入、已安装模块、解码 API 和原生链接库；macOS wheel 的架构标签与实际二进制架构一致。
+- 修复 Windows 虚拟环境下 Python 导入库定位及失效 Ninja 缓存；非 ASCII 构建路径使用独立的 ASCII 临时目录。若账户的临时目录也含非 ASCII 字符，先将 `MOONLABELER_OPENCV_BUILD_ROOT` 设为可写的 ASCII 目录（例如 PowerShell：`$env:MOONLABELER_OPENCV_BUILD_ROOT = 'C:\Temp\MoonLabeler'`）。Release 标签必须与包版本匹配，云端临时产物保留 7 天，正式下载文件放入 Release。
 
 ### 从 0.7.x 升级
 
@@ -47,6 +49,7 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 ### English
 
 - Adds Traditional Chinese and English interfaces, Traditional/bilingual-Traditional captions, platform CJK fonts and font weights, integrating mjrtmj's PRs #1–#4. Fixes Windows UTF-8 resource/project I/O, cross-drive photo/DEM paths, Traditional name search, English candidate captions and preservation of paths in translated errors.
+- Adds a Windows x64 portable ZIP and cloud build/release workflow (PRs #12–#13). Extract the complete ZIP and run `MoonLabeler.exe`, with no separate Python/compiler installation. It includes FITS support, the minimal OpenCV, examples, documentation, licenses and all four JPL kernels; failed downloads stop packaging. Frozen applications use platform-specific per-user caches. Windows source builds now locate the Python import library and recover from stale Ninja paths; a non-ASCII temporary directory requires a writable ASCII `MOONLABELER_OPENCV_BUILD_ROOT`.
 - Raises the minimum to **Python 3.12**, updates security dependency baselines and integrates NumPy, PyShp and Skyfield updates. High-bit-depth RGB TIFF decoding uses imagecodecs with **libtiff 4.7.2+**, preserving 16-bit samples; Pillow handles other images.
 - Replaces the full upstream OpenCV wheel with a pinned private **OpenCV 4.14.0** build containing only array-processing modules and upstream EdgeDrawing. Image/video codecs and their unused TIFF, OpenJPEG, OpenEXR and FFmpeg components are excluded. Source hashes, compiled inputs, installed modules, linked libraries and macOS architecture tags are checked; native notices and a build manifest ship with the wheel.
 - **Migration:** use a patched Python 3.12+ interpreter and a C++ compiler for the first source build. macOS users can run `./start-mac.command`; manual upgrades should activate the project environment, remove all four legacy OpenCV wheel variants and run `python -m pip install --upgrade .`, as shown above. Installing requirements alone does not build the native extension. Existing project/export formats remain supported; older distributed installers need rebuilding.
