@@ -69,6 +69,8 @@ Data origin and credit remain separate from the GPL licensing of application cod
 
 Most dependencies are installed separately. OpenCV is the exception: the application wheel contains its private minimal native build, with upstream notices. Other licenses accompany the dependency distributions:
 
+The standalone Windows ZIP and macOS App also bundle their Python runtime and runtime dependencies. The macOS App preserves their distribution metadata and license directories in `Contents/Resources`, with CPython's `LICENSE.txt` under `licenses/python`. Its Qt 6.12 frameworks come from the official Qt SDK; the required PySide/Shiboken bindings are rebuilt locally from [Qt for Python v6.12.0, commit f50facb83fc3dc5f3240c854668c7a6dd93871b2](https://github.com/pyside/pyside-setup/tree/f50facb83fc3dc5f3240c854668c7a6dd93871b2) for macOS 14.4 ARM64. Build instructions and the compatibility scope are recorded in [the macOS App guide](docs/macos-app.md). Qt source is available from [Qt's 6.12.0 source archive](https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/).
+
 - Qt / PySide6 — [Qt for Python licensing](https://doc.qt.io/qtforpython-6/licenses.html).
 - NumPy — [NumPy license](https://github.com/numpy/numpy/blob/main/LICENSE.txt).
 - Pillow — [Pillow license](https://github.com/python-pillow/Pillow/blob/main/LICENSE).

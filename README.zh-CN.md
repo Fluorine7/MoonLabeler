@@ -6,6 +6,12 @@
 
 在自己的月面照片上配准地形、编辑名称并导出标注。采用 Python / Qt，支持局部月面和镜像照片。
 
+## 下载 macOS App
+
+Apple Silicon（M1 或更新机型）、**macOS 14.4+ / 15 或更新版本**：从 [v0.8.0 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0) 下载 `MoonLabeler-0.8.0-macos-arm64.zip`，完整解压后打开 `MoonLabeler.app`，也可拖入“应用程序”。内含 Python、Qt、最小 OpenCV、FITS 支持和离线星历，无需另装 Python 或编译器；不适用于 Intel Mac。
+
+目前 App 使用临时签名，未经过 Apple 公证。首次下载若被 macOS 拦截，请在“系统设置 → 隐私与安全性”中允许该 App 运行。安装、验证与本机重新打包步骤见 [macOS App 说明](docs/macos-app.md)。
+
 ## 从源码打开
 
 需要 **Python 3.12 或更高版本**。首次源码安装需要 C++ 编译器：macOS 使用 Xcode Command Line Tools（`xcode-select --install`），Windows 使用 Visual Studio Build Tools 的“使用 C++ 的桌面开发”组件，Linux 使用 `build-essential`。CMake / Ninja 由 Python 构建环境安装。
@@ -16,7 +22,7 @@ cd MoonLabeler
 ./start-mac.command
 ```
 
-也可双击 `start-mac.command`。首次运行会创建虚拟环境并安装依赖。Windows 可用 `pwsh -File build-windows.ps1` 打包成免安装的 `dist/MoonLabeler/MoonLabeler.exe`（打 `v*` 标签时 GitHub Actions 自动构建并附到 Release）；macOS / Linux 仍以源码方式运行。
+也可双击 `start-mac.command`。首次运行会创建虚拟环境并安装依赖。Windows 可用 `pwsh -File build-windows.ps1` 打包成免安装的 `dist/MoonLabeler/MoonLabeler.exe`（打 `v*` 标签时 GitHub Actions 自动构建并附到 Release）；macOS 也提供上述独立 App，Linux 使用源码或 wheel 安装。
 
 首次还会构建应用自带的最小 OpenCV；已有 macOS 环境会检查依赖、移除旧的完整 OpenCV 安装包，缺少最小构建时自动重建，后续启动复用已有构建。其他平台的安装命令见[项目主页](README.md#从源码运行)。只安装 `requirements.txt` 不会构建应用原生扩展，首次安装或更新应用需运行 `python -m pip install --upgrade .`。
 

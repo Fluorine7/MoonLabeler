@@ -13,10 +13,16 @@ on:
       - MoonLabeler.spec
       - tools/make_icon.py
       - tools/pyinstaller-hooks/**
+      - moonlabeler/bundle_check.py
+      - run_app.py
       - native/**
       - .github/workflows/windows-build.yml
   workflow_dispatch:
     inputs:
+      reuse_release_wheel:
+        description: "Reuse the verified v0.8.0 Windows native wheel; package current source without recompiling OpenCV"
+        type: boolean
+        default: false
       release_tag:
         description: "Existing release tag to publish (leave empty for a build only)"
         type: string
@@ -50,7 +56,22 @@ jobs:
       - name: Install current packaging tools
         run: python -m pip install --upgrade "pip>=26.2" "setuptools>=83" wheel "cmake>=3.31,<5" "ninja>=1.11,<2" "numpy>=2.5.4,<3" "certifi>=2026.10.19"
       - name: Build application wheel with minimal OpenCV
+        if: ${{ !inputs.reuse_release_wheel }}
         run: python -m pip wheel --no-deps --no-build-isolation -w wheelhouse .
+      - name: Reuse the verified Windows native wheel
+        if: ${{ inputs.reuse_release_wheel }}
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          import hashlib, subprocess, tomllib
+          from pathlib import Path
+          assert tomllib.loads(Path('pyproject.toml').read_text('utf-8'))['project']['version'] == '0.8.0'
+          name = 'moonlabeler-0.8.0-cp312-cp312-win_amd64.whl'
+          subprocess.check_call(['gh', 'release', 'download', 'v0.8.0', '--pattern', name, '--dir', 'wheelhouse'])
+          with (Path('wheelhouse')/name).open('rb') as stream:
+              assert hashlib.file_digest(stream, 'sha256').hexdigest() == '1f89a648a3abaf685ad6031a62f6e9d8774c8e56c6bd4b769b188cfd31260f10'
       - name: Install the built wheel, FITS support and PyInstaller
         shell: python
         run: |
@@ -97,6 +118,43 @@ jobs:
       - name: Build portable exe and zip
         shell: pwsh
         run: pwsh -File build-windows.ps1 -Python (Get-Command python).Source
+      - name: Test the frozen image readers, registration, crater detection and exports
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'dist\MoonLabeler\MoonLabeler.exe').Path
+          $evidence = Join-Path $env:RUNNER_TEMP 'frozen-evidence'
+          New-Item -ItemType Directory -Force $evidence | Out-Null
+          $savedPath = $env:PATH
+          try {
+            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+            $env:MOONLABELER_BUNDLE_CHECK = Join-Path $evidence 'frozen-check.json'
+            $env:MOONLABELER_CACHE = Join-Path $env:RUNNER_TEMP 'frozen-cache'
+            $env:MOONLABELER_COMPUTE = 'cpu'
+            $env:QT_QPA_PLATFORM = 'offscreen'
+            $process = Start-Process -FilePath $exe -WorkingDirectory $env:RUNNER_TEMP -PassThru
+            if (-not $process.WaitForExit(120000)) {
+              Stop-Process -Id $process.Id -Force
+              throw 'Frozen integration check timed out'
+            }
+            if ($process.ExitCode -ne 0) {
+              Get-Content (Join-Path $evidence 'frozen-check.json') -ErrorAction SilentlyContinue
+              throw "Frozen check failed: $($process.ExitCode)"
+            }
+            $report = Get-Content (Join-Path $evidence 'frozen-check.json') -Raw | ConvertFrom-Json
+            if (-not $report.success) { throw 'Frozen check did not report success' }
+            Copy-Item (Join-Path $evidence 'frozen-check.json') 'portable-frozen-verification.json'
+          } finally {
+            $env:PATH = $savedPath
+            Remove-Item Env:MOONLABELER_BUNDLE_CHECK,Env:MOONLABELER_CACHE,Env:MOONLABELER_COMPUTE,Env:QT_QPA_PLATFORM -ErrorAction SilentlyContinue
+          }
+      - name: Preserve frozen-app evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: windows-frozen-evidence
+          path: ${{ runner.temp }}/frozen-evidence/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Smoke-test the exe
         shell: pwsh
         run: |
@@ -132,6 +190,7 @@ jobs:
             dist/*.sha256
             native-verification.json
             portable-audit-requirements.txt
+            portable-frozen-verification.json
           if-no-files-found: error
           retention-days: 7
 

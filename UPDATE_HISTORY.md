@@ -12,6 +12,8 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 
 ### 界面与兼容修复
 
+- 补充本机打包的 macOS Apple Silicon 独立 App：最低系统版本为 macOS 14.4，包含 Python、Qt、FITS、最小 OpenCV 和四份离线星历；用户解压即可打开，无需编译器。检查全部 Mach-O 架构、最低系统版本和外部链接，并使用同一份 App 在 macOS 14.4+ / 15 上执行配准、坑缘检测、工程保存及 PNG / SVG 导出检查。当前为临时签名，未经 Apple 公证，首次打开可能需要在系统设置中允许。
+- 补齐独立安装包的 TIFF Cython 扩展、Astropy 常量和解析表，修复“源码可用但冻结后缺模块”的 TIFF / FITS 读取问题；Windows 云端打包增加对最终 EXE 的配准、坑缘、工程往返、TIFF / FITS 与 PNG / SVG 导出检查。重新打包复用已验证的最小 OpenCV wheel。
 - 合入 mjrtmj 的贡献（PR #1–#4）：新增繁体中文与英文界面、繁体及双语繁体地名、平台中文字体和字重选项；界面语言选择保存在本机，重新启动后生效。
 - 修复 Windows 非 UTF-8 默认编码下的资源 / 工程读写，以及照片、DEM 与工程跨磁盘时的路径保存。
 - 新增 Windows x64 免安装版与云端打包流程（PR #12、#13）：Release 中下载 ZIP，完整解压后运行 `MoonLabeler.exe`，无需自行安装 Python 或编译器。内含最小 OpenCV、FITS 支持、示例、使用说明、许可和四份 JPL 星历；打包前解析星历，下载失败即停止，云端冒烟检查启动与完整缓存复制。Windows、macOS 和 Linux 打包模式分别使用各自的用户缓存目录。
@@ -42,18 +44,19 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 
 ### 验证与检查范围
 
-- 最小构建的[三平台 CI](https://github.com/Fluorine7/MoonLabeler/actions/runs/39648062686)通过：macOS ARM64 **477 通过 / 29 跳过**，Windows x64、Linux x64 各 **463 通过 / 43 跳过**；包含配准、坑缘检测、图片读取、工程保存和 PNG / SVG 导出，以及原生组件检查与依赖审计。缺少本地照片、数据或平台特性时按条件跳过；运行器自动化测试不等同于所有平台的交互式界面及显卡实机验证。
+- 最小构建的[三平台 CI](https://github.com/Fluorine7/MoonLabeler/actions/runs/39713471197)通过：macOS ARM64 **486 通过 / 29 跳过**，Windows x64、Linux x64 各 **472 通过 / 43 跳过**；包含配准、坑缘检测、图片读取、工程保存和 PNG / SVG 导出，以及原生组件检查与依赖审计。缺少本地照片、数据或平台特性时按条件跳过；运行器自动化测试不等同于所有平台的交互式界面及显卡实机验证。
 - 本机另覆盖实拍识别、导出、工程往返和识别失败保护；修正一条将异常对象直接当字符串检查的旧测试断言，相关 **4 项定向复测通过**，其余 **500 项通过、6 项跳过**的完整测试结果复用。
 - 本机环境已移除完整 OpenCV 安装中的 **94 个旧原生库文件**。31 个外部已安装分发包的审计未发现已知漏洞；版本与文档整理复用这些仍有效的安全和功能检查结果。具体 CVE、原生组件边界、Rust GPU 依赖与历史安装包的检查范围见[安全审计记录](docs/security-audit-2026-10-22.md)。
 
 ### English
 
+- Adds a locally built Apple Silicon macOS App for **macOS 14.4 and newer, including 15**, with Python, Qt, FITS and offline ephemeris bundled. PySide/Shiboken 6.12 bindings are rebuilt for the deployment target; all native libraries are checked. The app is ad-hoc signed and not Apple notarized. Adds frozen-program tests and repairs omitted TIFF Cython modules and Astropy constants/parser tables on both packaged platforms.
 - Adds Traditional Chinese and English interfaces, Traditional/bilingual-Traditional captions, platform CJK fonts and font weights, integrating mjrtmj's PRs #1–#4. Fixes Windows UTF-8 resource/project I/O, cross-drive photo/DEM paths, Traditional name search, English candidate captions and preservation of paths in translated errors.
 - Adds a Windows x64 portable ZIP and cloud build/release workflow (PRs #12–#13). Extract the complete ZIP and run `MoonLabeler.exe`, with no separate Python/compiler installation. It includes FITS support, the minimal OpenCV, examples, documentation, licenses and all four JPL kernels; failed downloads stop packaging. Frozen applications use platform-specific per-user caches. Windows source builds now locate the Python import library and recover from stale Ninja paths; a non-ASCII temporary directory requires a writable ASCII `MOONLABELER_OPENCV_BUILD_ROOT`.
 - Raises the minimum to **Python 3.12**, updates security dependency baselines and integrates NumPy, PyShp and Skyfield updates. High-bit-depth RGB TIFF decoding uses imagecodecs with **libtiff 4.7.2+**, preserving 16-bit samples; Pillow handles other images.
 - Replaces the full upstream OpenCV wheel with a pinned private **OpenCV 4.14.0** build containing only array-processing modules and upstream EdgeDrawing. Image/video codecs and their unused TIFF, OpenJPEG, OpenEXR and FFmpeg components are excluded. Source hashes, compiled inputs, installed modules, linked libraries and macOS architecture tags are checked; native notices and a build manifest ship with the wheel.
 - **Migration:** use a patched Python 3.12+ interpreter and a C++ compiler for the first source build. macOS users can run `./start-mac.command`; manual upgrades should activate the project environment, remove all four legacy OpenCV wheel variants and run `python -m pip install --upgrade .`, as shown above. Installing requirements alone does not build the native extension. Existing project/export formats remain supported; older distributed installers need rebuilding.
-- Three-platform wheel builds, regression tests and dependency audits passed: **477 passed / 29 skipped** on macOS ARM64 and **463 passed / 43 skipped** on each of Windows x64 and Linux x64. Additional local photographs and failure-preservation workflows passed after correcting one stale exception-message assertion; four focused tests were rerun, while the other 500 passing results were reused. These results do not claim interactive validation of every OS/GPU or repairs to historical installers. See the linked CI and audit record for evidence and scope.
+- Three-platform wheel builds, regression tests and dependency audits passed: **486 passed / 29 skipped** on macOS ARM64 and **472 passed / 43 skipped** on each of Windows x64 and Linux x64. Additional local photographs and failure-preservation workflows passed after correcting one stale exception-message assertion; four focused tests were rerun, while the other 500 passing results were reused. These results do not claim interactive validation of every OS/GPU or repairs to historical installers. See the linked CI and audit record for evidence and scope.
 
 ## 0.7.12
 

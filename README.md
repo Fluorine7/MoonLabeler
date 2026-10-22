@@ -10,6 +10,8 @@ Register your own lunar photographs, place editable terrain labels, and export a
 **0.8.0 · 2026-10-22:** 多语言界面、Windows 兼容修复、依赖安全更新与最小 OpenCV 构建；最低 Python 升为 3.12。详见[本次更新与升级步骤](UPDATE_HISTORY.md#080)。
 Multilingual UI, Windows compatibility fixes, security dependency updates and a minimal OpenCV build. Python 3.12+ is now required; see the [release notes and migration steps](UPDATE_HISTORY.md#080).
 
+**macOS App:** [Download v0.8.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0), choose `MoonLabeler-0.8.0-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
+
 ![MoonLabeler — explicitly synthetic editing example / 合成编辑示例](docs/moonlabeler.png)
 
 ## 中文

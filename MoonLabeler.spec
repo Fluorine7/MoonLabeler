@@ -1,12 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec for the Windows build. Run through build-windows.ps1, or directly:
+# PyInstaller spec for Windows and Apple Silicon macOS. Run the platform build script:
 #   python -m PyInstaller --noconfirm --clean MoonLabeler.spec
 # Produces dist/MoonLabeler/MoonLabeler.exe (one-folder build; no installer needed).
 from pathlib import Path
+import sys
+import tomllib
+import sysconfig
 
-from PyInstaller.utils.hooks import collect_data_files
+from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 
 ROOT = Path(SPECPATH).resolve()
+MACOS = sys.platform == "darwin"
+VERSION = tomllib.loads((ROOT / "pyproject.toml").read_text("utf-8"))["project"]["version"]
 
 datas = [
     (str(ROOT / "moonlabeler" / "data"), "moonlabeler/data"),
@@ -28,8 +33,16 @@ datas += [(str(path), "bundled_ephemeris") for path in sorted(ephemeris.glob("*"
 # binary; nothing imports the package statically, so collect them here (the cv2 hook
 # only runs when the compatibility shim is imported).
 datas += collect_data_files("_moonlabeler_opencv")
+if MACOS:
+    # Preserve dependency versions and their dist-info license directories.
+    datas += copy_metadata("moonlabeler", recursive=True)
+    datas += copy_metadata("astropy", recursive=True)
+    datas += copy_metadata("wgpu", recursive=True)
+    datas += [(str(ROOT / "docs" / "macos-app.md"), "docs")]
+    datas += [(str(ROOT / "build" / "macos-build-info.json"), ".")]
+    datas += [(str(Path(sysconfig.get_path("stdlib")) / "LICENSE.txt"), "licenses/python")]
 
-icon = ROOT / "build" / "moonlabeler.ico"
+icon = ROOT / "build" / ("moonlabeler.icns" if MACOS else "moonlabeler.ico")
 
 a = Analysis(
     [str(ROOT / "run_app.py")],
@@ -37,7 +50,7 @@ a = Analysis(
     datas=datas,
     # moonlabeler._opencv loads the private OpenCV extension via find_spec, which static
     # analysis cannot follow; see tools/pyinstaller-hooks/hook-cv2.py.
-    hiddenimports=["astropy.io.fits", "_moonlabeler_opencv.cv2"],
+    hiddenimports=["astropy.io.fits", "_moonlabeler_opencv.cv2", "imagecodecs._tiff", "imagecodecs._shared_cython"],
     hookspath=[str(ROOT / "tools" / "pyinstaller-hooks")],
     # astropy.visualization.wcsaxes calls pytest.importorskip("matplotlib") on import and
     # aborts PyInstaller's dependency scan whenever pytest is installed; FITS I/O never needs it.
@@ -56,5 +69,21 @@ exe = EXE(
     icon=str(icon) if icon.exists() else None,
     console=False,
     upx=False,
+    **({"target_arch": "arm64"} if MACOS else {}),
 )
 coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="MoonLabeler")
+if MACOS:
+    app = BUNDLE(
+        coll,
+        name="MoonLabeler.app",
+        icon=str(icon),
+        bundle_identifier="org.fluorine.moonlabeler",
+        version=VERSION,
+        info_plist={
+            "CFBundleShortVersionString": VERSION,
+            "CFBundleVersion": VERSION,
+            "LSMinimumSystemVersion": "14.4",
+            "NSHighResolutionCapable": True,
+            "NSPrincipalClass": "NSApplication",
+        },
+    )

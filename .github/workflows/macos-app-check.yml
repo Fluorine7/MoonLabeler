@@ -1,0 +1,77 @@
+name: macOS App compatibility
+
+on:
+  workflow_dispatch:
+    inputs:
+      asset_name:
+        description: Locally built v0.8.0 Release ZIP to test (no cloud build)
+        required: true
+        type: string
+      sha256:
+        description: Expected SHA-256 of that ZIP
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      ASSET_NAME: ${{ inputs.asset_name }}
+      EXPECTED_SHA256: ${{ inputs.sha256 }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Download the locally built archive and verify the transfer
+        shell: bash
+        run: |
+          [[ "$ASSET_NAME" =~ ^MoonLabeler-0\.8\.0-macos-arm64(\.candidate)?\.zip$ ]]
+          [[ "$EXPECTED_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          mkdir -p "$RUNNER_TEMP/download" "$RUNNER_TEMP/App 解压" "$RUNNER_TEMP/evidence"
+          gh release download v0.8.0 --pattern "$ASSET_NAME" --dir "$RUNNER_TEMP/download"
+          cd "$RUNNER_TEMP/download"
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$ASSET_NAME" | shasum -a 256 --check -
+          ditto -x -k "$ASSET_NAME" "$RUNNER_TEMP/App 解压"
+          codesign --verify --deep --strict "$RUNNER_TEMP/App 解压/MoonLabeler.app"
+          sw_vers > "$RUNNER_TEMP/evidence/system.txt"
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$ASSET_NAME" > "$RUNNER_TEMP/evidence/archive.sha256"
+      - name: Run bundled registration, crater, decoding, project and export checks
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          /usr/bin/env -i HOME="$HOME" TMPDIR="$RUNNER_TEMP/" PATH=/usr/bin:/bin:/usr/sbin:/sbin \
+            QT_QPA_PLATFORM=offscreen MOONLABELER_COMPUTE=cpu \
+            MOONLABELER_CACHE="$RUNNER_TEMP/empty-cache" \
+            MOONLABELER_BUNDLE_CHECK="$RUNNER_TEMP/evidence/frozen-check.json" \
+            "$RUNNER_TEMP/App 解压/MoonLabeler.app/Contents/MacOS/MoonLabeler" \
+            > "$RUNNER_TEMP/evidence/frozen-check.log" 2>&1
+          jq -e '.success == true' "$RUNNER_TEMP/evidence/frozen-check.json"
+      - name: Check normal Cocoa GUI startup without an external Python
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          /usr/bin/env -i HOME="$HOME" TMPDIR="$RUNNER_TEMP/" PATH=/usr/bin:/bin:/usr/sbin:/sbin \
+            MOONLABELER_COMPUTE=cpu MOONLABELER_CACHE="$RUNNER_TEMP/gui-cache" \
+            "$RUNNER_TEMP/App 解压/MoonLabeler.app/Contents/MacOS/MoonLabeler" \
+            > "$RUNNER_TEMP/evidence/gui-startup.log" 2>&1 &
+          APP_PID=$!
+          sleep 10
+          kill -0 "$APP_PID"
+          kill "$APP_PID"
+          wait "$APP_PID" || [[ "$?" == 143 ]]
+          echo 'Cocoa GUI process remained running for 10 seconds' > "$RUNNER_TEMP/evidence/gui-startup.txt"
+      - name: Preserve OS-specific evidence and exported images
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: macos-app-${{ matrix.os }}
+          path: ${{ runner.temp }}/evidence/
+          if-no-files-found: error
+          retention-days: 7
