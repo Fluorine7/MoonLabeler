@@ -14,7 +14,7 @@ cd MoonLabeler
 ./start-mac.command
 ```
 
-也可双击 `start-mac.command`。首次运行会创建虚拟环境并安装依赖。Windows 可用 `pwsh -File build-windows.ps1` 打包成免安装的 `dist/MoonLabeler/MoonLabeler.exe`；macOS / Linux 仍以源码方式运行。
+也可双击 `start-mac.command`。首次运行会创建虚拟环境并安装依赖。Windows 可用 `pwsh -File build-windows.ps1` 打包成免安装的 `dist/MoonLabeler/MoonLabeler.exe`（打 `v*` 标签时 GitHub Actions 自动构建并附到 Release）；macOS / Linux 仍以源码方式运行。
 
 启动窗口自动最大化，铺满当前屏幕可用区域。macOS 的标注设置控件填满表单右侧列，语言下拉菜单可完整显示“双语 / 英文 / 中文 / 繁体中文 / 双语（繁体）”。繁体选项由简体译名经 OpenCC（`opencc-python-reimplemented`）即时转换，并修正“濕”“岩”两个月面地名惯用字；用户手工编辑过的标注文字不转换。
 
