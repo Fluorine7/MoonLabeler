@@ -1,17 +1,20 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.7.12** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.8.0** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
 
 [中文使用说明](README.zh-CN.md) · [Update History / 更新历史](UPDATE_HISTORY.md) · [Acknowledgements / 致谢](ACKNOWLEDGEMENTS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 
+**0.8.0 · 2026-10-22:** 多语言界面、Windows 兼容修复、依赖安全更新与最小 OpenCV 构建；最低 Python 升为 3.12。详见[本次更新与升级步骤](UPDATE_HISTORY.md#080)。
+Multilingual UI, Windows compatibility fixes, security dependency updates and a minimal OpenCV build. Python 3.12+ is now required; see the [release notes and migration steps](UPDATE_HISTORY.md#080).
+
 ![MoonLabeler — explicitly synthetic editing example / 合成编辑示例](docs/moonlabeler.png)
 
 ## 中文
 
-MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持整月盘、局部照片、旋转及镜像。界面目前为中文。
+MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持整月盘、局部照片、旋转及镜像。界面支持简体中文、繁体中文和英文，可在工具栏切换，重新启动后生效。
 
 ### 功能
 

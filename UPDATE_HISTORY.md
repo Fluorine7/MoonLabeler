@@ -6,13 +6,51 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
-## Unreleased / 待发布
+## 0.8.0
 
-合入 mjrtmj 的 Windows UTF-8 读写、繁体及英文界面、平台中文字体与字重、跨磁盘工程保存修复（PR #1–#4）。补齐繁体地名检索、英文候选列表、外部图片错误中的路径保护及已有 macOS 环境的依赖更新检查。
+2026-10-22 · 多语言、跨平台兼容与依赖安全更新。由于最低 Python 版本和原生依赖安装方式发生变化，从 0.7.12 升为 0.8.0。
 
-补声明 certifi 并提高 Pillow、Qt、OpenCV、pytest、setuptools 安全版本基线；增加三平台测试和依赖审计工作流。审计覆盖实际 Python 环境、可选依赖、GPU 后端 Rust 锁文件和部分原生组件；OpenCV 内嵌原生库及旧发布包的限制见 [2026-10-22 审计记录](docs/security-audit-2026-10-22.md)。
+### 界面与兼容修复
 
-Integrates mjrtmj's Windows encoding, Traditional/English UI, platform fonts and cross-drive save contributions, with fixes for Traditional search, candidate captions, opaque error paths and existing-environment upgrades. Raises security dependency baselines and adds cross-platform tests and dependency audits. See the audit record for remaining native-component and historical-binary limitations.
+- 合入 mjrtmj 的贡献（PR #1–#4）：新增繁体中文与英文界面、繁体及双语繁体地名、平台中文字体和字重选项；界面语言选择保存在本机，重新启动后生效。
+- 修复 Windows 非 UTF-8 默认编码下的资源 / 工程读写，以及照片、DEM 与工程跨磁盘时的路径保存。
+- 补齐繁体地名检索和英文候选列表；错误提示保留原始文件路径，避免翻译改写路径；自动识别失败时继续保留已有配准、参考点和标签。
+
+### 安全与原生构建
+
+- 最低运行版本升为 **Python 3.12**。补声明实际使用的 certifi，安全基线包括 Qt 6.12、Pillow 13、certifi 2026.10.19；同时整合 NumPy 2.5.4、PyShp 3.1.6 和 Skyfield 1.55 的依赖更新（PR #7–#9）。完整版本约束以 `requirements.txt` / `pyproject.toml` 为准。
+- 高位深 RGB TIFF 改由 imagecodecs（2026.10.10 起）的 **libtiff 4.7.2 或更新版本**解码，保留 16 位样本、分离平面及方向处理；其他照片由 Pillow 解码。照片文件不再交给 OpenCV 解码。
+- 以应用 wheel 内的**私有最小 OpenCV 4.14.0**替代通用 OpenCV 安装包。仅构建 core、imgproc、flann、features2d、calib3d、Python 绑定及保留上游 EdgeDrawing 实现的 ximgproc；不编译 imgcodecs、videoio、highgui 和旧 TIFF / OpenJPEG / OpenEXR / FFmpeg 等媒体组件，移除此前仍随完整 wheel 分发的闲置解码代码（PR #10、#11）。
+- 固定 OpenCV / contrib 源码提交并核验下载摘要；应用 wheel 附带构建清单和第三方许可。构建检查同时核对编译输入、已安装模块、解码 API 和原生链接库；macOS wheel 的架构标签与实际二进制架构一致。
+
+### 从 0.7.x 升级
+
+1. 使用已安装安全补丁的 Python 3.12 或更高版本；Python 3.11 环境需重新创建虚拟环境。
+2. macOS 可运行 `./start-mac.command`，脚本会检查依赖、移除旧 OpenCV 安装包，并在缺少私有扩展时构建。首次源码构建需要 C++ 编译器：macOS 安装 Xcode Command Line Tools，Windows 安装 Visual Studio Build Tools 的“使用 C++ 的桌面开发”组件，Linux 安装 `build-essential`；CMake / Ninja 由构建环境安装。
+3. 手动升级时，先激活项目虚拟环境，再在仓库根目录执行：
+
+   ```bash
+   python -m pip install --upgrade "pip>=26.2" "setuptools>=83"
+   python -m pip uninstall -y opencv-python opencv-contrib-python opencv-python-headless opencv-contrib-python-headless
+   python -m pip install --upgrade .
+   ```
+
+   `requirements.txt` 仅列外部运行依赖，单独安装它不会构建应用原生扩展。首次安装后，后续启动复用已有构建。
+4. 已有 `.moonlabel` 工程、配准结果和 PNG / SVG 导出格式继续使用。已分发的旧安装包需要使用修复后的环境重新打包，更新源码不能替换其内嵌组件。
+
+### 验证与检查范围
+
+- 最小构建的[三平台 CI](https://github.com/Fluorine7/MoonLabeler/actions/runs/39648062686)通过：macOS ARM64 **477 通过 / 29 跳过**，Windows x64、Linux x64 各 **463 通过 / 43 跳过**；包含配准、坑缘检测、图片读取、工程保存和 PNG / SVG 导出，以及原生组件检查与依赖审计。缺少本地照片、数据或平台特性时按条件跳过；运行器自动化测试不等同于所有平台的交互式界面及显卡实机验证。
+- 本机另覆盖实拍识别、导出、工程往返和识别失败保护；修正一条将异常对象直接当字符串检查的旧测试断言，相关 **4 项定向复测通过**，其余 **500 项通过、6 项跳过**的完整测试结果复用。
+- 本机环境已移除完整 OpenCV 安装中的 **94 个旧原生库文件**。31 个外部已安装分发包的审计未发现已知漏洞；版本与文档整理复用这些仍有效的安全和功能检查结果。具体 CVE、原生组件边界、Rust GPU 依赖与历史安装包的检查范围见[安全审计记录](docs/security-audit-2026-10-22.md)。
+
+### English
+
+- Adds Traditional Chinese and English interfaces, Traditional/bilingual-Traditional captions, platform CJK fonts and font weights, integrating mjrtmj's PRs #1–#4. Fixes Windows UTF-8 resource/project I/O, cross-drive photo/DEM paths, Traditional name search, English candidate captions and preservation of paths in translated errors.
+- Raises the minimum to **Python 3.12**, updates security dependency baselines and integrates NumPy, PyShp and Skyfield updates. High-bit-depth RGB TIFF decoding uses imagecodecs with **libtiff 4.7.2+**, preserving 16-bit samples; Pillow handles other images.
+- Replaces the full upstream OpenCV wheel with a pinned private **OpenCV 4.14.0** build containing only array-processing modules and upstream EdgeDrawing. Image/video codecs and their unused TIFF, OpenJPEG, OpenEXR and FFmpeg components are excluded. Source hashes, compiled inputs, installed modules, linked libraries and macOS architecture tags are checked; native notices and a build manifest ship with the wheel.
+- **Migration:** use a patched Python 3.12+ interpreter and a C++ compiler for the first source build. macOS users can run `./start-mac.command`; manual upgrades should activate the project environment, remove all four legacy OpenCV wheel variants and run `python -m pip install --upgrade .`, as shown above. Installing requirements alone does not build the native extension. Existing project/export formats remain supported; older distributed installers need rebuilding.
+- Three-platform wheel builds, regression tests and dependency audits passed: **477 passed / 29 skipped** on macOS ARM64 and **463 passed / 43 skipped** on each of Windows x64 and Linux x64. Additional local photographs and failure-preservation workflows passed after correcting one stale exception-message assertion; four focused tests were rerun, while the other 500 passing results were reused. These results do not claim interactive validation of every OS/GPU or repairs to historical installers. See the linked CI and audit record for evidence and scope.
 
 ## 0.7.12
 

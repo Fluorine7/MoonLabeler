@@ -1,12 +1,14 @@
 # MoonLabeler 中文使用说明
 
-当前版本：**0.7.12**。
+当前版本：**0.8.0**（2026-10-22）。[本次更新与升级步骤](UPDATE_HISTORY.md#080)
 
 作者：**Fluorine Zhu** · **GPL-3.0-or-later** · [English / 项目主页](README.md) · [更新历史](UPDATE_HISTORY.md)
 
 在自己的月面照片上配准地形、编辑名称并导出标注。采用 Python / Qt，支持局部月面和镜像照片。
 
 ## 从源码打开
+
+需要 **Python 3.12 或更高版本**。首次源码安装需要 C++ 编译器：macOS 使用 Xcode Command Line Tools（`xcode-select --install`），Windows 使用 Visual Studio Build Tools 的“使用 C++ 的桌面开发”组件，Linux 使用 `build-essential`。CMake / Ninja 由 Python 构建环境安装。
 
 ```bash
 git clone https://github.com/Fluorine7/MoonLabeler.git
@@ -15,6 +17,8 @@ cd MoonLabeler
 ```
 
 也可双击 `start-mac.command`。首次运行会创建虚拟环境并安装依赖。当前交付为源码，没有打包。
+
+首次还会构建应用自带的最小 OpenCV；已有 macOS 环境会检查依赖、移除旧的完整 OpenCV 安装包，缺少最小构建时自动重建，后续启动复用已有构建。其他平台的安装命令见[项目主页](README.md#从源码运行)。只安装 `requirements.txt` 不会构建应用原生扩展，首次安装或更新应用需运行 `python -m pip install --upgrade .`。
 
 启动窗口自动最大化，铺满当前屏幕可用区域。macOS 的标注设置控件填满表单右侧列，语言下拉菜单可完整显示“双语 / 英文 / 中文 / 繁体中文 / 双语（繁体）”。繁体选项由简体译名经 OpenCC（`opencc-python-reimplemented`）即时转换，并修正“濕”“岩”两个月面地名惯用字；用户手工编辑过的标注文字不转换。
 
@@ -61,7 +65,7 @@ cd MoonLabeler
 
 坑群识别成功后也会使用同一份小 DEM 精修。局部参考图通过视线与高程表面相交采样，拟合采用同一地形高度，避免把坑壁高差混成观测方向误差。先验证小范围相机修正，再重新取得分散的地形对应点，尝试两个观测方向参数与相机比例/旋转/平移的联合微调。高程后备匹配可使用相同的含高程投影精修。按 3×3 空间分区留出验证，至少四个区域可检查、加权留出误差明显改善，且重新渲染的整幅明暗和细节相关通过后才采用；否则保留原配准。通过含高程精修的结果也可生成高程坑缘并拟合平滑椭圆。微调记录及原始星历视角保存到工程，不推定摄影地点，也不将图像拟合值称为天平动测量。
 
-纹理参考图约 550 KB，随源码提供，来源及 JPEG 重压缩记录见 `moonlabeler/data/moon_albedo_2k.provenance.json`。运行自动识别无需访问 NASA SVS 图片服务器或下载 AI 权重。首次需要约 20 MB JPL 星历；高程后备匹配另需约 33 MB LOLA LDEM_16，缓存后可离线识别。OpenCV 依赖使用含 `ximgproc` 的 `opencv-contrib-python-headless`，启动脚本会迁移旧依赖。
+纹理参考图约 550 KB，随源码提供，来源及 JPEG 重压缩记录见 `moonlabeler/data/moon_albedo_2k.provenance.json`。运行自动识别无需访问 NASA SVS 图片服务器或下载 AI 权重。首次需要约 20 MB JPL 星历；高程后备匹配另需约 33 MB LOLA LDEM_16，缓存后可离线识别。OpenCV 由应用自带的最小原生扩展提供，保留配准与 EdgeDrawing 坑缘检测所需模块。照片解码由 Pillow / imagecodecs 完成，不再安装完整的 `opencv-contrib-python-headless`。
 
 已在若干独立实拍照片上做过本地回归，但成功样本不代表其他区域、月相和清晰度的识别率。摄影师的照片及其导出图仅用于本地测试，不随源码发布。极区、月缘、强阴影和过少可靠坑缘仍可能导致拒绝；失败会保留已有配准。
 
@@ -207,3 +211,5 @@ Copyright © 2026 Fluorine Zhu。代码采用 GNU GPL v3.0 或更新版本，见
 ## 安全更新
 
 更新源码时也要更新实际虚拟环境及打包环境，并使用仍受维护且已安装最新安全补丁的 Python。[2026-10-22 审计记录](docs/security-audit-2026-10-22.md) 列出修复版本、检查范围和仍需关注的原生组件；旧安装包需要重新构建后才会包含这些更新。
+
+0.8.0 的高位深 RGB TIFF 使用 imagecodecs 提供的 libtiff 4.7.2 或更新版本，保留 16 位样本后执行显示拉伸。最小 OpenCV 不编译图像 / 视频解码模块及其 TIFF、OpenJPEG、OpenEXR、FFmpeg 组件；仍使用上游的 SIFT、配准和 EdgeDrawing 算法。已有 `.moonlabel` 工程继续使用，PNG / SVG 导出格式不变。升级旧环境的命令和验证范围见[0.8.0 更新记录](UPDATE_HISTORY.md#080)。
