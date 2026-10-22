@@ -204,7 +204,10 @@ jobs:
           else:
               subprocess.check_call(base + ['create', tag, '--repo', repo, '--verify-tag', '--draft', '--title', f'MoonLabeler {version}', '--notes-file', str(notes)])
           subprocess.check_call(base + ['upload', tag, '--repo', repo, '--clobber'] + [str(p) for p in sorted(assets.iterdir())])
-          release = json.loads(gh('api', f'repos/{repo}/releases/tags/{tag}'))
+          releases = json.loads(gh('api', f'repos/{repo}/releases?per_page=100'))
+          drafts = [r for r in releases if r['tag_name'] == tag and r['draft']]
+          assert len(drafts) == 1, 'Expected one release draft'
+          release = drafts[0]
           actual = {a['name']: a.get('digest') for a in release['assets']}
           assert actual.keys() == expected.keys(), 'Incomplete release assets'
           for name, digest in expected.items():
