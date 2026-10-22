@@ -1,0 +1,18 @@
+{
+  "source_commit": "7edbc04d4576b3db4bca4d750caf854fb3146047",
+  "build_host": "27.0.1",
+  "minimum_macos": "14.4",
+  "architecture": "arm64",
+  "python": "3.12.15",
+  "qt_binding_source": "f50facb83fc3dc5f3240c854668c7a6dd93871b2",
+  "dependencies": {
+    "PySide6-Essentials": "6.12.0",
+    "shiboken6": "6.12.0",
+    "numpy": "2.5.4",
+    "Pillow": "13.0.0",
+    "imagecodecs": "2026.10.10",
+    "astropy": "8.0.2",
+    "wgpu": "0.32.0",
+    "certifi": "2026.10.19"
+  }
+}

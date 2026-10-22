@@ -1,0 +1,22 @@
+{
+  "platform": "win32",
+  "system": "10.0.26100",
+  "architecture": "AMD64",
+  "python": "3.12.15",
+  "checks": [
+    "bundled Python, Qt and private codec-free OpenCV",
+    "four bundled JPL kernels and offline lunar geometry",
+    "manual mirrored registration and automatic SIFT registration",
+    "EdgeDrawing circular and elliptical crater rims",
+    "16-bit RGB TIFF and FITS decoding",
+    "Qt demo project, editable annotations, save/reopen, PNG and SVG exports"
+  ],
+  "success": true,
+  "opencv": "4.14.0",
+  "libtiff": "libtiff 4.7.2",
+  "wgpu": null,
+  "metal": {
+    "available": false,
+    "detail": "Optional wgpu is not bundled on this platform"
+  }
+}
