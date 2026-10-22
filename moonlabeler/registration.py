@@ -3,7 +3,7 @@
 """Manual similarity fitting and conservative local feature matching."""
 from dataclasses import dataclass
 
-import cv2
+from ._opencv import cv2
 import numpy as np
 
 

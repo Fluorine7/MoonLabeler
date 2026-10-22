@@ -26,3 +26,8 @@ dist/
 /examples/moonlabeler-ui-*
 /examples/lola-*
 /examples/recognition-regressions.json
+
+/.python-runtime/
+
+/wheelhouse/
+/native-verification.json

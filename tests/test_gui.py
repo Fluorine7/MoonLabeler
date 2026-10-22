@@ -266,7 +266,7 @@ def test_one_click_identifies_real_partial_photo_and_preserves_fit_on_failure(tm
             break
         application.processEvents()
         time.sleep(.02)
-    assert errors and '不足七处' in errors[0]
+    assert errors and '不足七处' in str(errors[0])
     assert np.array_equal(window.project.matrix,original_matrix)
     assert window.project.anchors == original_anchors and window.project.labels == original_labels
     window.dirty = False

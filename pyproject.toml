@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=77"]
+requires = ["setuptools>=83", "cmake>=3.31,<5", "ninja>=1.11,<2", "numpy>=2.5.4,<3", "certifi>=2026.10.19"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [{name = "Fluorine Zhu"}]
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dynamic = ["dependencies"]
 
 [project.urls]
@@ -19,7 +19,7 @@ Issues = "https://github.com/Fluorine7/MoonLabeler/issues"
 
 [project.optional-dependencies]
 fits = ["astropy>=6"]
-dev = ["pytest>=8"]
+dev = ["pytest>=9.0.3"]
 gpu = ["wgpu>=0.32,<0.33"]
 apple-gpu = ["mlx>=0.25,<0.33; sys_platform == 'darwin' and platform_machine == 'arm64'"]
 
@@ -30,7 +30,7 @@ moonlabeler = "moonlabeler.app:main"
 dependencies = {file = "requirements.txt"}
 
 [tool.setuptools.packages.find]
-include = ["moonlabeler*"]
+include = ["moonlabeler*", "cv2"]
 
 [tool.setuptools.package-data]
 moonlabeler = ["data/*.json", "data/*.jpg", "data/*.wgsl"]

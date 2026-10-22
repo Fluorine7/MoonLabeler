@@ -14,13 +14,15 @@ import json
 import mmap
 import re
 import ssl
-import struct
 import zipfile
 
 import certifi
-import cv2
+from ._opencv import cv2
+import imagecodecs
 import numpy as np
 from PIL import Image, ImageOps
+
+from .zh_variant import to_traditional
 
 USGS_URL = "https://asc-planetarynames-data.s3.us-west-2.amazonaws.com/MOON_nomenclature_center_pts.zip"
 NASA_2026 = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/"
@@ -118,7 +120,9 @@ def translate_catalog(features):
 
 
 def feature_search_text(feature):
-    return " ".join([feature["name"], feature.get("name_zh", ""), *feature.get("name_zh_aliases", [])])
+    names = [feature["name"], feature.get("name_zh", ""), *feature.get("name_zh_aliases", [])]
+    variants = dict.fromkeys([*names, *(to_traditional(name) for name in names)])
+    return " ".join(name for name in variants if name)
 
 
 class DataDownloadError(ValueError):
@@ -224,37 +228,21 @@ def write_json(path, data):
         temp.unlink(missing_ok=True)
 
 
-def _read_high_depth_tiff(path, orientation):
-    if orientation == 1:
-        return cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
-    # The TIFF decoder applies orientation internally even with UNCHANGED;
-    # rotating non-square 16-bit data also fails in some OpenCV versions.
-    # Neutralize that tag in a private mapping, never in the original file.
-    with path.open("rb") as source, mmap.mmap(source.fileno(), 0, access=mmap.ACCESS_COPY) as encoded:
-        order = "<" if encoded[:2] == b"II" else ">"
-        version = struct.unpack_from(order+"H", encoded, 2)[0]
-        if version == 42:
-            offset = struct.unpack_from(order+"I", encoded, 4)[0]
-            count = struct.unpack_from(order+"H", encoded, offset)[0]
-            start, entry_size, count_type, value_offset = offset+2, 12, "I", 8
-        elif version == 43:
-            offset = struct.unpack_from(order+"Q", encoded, 8)[0]
-            count = struct.unpack_from(order+"Q", encoded, offset)[0]
-            start, entry_size, count_type, value_offset = offset+8, 20, "Q", 12
-        else:
-            raise ValueError("无法读取 TIFF 方向信息。")
-        for entry in range(start, start+entry_size*count, entry_size):
-            tag, kind = struct.unpack_from(order+"HH", encoded, entry)
-            if tag == 274 and kind == 3 and struct.unpack_from(order+count_type, encoded, entry+4)[0] == 1:
-                struct.pack_into(order+"H", encoded, entry+value_offset, 1)
-                break
-        else:
-            raise ValueError("无法读取 TIFF 方向信息。")
-        pixels = np.frombuffer(encoded, np.uint8)
-        try:
-            return cv2.imdecode(pixels, cv2.IMREAD_UNCHANGED)
-        finally:
-            del pixels
+def _read_high_depth_tiff(path, size, bits):
+    # Distribution version alone does not guarantee a source build's libtiff.
+    version = re.search(r"\b(\d+)\.(\d+)\.(\d+)\b", imagecodecs.tiff_version())
+    if version is None or tuple(map(int, version.groups())) < (4, 7, 2):
+        raise ValueError("TIFF 解码器过旧，请更新 imagecodecs（需要 libtiff 4.7.2 或更高版本）。")
+    # Bound the decoder output to the dimensions already checked by Pillow.
+    # The zeroed buffer also cannot expose uninitialized pixels on a short read.
+    output = bytearray(size[0] * size[1] * 3 * ((max(bits) + 7) // 8))
+    try:
+        with path.open("rb") as source, mmap.mmap(source.fileno(), 0, access=mmap.ACCESS_READ) as encoded:
+            # Decode only page 0. Raw RGB samples retain their depth/order;
+            # EXIF orientation is applied once, after the common display stretch.
+            return imagecodecs.tiff_decode(encoded, index=0, out=output)
+    except (imagecodecs.TiffError, ValueError, IndexError) as exc:
+        raise ValueError("无法读取高位深 RGB TIFF 的原始像素。") from exc
 
 
 def read_image(path):
@@ -282,10 +270,12 @@ def read_image(path):
                 # Pillow exposes RGB TIFF as 8-bit even when the source is 16-bit.
                 # Decode original samples before the common display stretch.
                 orientation = raw.getexif().get(274, 1)
-                array = _read_high_depth_tiff(path, orientation)
-                if array is None or array.ndim != 3 or array.shape[2] != 3 or array.dtype.itemsize < 2:
+                size = (raw.tag_v2[256], raw.tag_v2[257])
+                array = _read_high_depth_tiff(path, size, bits)
+                if raw.tag_v2.get(284, 1) == 2:
+                    array = np.moveaxis(array, 0, -1)
+                if array is None or array.ndim != 3 or array.shape != (size[1], size[0], 3) or array.dtype.itemsize < 2:
                     raise ValueError("无法读取高位深 RGB TIFF 的原始像素。")
-                array = cv2.cvtColor(array, cv2.COLOR_BGR2RGB)
             else:
                 raw = ImageOps.exif_transpose(raw)
                 if raw.mode in ("I", "F", "I;16", "I;16B", "I;16L"):

@@ -370,7 +370,11 @@ def describe_error(problem):
     """
     if isinstance(problem, RecognitionFailure):
         return problem.render(tr, describe_error)
-    if isinstance(problem, OSError) and problem.filename is not None:
+    if isinstance(problem, OSError):
+        # Third-party errors (e.g. Pillow) can embed a path in the message
+        # without setting filename. Preserve that opaque text verbatim.
+        if problem.filename is None:
+            return str(problem)
         detail = problem.strerror or type(problem).__name__
         names = [str(problem.filename)]
         if problem.filename2 is not None:
@@ -728,7 +732,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             matches = [f for f in self.catalog if f["kind"] in ("Crater, craters", "Satellite Feature") and query in normalized(feature_search_text(f))]
             matches.sort(key=lambda f: (normalized(f["name"]) != query, -f["diameter"]))
             for feature in matches[:100]:
-                item = QListWidgetItem(self.project.label_text(feature))
+                item = QListWidgetItem(feature_choice(feature))
                 item.setData(Qt.ItemDataRole.UserRole, feature["id"])
                 item.setToolTip(item.text())
                 self.crater_feature.addItem(item)

@@ -4,6 +4,8 @@
 # Produces dist/MoonLabeler/MoonLabeler.exe (one-folder build; no installer needed).
 from pathlib import Path
 
+from PyInstaller.utils.hooks import collect_data_files
+
 ROOT = Path(SPECPATH).resolve()
 
 datas = [
@@ -18,13 +20,20 @@ datas = [
 ephemeris = ROOT / ".cache" / "ephemeris"
 datas += [(str(path), "bundled_ephemeris") for path in sorted(ephemeris.glob("*")) if path.is_file()]
 
+# The private OpenCV extension ships its native notices and build manifest next to the
+# binary; nothing imports the package statically, so collect them here (the cv2 hook
+# only runs when the compatibility shim is imported).
+datas += collect_data_files("_moonlabeler_opencv")
+
 icon = ROOT / "build" / "moonlabeler.ico"
 
 a = Analysis(
     [str(ROOT / "run_app.py")],
     pathex=[str(ROOT)],
     datas=datas,
-    hiddenimports=["astropy.io.fits"],
+    # moonlabeler._opencv loads the private OpenCV extension via find_spec, which static
+    # analysis cannot follow; see tools/pyinstaller-hooks/hook-cv2.py.
+    hiddenimports=["astropy.io.fits", "_moonlabeler_opencv.cv2"],
     hookspath=[str(ROOT / "tools" / "pyinstaller-hooks")],
     # astropy.visualization.wcsaxes calls pytest.importorskip("matplotlib") on import and
     # aborts PyInstaller's dependency scan whenever pytest is installed; FITS I/O never needs it.
