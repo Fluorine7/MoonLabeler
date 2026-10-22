@@ -16,7 +16,7 @@ cd MoonLabeler
 ./start-mac.command
 ```
 
-也可双击 `start-mac.command`。首次运行会创建虚拟环境并安装依赖。当前交付为源码，没有打包。
+也可双击 `start-mac.command`。首次运行会创建虚拟环境并安装依赖。Windows 可用 `pwsh -File build-windows.ps1` 打包成免安装的 `dist/MoonLabeler/MoonLabeler.exe`；macOS / Linux 仍以源码方式运行。
 
 首次还会构建应用自带的最小 OpenCV；已有 macOS 环境会检查依赖、移除旧的完整 OpenCV 安装包，缺少最小构建时自动重建，后续启动复用已有构建。其他平台的安装命令见[项目主页](README.md#从源码运行)。只安装 `requirements.txt` 不会构建应用原生扩展，首次安装或更新应用需运行 `python -m pip install --upgrade .`。
 
