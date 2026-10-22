@@ -16,12 +16,22 @@ on:
       - native/**
       - .github/workflows/windows-build.yml
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to publish (leave empty for a build only)"
+        type: string
+        default: ""
+      reuse_portable_run:
+        description: "Run ID with a successful portable job for that tag; reuse without rebuilding"
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
 jobs:
   portable:
+    if: github.event_name != 'workflow_dispatch' || inputs.reuse_portable_run == ''
     runs-on: windows-latest
     timeout-minutes: 60
     env:
@@ -126,8 +136,11 @@ jobs:
           retention-days: 7
 
   release:
-    # Attach the zip to the GitHub release of the pushed v* tag (created here if missing).
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    # A dispatch can retry publication from verified artifacts without rebuilding.
+    if: >-
+      always() && !cancelled() &&
+      ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.portable.result == 'success') ||
+       (github.event_name == 'workflow_dispatch' && inputs.release_tag != '' && inputs.reuse_portable_run != ''))
     needs: portable
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -135,22 +148,49 @@ jobs:
       contents: write
       actions: read
     steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: MoonLabeler-${{ needs.portable.outputs.version }}-windows-x64
-          path: portable
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ inputs.release_tag || github.ref }}
+      - name: Validate source and portable producer
+        id: source
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCER_RUN: ${{ inputs.reuse_portable_run || github.run_id }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          import json, os, subprocess, tomllib
+          from pathlib import Path
+          repo, run_id = os.environ['GITHUB_REPOSITORY'], os.environ['PRODUCER_RUN']
+          assert run_id.isdigit(), 'Invalid artifact producer run ID'
+          version = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
+          assert os.environ['RELEASE_TAG'] == 'v' + version
+          sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/{path}'], text=True))
+          producer = api(f'actions/runs/{run_id}')
+          assert producer['head_sha'] == sha, 'Artifact source differs from the release tag'
+          jobs = api(f'actions/runs/{run_id}/jobs?per_page=100')['jobs']
+          assert any(j['name'] == 'portable' and j['conclusion'] == 'success' for j in jobs), 'Portable build did not pass'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'version={version}\nsha={sha}\nrun_id={run_id}\n')
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: MoonLabeler-${{ steps.source.outputs.version }}-windows-x64
+          path: portable
+          run-id: ${{ steps.source.outputs.run_id }}
+          github-token: ${{ github.token }}
       - name: Publish all verified release assets
         shell: python
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
           import hashlib, json, os, re, shutil, subprocess, time, tomllib
           from pathlib import Path
-          repo, sha, tag = (os.environ[k] for k in ('GITHUB_REPOSITORY', 'GITHUB_SHA', 'TAG'))
+          repo, sha, tag = (os.environ[k] for k in ('GITHUB_REPOSITORY', 'SOURCE_SHA', 'TAG'))
           version = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
           assert tag == 'v' + version
           def gh(*args):
@@ -169,18 +209,18 @@ jobs:
           gh('run', 'download', str(tests['id']), '--repo', repo, '--pattern', 'minimal-opencv-*', '--dir', 'tested-wheels')
           assets = Path('release-assets')
           assets.mkdir()
-          wheels = list(Path('tested-wheels').glob('*/*.whl'))
-          assert len(wheels) == 3 and len({w.parent.name for w in wheels}) == 3
+          wheels = list(Path('tested-wheels').glob('*/wheelhouse/*.whl'))
+          assert len(wheels) == 3 and len({w.parent.parent.name for w in wheels}) == 3
           for wheel in wheels:
               assert wheel.name.startswith(f'moonlabeler-{version}-')
               shutil.copyfile(wheel, assets/wheel.name)
-              shutil.copyfile(wheel.parent/'native-verification.json', assets/f'{wheel.parent.name}-verification.json')
+              shutil.copyfile(wheel.parent.parent/'native-verification.json', assets/f'{wheel.parent.parent.name}-verification.json')
           name = f'MoonLabeler-{version}-windows-x64.zip'
           portable = Path('portable')
-          checksum = (portable/(name+'.sha256')).read_text().strip().split()
+          checksum = (portable/'dist'/(name+'.sha256')).read_text().strip().split()
           assert len(checksum) == 2 and checksum[1] == name and re.fullmatch('[0-9a-fA-F]{64}', checksum[0])
           expected = {name: checksum[0].lower()}
-          for source, target in ((portable/name, name), (portable/(name+'.sha256'), name+'.sha256'),
+          for source, target in ((portable/'dist'/name, name), (portable/'dist'/(name+'.sha256'), name+'.sha256'),
                   (portable/'native-verification.json', 'portable-native-verification.json'),
                   (portable/'portable-audit-requirements.txt', 'portable-audit-requirements.txt')):
               shutil.copyfile(source, assets/target)
