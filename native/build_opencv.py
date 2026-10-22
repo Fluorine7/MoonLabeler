@@ -65,17 +65,31 @@ def edge_module(contrib, destination):
         'ocv_define_module(ximgproc opencv_core opencv_imgproc WRAP python)\n', encoding='utf-8')
 
 
+def ascii_build_dir(requested):
+    """Keep Windows generators out of non-ASCII paths and concurrent builds apart."""
+    if str(requested).isascii():
+        return requested
+    root = Path(os.environ.get('MOONLABELER_OPENCV_BUILD_ROOT') or tempfile.gettempdir()).resolve()
+    if not str(root).isascii():
+        raise RuntimeError('Windows OpenCV build needs an ASCII-only directory. '
+                           'Set MOONLABELER_OPENCV_BUILD_ROOT to a writable ASCII path, '
+                           'for example C:/Temp/MoonLabeler.')
+    root.mkdir(parents=True, exist_ok=True)
+    destination = Path(tempfile.mkdtemp(prefix='moonlabeler-opencv-', dir=root))
+    print(f'Non-ASCII build path; using {destination}', flush=True)
+    return destination
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--build-dir', type=Path, required=True)
     args = parser.parse_args()
-    if sys.platform == 'win32' and not str(args.build_dir).isascii():
+    if sys.platform == 'win32':
         # MSVC and OpenCV's generators read generated files (CPU dispatch headers, the
         # bindings config) in the ANSI code page, so a checkout under a non-ASCII path
         # fails with mojibake file names. Build under an ASCII temporary path instead.
-        args.build_dir = Path(tempfile.gettempdir())/'moonlabeler-opencv-build'
-        print(f'Non-ASCII build path; using {args.build_dir}', flush=True)
+        args.build_dir = ascii_build_dir(args.build_dir)
     args.build_dir.mkdir(parents=True, exist_ok=True)
     # Local developers can reuse sources already fetched and verified in the
     # same controlled session. CI always downloads/checks the pinned archives.

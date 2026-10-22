@@ -55,7 +55,29 @@ jobs:
         shell: pwsh
         run: |
           $version = python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text('utf-8'))['project']['version'])"
+          if ($LASTEXITCODE -ne 0) { throw "Cannot read project version" }
+          if ($env:GITHUB_REF -like 'refs/tags/*' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Release tag $env:GITHUB_REF_NAME does not match project version $version"
+          }
           "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Reject incomplete ephemeris builds
+        shell: python
+        run: |
+          import os, subprocess, tempfile, tomllib
+          from pathlib import Path
+          version = tomllib.loads(Path('pyproject.toml').read_text('utf-8'))['project']['version']
+          with tempfile.TemporaryDirectory(dir=os.environ['RUNNER_TEMP']) as folder:
+              fake = Path(folder)/'failed-download.ps1'
+              fake.write_text('param([Alias("c")][string]$Code)\n'
+                  'if ($Code -like "*compute_geometry*") { exit 17 }\n'
+                  f'if ($Code -like "*tomllib*") {{ Write-Output "{version}"; exit 0 }}\n'
+                  'if ($Code -eq "import PyInstaller, moonlabeler._opencv") { exit 0 }\n'
+                  'throw "Unexpected interpreter invocation"\n', encoding='utf-8')
+              result = subprocess.run(['pwsh', '-NoProfile', '-File', 'build-windows.ps1',
+                  '-Python', str(fake)], capture_output=True, text=True, encoding='utf-8')
+              assert result.returncode != 0, 'Packaging continued after a failed kernel download'
+              assert '下載或解析 JPL 星曆' in result.stdout + result.stderr, result.stdout + result.stderr
+          print('Failed kernel download stops packaging before PyInstaller')
       - name: Build portable exe and zip
         shell: pwsh
         run: pwsh -File build-windows.ps1 -Python (Get-Command python).Source
@@ -65,11 +87,19 @@ jobs:
           $exe = Resolve-Path "dist\MoonLabeler\MoonLabeler.exe"
           $project = Resolve-Path "examples\demo.moonlabel"
           $process = Start-Process -FilePath $exe -ArgumentList "`"$project`"" -WorkingDirectory (Split-Path $exe) -PassThru
-          Start-Sleep -Seconds 25
-          if ($process.HasExited) { throw "MoonLabeler.exe exited with code $($process.ExitCode) within 25 s" }
-          $cache = Join-Path $env:LOCALAPPDATA "MoonLabeler\cache\ephemeris\de421.bsp"
-          if (-not (Test-Path $cache)) { throw "bundled ephemeris was not copied to $cache" }
-          Stop-Process -Id $process.Id -Force
+          try {
+            Start-Sleep -Seconds 25
+            if ($process.HasExited) { throw "MoonLabeler.exe exited with code $($process.ExitCode) within 25 s" }
+            $cache = Join-Path $env:LOCALAPPDATA "MoonLabeler\cache\ephemeris"
+            foreach ($name in @("de421.bsp", "moon_080317.tf", "pck00008.tpc", "moon_pa_de421_1900-2050.bpc")) {
+              $kernel = Join-Path $cache $name
+              if (-not (Test-Path $kernel -PathType Leaf) -or (Get-Item $kernel).Length -eq 0) {
+                throw "bundled ephemeris was not copied completely: $kernel"
+              }
+            }
+          } finally {
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
           Get-ChildItem dist
       - name: Checksum
         shell: pwsh
@@ -86,7 +116,7 @@ jobs:
             dist/*.sha256
             native-verification.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
   release:
     # Attach the zip to the GitHub release of the pushed v* tag (created here if missing).

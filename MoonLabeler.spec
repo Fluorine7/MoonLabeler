@@ -15,6 +15,10 @@ datas = [
     (str(ROOT / "examples" / "demo.moonlabel"), "examples"),
     (str(ROOT / "examples" / "synthetic-moon.png"), "examples"),
 ]
+datas += [(str(ROOT / name), ".") for name in (
+    "LICENSE", "THIRD_PARTY_NOTICES.md", "ACKNOWLEDGEMENTS.md",
+    "README.md", "README.zh-CN.md", "UPDATE_HISTORY.md",
+)]
 # JPL kernels fetched by an earlier run ship with the exe so the first launch works
 # offline; app.prepare_cache() copies them into the per-user cache on start-up.
 ephemeris = ROOT / ".cache" / "ephemeris"
