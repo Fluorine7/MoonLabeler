@@ -14,6 +14,7 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 
 - 补充本机打包的 macOS Apple Silicon 独立 App：最低系统版本为 macOS 14.4，包含 Python、Qt、FITS、最小 OpenCV 和四份离线星历；用户解压即可打开，无需编译器。检查全部 Mach-O 架构、最低系统版本和外部链接，并使用同一份 App 在 macOS 14.4+ / 15 上执行配准、坑缘检测、工程保存及 PNG / SVG 导出检查。当前为临时签名，未经 Apple 公证，首次打开可能需要在系统设置中允许。
 - 补齐独立安装包的 TIFF Cython 扩展、Astropy 常量和解析表，修复“源码可用但冻结后缺模块”的 TIFF / FITS 读取问题；Windows 云端打包增加对最终 EXE 的配准、坑缘、工程往返、TIFF / FITS 与 PNG / SVG 导出检查。重新打包复用已验证的最小 OpenCV wheel。
+- Windows 独立程序明确使用已修补的 Python 3.12.15，并从最终 EXE 再核对版本；避免 Actions 的 `3.12` 别名继续选中旧的 Windows 3.12.10 安装包。
 - 合入 mjrtmj 的贡献（PR #1–#4）：新增繁体中文与英文界面、繁体及双语繁体地名、平台中文字体和字重选项；界面语言选择保存在本机，重新启动后生效。
 - 修复 Windows 非 UTF-8 默认编码下的资源 / 工程读写，以及照片、DEM 与工程跨磁盘时的路径保存。
 - 新增 Windows x64 免安装版与云端打包流程（PR #12、#13）：Release 中下载 ZIP，完整解压后运行 `MoonLabeler.exe`，无需自行安装 Python 或编译器。内含最小 OpenCV、FITS 支持、示例、使用说明、许可和四份 JPL 星历；打包前解析星历，下载失败即停止，云端冒烟检查启动与完整缓存复制。Windows、macOS 和 Linux 打包模式分别使用各自的用户缓存目录。
