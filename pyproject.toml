@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moonlabeler"
-version = "0.8.0"
+version = "0.9.0"
 description = "Lunar photo registration and editable annotations"
 readme = "README.md"
 authors = [{name = "Fluorine Zhu"}]

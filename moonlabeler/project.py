@@ -23,6 +23,8 @@ from .eyepiece import distort_points, distortion_jacobian
 from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR, landing_marker_radius
 from .annotation_relief import catalogue_rim, contour_center, MIN_OUTLINE_DIAMETER_KM, MAX_HEIGHT_KM
 from .zh_variant import to_traditional
+from .annotation_style import ART_STYLES, appearance, manuscript_fonts, caption_ornament, diamond, svg_segments, svg_caption
+from .map_layers import GRID_SPACINGS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg
 
 # Label name language choices shown in the UI and accepted in project files.
 LANGUAGE_CHOICES = ("双语", "英文", "中文", "繁体中文", "双语（繁体）")
@@ -34,7 +36,7 @@ FONT_WEIGHT_CHOICES = ("bold", "normal")
 DEFAULT_FONT_WEIGHT = "bold"
 
 
-def label_font_families(language="双语", platform=None):
+def label_font_families(language="双语", platform=None, *, art_style="standard"):
     """Ordered CJK-capable font families for label text on this platform.
 
     PingFang only exists on macOS; on Windows Qt silently substituted Tahoma,
@@ -43,6 +45,8 @@ def label_font_families(language="双语", platform=None):
     """
     platform = sys.platform if platform is None else platform
     traditional = language in TRADITIONAL_LANGUAGES
+    if art_style == "manuscript":
+        return manuscript_fonts(traditional, platform)
     if platform == "darwin":
         return ["PingFang TC" if traditional else "PingFang SC", "PingFang SC", "Hiragino Sans"]
     if platform == "win32":
@@ -151,12 +155,21 @@ def _validate_project_data(data):
         _number(style['font_percent'], 'style.font_percent', .000001, 100)
     if 'font_step_percent' in style:
         _number(style['font_step_percent'], 'style.font_step_percent', 0, 100)
-    for key in ('illuminated_only', 'optimize_layout', 'crater_outlines', 'show_landing_sites'):
+    for key in ('illuminated_only', 'optimize_layout', 'crater_outlines', 'show_landing_sites',
+                'elevation_enabled', 'map_lit_only'):
         if key in style and type(style[key]) is not bool:
             _invalid_field(f'style.{key}')
-    for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color', 'font_weight'):
+    for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color', 'font_weight',
+                'art_style', 'elevation_palette'):
         if key in style and not isinstance(style[key], str):
             _invalid_field(f'style.{key}')
+    if 'grid_spacing' in style:
+        _number(style['grid_spacing'], 'style.grid_spacing', 0, 30, integer=True)
+        if style['grid_spacing'] not in GRID_SPACINGS:
+            _invalid_field('style.grid_spacing')
+    for key in ('grid_opacity', 'elevation_opacity'):
+        if key in style:
+            _number(style[key], f'style.{key}', 0, 1)
     if 'language' in style and style['language'] not in LANGUAGE_CHOICES:
         _invalid_field('style.language')
     if 'color' in style:
@@ -328,6 +341,13 @@ class Project:
     annotation_relief: dict = field(default_factory=dict)
     projection_surface: str = 'sphere'
     capture_mode: str = "auto"
+    art_style: str = "standard"
+    grid_spacing: int = 0
+    grid_opacity: float = .45
+    elevation_enabled: bool = False
+    elevation_opacity: float = .35
+    elevation_palette: str = "terrain"
+    map_lit_only: bool = True
 
     def photo_points(self, points):
         """Map projected lunar coordinates into untouched photograph pixels."""
@@ -385,7 +405,7 @@ class Project:
         return result
 
     def label_color(self, feature):
-        return self.landing_color if is_landing_site(feature) else self.color
+        return appearance(self, landing=is_landing_site(feature)).text
 
     def save(self, path):
         path = Path(path)
@@ -404,7 +424,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": _portable_path(self.terrain_path, base) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "map_lit_only")}}
         write_json(path, data)
 
     @classmethod
@@ -437,12 +457,16 @@ class Project:
         project.font_percent = None  # Older projects only store a pixel size.
         project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape"):
+            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "map_lit_only"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
         if project.font_weight not in FONT_WEIGHT_CHOICES:
             project.font_weight = DEFAULT_FONT_WEIGHT
+        if project.art_style not in ART_STYLES:
+            project.art_style = "standard"
+        if project.elevation_palette not in ELEVATION_PALETTES:
+            project.elevation_palette = "terrain"
         refinement = project.identification.get('refinement') or {}
         default_surface = 'terrain' if refinement.get('relief_aware') is True else 'sphere'
         project.projection_surface = data.get('projection_surface', default_surface)
@@ -683,7 +707,7 @@ class Project:
         return segments
 
 
-def export_svg(path, image, entries, project, leaders=None):
+def export_svg(path, image, entries, project, leaders=None, *, layers=None):
     entries = list(entries)
     font_sizes = project.label_font_sizes([feature for feature, _, _ in entries], image.shape)
     buffer = io.BytesIO()
@@ -692,13 +716,21 @@ def export_svg(path, image, entries, project, leaders=None):
     h, w = image.shape[:2]
     lines = [f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{w}" height="{h}" viewBox="0 0 {w} {h}">',
              '<title>MoonLabeler annotated photograph</title>',
-             f'<image id="photograph" width="{w}" height="{h}" xlink:href="data:image/png;base64,{embedded}"/>',
-             '<g id="annotations" font-family="{}, sans-serif" font-weight="{}">'.format(
-                 escape(", ".join(label_font_families(project.language)), {'"': '&quot;'}),
-                 "bold" if project.font_weight == "bold" else "normal")]
-    for feature, anchor, position in entries:
+             f'<image id="photograph" width="{w}" height="{h}" xlink:href="data:image/png;base64,{embedded}"/>']
+    if project.grid_spacing or project.elevation_enabled:
+        layers = build_map_layers(project, image.shape, image=image) if layers is None else layers
+        lines.extend(layers_svg(project, image.shape, layers))
+        if project.elevation_enabled:
+            lines.extend(legend_svg(project, image.shape))
+    generic = "serif" if project.art_style == "manuscript" else "sans-serif"
+    lines.append('<g id="annotations" font-family="{}, {}" font-weight="{}">'.format(
+        escape(", ".join(label_font_families(project.language, art_style=project.art_style)), {'"': '&quot;'}),
+        generic, appearance(project).weight))
+    for index, (feature, anchor, position) in enumerate(entries):
         fid = escape(feature["id"], {'"': '&quot;'})
         color = escape(project.label_color(feature), {'"': '&quot;'})
+        style = appearance(project, landing=is_landing_site(feature))
+        line_color = escape(style.line, {'"': '&quot;'})
         ax, ay = anchor
         x, y = position
         font_size = font_sizes[feature['id']]
@@ -707,16 +739,23 @@ def export_svg(path, image, entries, project, leaders=None):
         outline = project.crater_outline(feature, image.shape)
         for segment in outline:
             contour = 'M '+ ' L '.join(f'{px:.3f},{py:.3f}' for px, py in segment)
-            lines.append(f'<path class="crater-outline" d="{contour}" stroke="{color}" stroke-width="{max(1.2, font_size*.045):.3f}" fill="none"/>')
+            lines.append(f'<path class="crater-outline" d="{contour}" stroke="{line_color}" stroke-width="{max(1.2, font_size*.045):.3f}" fill="none"/>')
         if is_landing_site(feature):
             radius = landing_marker_radius(font_size)
-            marker = f'<path class="landing-marker" d="M {ax-radius:.3f},{ay:.3f} H {ax+radius:.3f} M {ax:.3f},{ay-radius:.3f} V {ay+radius:.3f}" stroke="{color}" stroke-width="{max(1.2, font_size*.045):.3f}" fill="none"/>'
+            marker = f'<path class="landing-marker" d="M {ax-radius:.3f},{ay:.3f} H {ax+radius:.3f} M {ax:.3f},{ay-radius:.3f} V {ay+radius:.3f}" stroke="{line_color}" stroke-width="{max(1.2, font_size*.045):.3f}" fill="none"/>'
+        elif style.ornament:
+            marker = '' if outline else f'<path class="manuscript-marker" d="{svg_segments([diamond(ax, ay, max(3., font_size*.14))])} Z" fill="{line_color}"/>'
         else:
             marker = '' if outline else f'<circle cx="{ax:.3f}" cy="{ay:.3f}" r="{max(2.5, font_size*.06):.3f}" fill="{color}"/>'
         lines.extend([
-                      f'<path d="M {line[0]:.3f},{line[1]:.3f} L {line[2]:.3f},{line[3]:.3f}" stroke="{color}" stroke-width="{max(1.2, font_size*.035):.3f}" fill="none"/>',
+                      f'<path d="M {line[0]:.3f},{line[1]:.3f} L {line[2]:.3f},{line[3]:.3f}" stroke="{line_color}" stroke-width="{max(1.2, font_size*.035):.3f}" fill="none"/>',
                       marker,
-                      f'<text xml:space="preserve" x="{x:.3f}" y="{y+font_size:.3f}" fill="{color}" font-size="{font_size}" stroke="#141923" stroke-width="{max(2., font_size*.06):.3f}" paint-order="stroke">{escape(project.label_text(feature))}</text>',
-                      '</g>'])
-    lines.extend(['</g>', '</svg>'])
+                      svg_caption(project.label_text(feature), x, y+font_size, font_size,
+                                  color, style.halo, style.halo_width(font_size), f'label-text-{index}',
+                                  face_width=style.face_width(font_size))])
+        if style.ornament:
+            lines.append(f'<path class="caption-ornament" transform="translate({x:.3f} {y:.3f})" d="{svg_segments(caption_ornament(font_size))}" fill="none" stroke="{line_color}" stroke-width="{max(.7, font_size*.025):.3f}"/>')
+        lines.append('</g>')
+    lines.append('</g>')
+    lines.append('</svg>')
     Path(path).write_text('\n'.join(lines), encoding="utf-8")

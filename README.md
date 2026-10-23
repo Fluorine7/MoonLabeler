@@ -1,16 +1,16 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：0.8.0** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.9.0** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
 
 [中文使用说明](README.zh-CN.md) · [Update History / 更新历史](UPDATE_HISTORY.md) · [Acknowledgements / 致谢](ACKNOWLEDGEMENTS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 
-**0.8.0 · 2026-10-22:** 多语言界面、Windows 兼容修复、依赖安全更新与最小 OpenCV 构建；最低 Python 升为 3.12。详见[本次更新与升级步骤](UPDATE_HISTORY.md#080)。
-Multilingual UI, Windows compatibility fixes, security dependency updates and a minimal OpenCV build. Python 3.12+ is now required; see the [release notes and migration steps](UPDATE_HISTORY.md#080).
+**0.9.0 · 2026-10-23:** 新增可选手抄本艺术主题、月面经纬网与高程着色；不透明度滑块实时更新，参数滚轮保护，以及实拍亮地形误裁修复。详见[本次更新](UPDATE_HISTORY.md#090)。
+Optional manuscript styling, selenographic grids and elevation colours, with live opacity sliders, wheel-safe settings and photo-aware lighting masks. See the [release notes](UPDATE_HISTORY.md#090).
 
-**macOS App:** [Download v0.8.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0), choose `MoonLabeler-0.8.0-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
+**macOS App:** [Download v0.9.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.9.0), choose `MoonLabeler-0.9.0-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
 
 ![MoonLabeler — explicitly synthetic editing example / 合成编辑示例](docs/moonlabeler.png)
 
@@ -31,7 +31,8 @@ MoonLabeler 是用 Python / Qt 编写的桌面月面照片标注工具，支持�
 - 按投影视直径分大、中、小三档字号，默认短边的 **1.8% / 1.5% / 1.2%**；“字号递减”默认每档减 **0.3 个百分点**，设为 0 则统一字号。新照片的标签上限为 **200**。
 - 默认近白色文字与深色描边；大环形山默认用平滑椭圆，可选坑缘轮廓，小坑使用短引线。
 - 可选着陆点图层：阿波罗 11、12、14、15、16、17 与嫦娥三、四、五、六号；默认关闭，浅青色十字与短引线，使用小档字号。
-- 设置修改后，点击 **“重新生成标注”** 统一应用。
+- 可选手抄本艺术主题、10° / 15° / 30° 月面经纬网与 LOLA 高程着色，均为保留原始标注的增量功能，随工程及 PNG / SVG 保存。详见[样式与图层](README.zh-CN.md#可选艺术样式与地图图层)。
+- 设置修改后，点击 **“重新生成标注”** 统一应用；已应用图层的不透明度滑块立即更新。滚轮只滚动设置面板，不改变参数值。
 - 中文译名优先采用樊仕达（10deg）提供的 LPND 地名资料；手工补录与旧词表兜底保留各自来源，旧译名仍可搜索。内置资料已更新至 2026-10-16 的 10,431 条综合快照，其中 9,040 条含中文，1,391 条为英文待译名。扩展资料中的坐标与 VMA 独有地貌暂不合并到现有 USGS 配准目录。
 - 保存 `.moonlabel` 工程，导出与原图同尺寸 PNG 或可编辑 SVG；另提供 LOLA DEM 光照模拟参考。
 
@@ -147,6 +148,7 @@ MoonLabeler is a Python / Qt desktop application for registering lunar photograp
 - Candidate ranking considers apparent size, rim/background contrast and regional coverage. Named formations precede lettered satellites; reserves fill layout omissions until the final display limit is reached.
 - Three font tiers based on projected apparent diameter, defaulting to **1.8% / 1.5% / 1.2%** of the image's shorter dimension. **字号递减** (Font decrement) subtracts **0.3 percentage points** per tier; set it to 0 for uniform text. The default display limit is **200** labels.
 - Near-white annotations with dark text outlines; projected reference outlines for large craters and short leaders for small craters.
+- Optional **Art and map layers**: a medieval manuscript preset with serif text and gold ornaments; a 10° / 15° / 30° lunar coordinate grid; and a LOLA elevation overlay with two palettes, independent opacity and a height legend. All default to off/original, preserve existing edits and calibration, and are saved with the project. The elevation overlay represents height relative to the 1737.4 km reference sphere, not temperature. It reuses local DEM data, follows the registered surface and lens correction, and leaves pixels outside coverage transparent. PNG/SVG retain the original image dimensions; SVG keeps text and grid editable and embeds the same bounded-resolution elevation raster used in the preview. See the [usage and limits](README.zh-CN.md#可选艺术样式与地图图层).
 - A **Regenerate annotations** button (重新生成标注) that applies edited settings together.
 - Chinese names prioritize the LPND snapshot supplied by 樊仕达 (10deg); manual additions and legacy fallback retain separate provenance. Previous translations remain searchable. The bundled 2026-10-16 combined snapshot contains 10,431 records: 9,040 Chinese captions and 1,391 English placeholders. Supplemental coordinates and VMA-only formations are retained as reference data and do not replace or extend the active USGS registration catalogue. Original English and bilingual labels are also available, plus Traditional Chinese and bilingual-Traditional variants converted on the fly with OpenCC (`opencc-python-reimplemented`); hand-edited label text is never converted.
 - The interface itself can be shown in Simplified Chinese, Traditional Chinese or English: toolbar “界面语言 / 介面語言 / Interface language” saves the choice locally (`preferences.ini`) and applies it after a restart. The default follows the system locale (zh_TW / zh_HK / zh_MO → Traditional, other Chinese locales, `C`/`POSIX` or no locale → Simplified, any other language → English); `MOONLABELER_UI_LANG=zh-CN|zh-TW|en` overrides it. Traditional text is produced from the Simplified source strings by OpenCC plus a Taiwan software-vocabulary table in `moonlabeler/data/ui_zh_TW.json`; English comes from the hand-written table `moonlabeler/data/ui_en.json` (a test fails if any interface string is missing from it). Project files are unaffected.

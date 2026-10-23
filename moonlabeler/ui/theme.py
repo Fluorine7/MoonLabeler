@@ -93,6 +93,15 @@ QComboBox QAbstractItemView {{ background: #1a212d; border: 1px solid {LINE_HI};
     border-radius: 6px; padding: 4px; color: {TEXT}; outline: 0;
     selection-background-color: {SELECT}; selection-color: #f0f4f9; }}
 
+QSlider::groove:horizontal {{ height: 4px; background: #344052; border-radius: 2px; }}
+QSlider::sub-page:horizontal {{ background: {ACCENT}; border-radius: 2px; }}
+QSlider::handle:horizontal {{ width: 14px; height: 14px; margin: -5px 0;
+    background: {ACCENT_HI}; border: 1px solid {ACCENT}; border-radius: 7px; }}
+QSlider::handle:horizontal:hover {{ background: #f6d7a9; }}
+QSlider::handle:horizontal:disabled {{ background: #4a5361; border-color: #4a5361; }}
+QSlider::sub-page:horizontal:disabled {{ background: #4a5361; }}
+QLabel#sliderValue {{ color: {TEXT_2}; }}
+
 QCheckBox {{ spacing: 7px; color: #c3cedb; }}
 QCheckBox:disabled {{ color: {DISABLED_TEXT}; }}
 /* One plain check style everywhere: form checkboxes, label list, anchor table. */

@@ -6,6 +6,32 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 0.9.0
+
+2026-10-23 · 可选艺术主题、月面地图图层与交互完善。
+
+- 新增默认关闭的手抄本艺术主题、10° / 15° / 30° 经纬网与 LOLA 高程着色，保持原始标注、配准、手工文字和固定位置。切回原始样式可恢复已有配色与字重。
+- 手抄本采用系统衬线字体、浅金字芯、深色光晕、暖金引线和菱形纹饰；高程颜色融合原照片明暗，提高浓着色时的地形层次与文字可读性。
+- 网格和高程不透明度改为带百分比读数的滑块；图层首次应用后，拖动实时更新，不重新取样 DEM、不重排标签，也不应用其他待确认设置。工程、PNG 与 SVG 反映当前已应用的不透明度。
+- 统一保护数字、日期、下拉框和滑块：滚轮与触控板只滚动面板，控件聚焦后也不改值；键盘、按钮和明确拖动继续有效。新增控件沿用同一保护，交互约束写入项目 AGENTS.md。
+- 修复参考球面日夜判断误裁实拍亮地形的问题。高程图和经纬网优先使用照片中的可见地形范围，保留亮坑缘包围的暗坑底；无照片时才使用工程太阳方向。显示蒙版与星历、配准和 DEM 分开，不作为严格的物理日夜边界。
+- 地名优先于经纬度数字，自动排版为高程色标预留空间。图层支持旋转、镜像及已有的目镜畸变校正；无数据及月盘外区域透明。高程显示栅格最长边为 1000 像素，精度受实际 DEM 限制。
+- SVG 保留可编辑文字、网格和纹饰；文字描边兼容忽略 SVG 2 `paint-order` 的渲染器。高程图后台生成，复用未变化的地理采样；重新配准或更换照片使缓存失效，数据缺失或生成失败时保留标注并阻止不完整导出。
+
+### 升级
+
+已有 `.moonlabel` 工程继续使用，旧工程默认保持原始样式并关闭地图图层。在“标注 → 艺术与地图图层（可选）”启用；首次使用高程着色需下载基础 LOLA 数据或导入 DEM。源码用户按原安装方式更新；独立 App 用户需下载 0.9.0 安装包。
+
+### 发布前验证
+
+本机项目测试 **582 项通过、6 项按条件跳过**，涵盖实拍识别、球面及地形投影、工程兼容、PNG / SVG 导出、滑块拖动、滚轮保护与光照误裁回归。另检查高程不透明度 85% / 100% 的实拍效果，以及原始模式切回后的像素一致性。跨平台自动化检查和安装包验证记录见该版本的 GitHub Actions。
+
+### English
+
+Adds optional manuscript styling, selenographic grids and LOLA elevation colours while preserving the original annotation workflow, registration and manual edits. Elevation colours retain photographed relief; brighter serif lettering and dark halos improve contrast. Opacity sliders update applied layers immediately without moving labels or resampling the DEM. Wheel gestures scroll settings panels without changing focused values, and canvas zoom remains available.
+
+Fixes bright photographed terrain being clipped by the project's spherical day/night model. Grid and elevation display masks now prefer observed terrain and retain shadowed floors enclosed by bright rims, with geometric fallback only when no photo is supplied. The display mask does not change the ephemeris, registration or height data. Projects and PNG/SVG exports preserve the optional layers; SVG text remains editable, including in renderers without SVG 2 paint-order support. Elevation display resolution is bounded to 1000 pixels on its longest edge and depends on the supplied DEM.
+
 ## 0.8.0
 
 2026-10-22 · 多语言、跨平台兼容与依赖安全更新。由于最低 Python 版本和原生依赖安装方式发生变化，从 0.7.12 升为 0.8.0。

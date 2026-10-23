@@ -3,8 +3,13 @@ name: macOS App compatibility
 on:
   workflow_dispatch:
     inputs:
+      release_tag:
+        description: Release containing the locally built archive
+        required: true
+        type: string
+        default: v0.9.0
       asset_name:
-        description: Locally built v0.8.0 Release ZIP to test (no cloud build)
+        description: Locally built Release ZIP to test (no cloud build)
         required: true
         type: string
       sha256:
@@ -25,6 +30,7 @@ jobs:
     timeout-minutes: 15
     env:
       ASSET_NAME: ${{ inputs.asset_name }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
       EXPECTED_SHA256: ${{ inputs.sha256 }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -32,10 +38,12 @@ jobs:
       - name: Download the locally built archive and verify the transfer
         shell: bash
         run: |
-          [[ "$ASSET_NAME" =~ ^MoonLabeler-0\.8\.0-macos-arm64(\.candidate)?\.zip$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          VERSION="${RELEASE_TAG#v}"
+          [[ "$ASSET_NAME" == "MoonLabeler-$VERSION-macos-arm64.zip" || "$ASSET_NAME" == "MoonLabeler-$VERSION-macos-arm64.candidate.zip" ]]
           [[ "$EXPECTED_SHA256" =~ ^[0-9a-f]{64}$ ]]
           mkdir -p "$RUNNER_TEMP/download" "$RUNNER_TEMP/App 解压" "$RUNNER_TEMP/evidence"
-          gh release download v0.8.0 --pattern "$ASSET_NAME" --dir "$RUNNER_TEMP/download"
+          gh release download "$RELEASE_TAG" --pattern "$ASSET_NAME" --dir "$RUNNER_TEMP/download"
           cd "$RUNNER_TEMP/download"
           printf '%s  %s\n' "$EXPECTED_SHA256" "$ASSET_NAME" | shasum -a 256 --check -
           ditto -x -k "$ASSET_NAME" "$RUNNER_TEMP/App 解压"

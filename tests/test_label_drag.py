@@ -14,17 +14,18 @@ CTRL = Qt.KeyboardModifier.ControlModifier  # Qt maps this to Command on macOS.
 NONE = Qt.KeyboardModifier.NoModifier
 LEFT = Qt.MouseButton.LeftButton
 
-@pytest.fixture(params=[1., 2.])
+@pytest.fixture(params=[(1., "standard"), (2., "standard"), (1., "manuscript"), (2., "manuscript")])
 def view(request):
     app = QApplication.instance() or QApplication([])
     canvas = Canvas(); canvas.resize(600, 450)
     canvas.setSceneRect(0, 0, 2000, 1600)
     moves, edits = [], []
-    label = Annotation({'id': 'test', 'name': 'Tycho'}, (850, 700), 'Tycho', Project(),
+    zoom, style = request.param
+    label = Annotation({'id': 'test', 'name': 'Tycho'}, (850, 700), 'Tycho', Project(art_style=style),
                        lambda *args: moves.append(args), edits.append)
     canvas.scene().addItem(label); canvas.scene().addItem(label.line)
     label.setPos(950, 780); moves.clear()
-    canvas.scale(request.param, request.param)
+    canvas.scale(zoom, zoom)
     canvas.show(); canvas.centerOn(1000, 800); app.processEvents()
     yield canvas, label, moves, edits
     canvas.close()

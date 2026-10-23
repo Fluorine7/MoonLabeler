@@ -166,7 +166,7 @@ def _line_bounds(line):
     return min(x, a), min(y, b), abs(a-x), abs(b-y)
 
 
-def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
+def arrange_labels(labels, width, height, gap=8., *, max_labels=None, obstacles=()):
     """Return non-overlapping placements and temporarily omitted keys.
 
     Important captions reserve space before ordinary centers are considered.
@@ -183,6 +183,8 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None):
     # Caption-sized buckets avoid walking dozens of tiny cells per query.
     # Exact intersection checks below still decide every placement.
     text_index, line_index, marker_index = (_SpatialIndex(max(96., gap*12)) for _ in range(3))
+    for index, rect in enumerate(obstacles):
+        text_index.put(f"__map_legend_{index}", rect)
 
     def place(label, rect, line):
         placements[label.key], leaders[label.key] = rect, line

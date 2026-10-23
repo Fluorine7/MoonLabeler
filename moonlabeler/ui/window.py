@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QPushButton, QToolButton, QLabel, QLineEdit, QComboBox, QSpinBox,
     QDoubleSpinBox, QCheckBox, QDateTimeEdit, QTimeEdit, QGroupBox, QScrollArea,
     QSplitter, QTableWidget, QHeaderView, QListWidget, QAbstractItemView,
-    QListView, QTabWidget, QSizePolicy,
+    QListView, QTabWidget, QSizePolicy, QSlider,
 )
 from .capture import CaptureField
 from ..project import LANGUAGE_CHOICES
@@ -87,6 +87,26 @@ class WindowUiMixin:
             combo.setMinimumContentsLength(minimum_contents_length)
             combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         return combo
+
+    def ui_percent_slider(self, value, name):
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setRange(0, 100)
+        slider.setValue(value)
+        slider.setTracking(True)
+        slider.setMinimumHeight(28)
+        slider.setAccessibleName(name)
+        slider.setToolTip(tr("首次应用后，拖动立即更新图层不透明度；滚轮只滚动面板。"))
+        readout = QLabel(f"{value}%")
+        readout.setObjectName("sliderValue")
+        readout.setFixedWidth(42)
+        readout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        slider.valueChanged.connect(lambda percent: readout.setText(f"{percent}%"))
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(10)
+        row.addWidget(slider, 1)
+        row.addWidget(readout)
+        return slider, row
 
     # Manual calibration section (collapsed by default). These two methods are
     # the presentation hook for app.py: open the section when a manual pick
@@ -346,6 +366,15 @@ class WindowUiMixin:
         self.canvas.addAction(escape)
 
     # ------------------------------------------------------------------ sidebar
+    def update_map_controls(self, *args):
+        original = self.art_style.currentData() == "standard"
+        self.font_weight.setEnabled(original)
+        self.color_button.setEnabled(original)
+        self.landing_color_button.setEnabled(original and self.landing_sites_toggle.isChecked())
+        self.grid_opacity.setEnabled(bool(self.grid_spacing.currentData()))
+        self.elevation_opacity.setEnabled(self.elevation_toggle.isChecked())
+        self.elevation_palette.setEnabled(self.elevation_toggle.isChecked())
+
     def build_sidebar(self):
         self.sidebar = QWidget()
         self.sidebar.setObjectName("inspectorPanel")
@@ -719,6 +748,52 @@ class WindowUiMixin:
         self.terrain_shadows.toggled.connect(self.terrain_settings_changed)
 
         # -------------------------------------------------- 标注
+        self.map_styles_toggle, self.map_styles_block, map_styles_box = self.ui_collapsible(tr("艺术与地图图层（可选）"))
+        labels_layout.addWidget(self.map_styles_toggle)
+        labels_layout.addWidget(self.map_styles_block)
+        form = self.ui_form()
+        map_styles_box.addLayout(form)
+        self.art_style = self.ui_combo()
+        self.art_style.addItem(tr("原始标注"), "standard")
+        self.art_style.addItem(tr("中世纪手抄本"), "manuscript")
+        form.addRow(tr("艺术样式"), self.art_style)
+        form.addRow(self.ui_note(tr("手抄本使用衬线字体、羊皮纸色文字与暖金纹饰；原始配色和字重保留，切回即可恢复。")))
+        self.grid_spacing = self.ui_combo()
+        self.grid_spacing.addItem(tr("关闭"), 0)
+        for degrees in (10, 15, 30):
+            self.grid_spacing.addItem(f"{degrees}°", degrees)
+        form.addRow(tr("月面经纬网"), self.grid_spacing)
+        self.grid_opacity, opacity_row = self.ui_percent_slider(round(self.project.grid_opacity*100), tr("网格不透明度"))
+        form.addRow(tr("网格不透明度"), opacity_row)
+        self.elevation_toggle = QCheckBox(tr("叠加高程着色"))
+        form.addRow(self.elevation_toggle)
+        self.elevation_palette = self.ui_combo()
+        self.elevation_palette.addItem(tr("地形色"), "terrain")
+        self.elevation_palette.addItem(tr("靛蓝与古金"), "antique")
+        form.addRow(tr("高程配色"), self.elevation_palette)
+        self.elevation_opacity, opacity_row = self.ui_percent_slider(round(self.project.elevation_opacity*100), tr("高程不透明度"))
+        form.addRow(tr("高程不透明度"), opacity_row)
+        self.map_lit_only = QCheckBox(tr("地图图层仅覆盖受光面"))
+        self.map_lit_only.setToolTip(tr("优先依据照片中的亮地形，保留亮坑缘内的暗坑底；无照片时使用工程的太阳方向。"))
+        self.map_lit_only.setChecked(True)
+        form.addRow(self.map_lit_only)
+        form.addRow(self.ui_note(tr("颜色表示相对 1737.4 km 参考球面的高度，不是温度；细节受 DEM 分辨率限制。图层随 PNG / SVG 导出。")))
+        dem_row = QHBoxLayout()
+        download = QPushButton(tr("下载基础高程"))
+        download.clicked.connect(self.download_dem)
+        download.setToolTip(tr("复用已缓存的 LOLA 数据；首次下载约 33 MB。"))
+        load_dem = QPushButton(tr("导入高程"))
+        load_dem.clicked.connect(lambda: self.import_dem())
+        dem_row.addWidget(download)
+        dem_row.addWidget(load_dem)
+        form.addRow(dem_row)
+        self.map_layer_status = self.ui_note(tr("图层默认关闭；调整后点击“重新生成标注”。"))
+        form.addRow(self.map_layer_status)
+        self.apply_map_styles_button = QPushButton(tr("应用样式与图层"))
+        self.apply_map_styles_button.setProperty("primary", True)
+        self.apply_map_styles_button.clicked.connect(self.apply_label_settings)
+        form.addRow(self.apply_map_styles_button)
+
         group = QGroupBox(tr("筛选与数量"))
         form = self.ui_form(group)
         self.kind = self.ui_combo()
@@ -750,7 +825,7 @@ class WindowUiMixin:
         self.landing_color_button = QPushButton(tr("颜色"))
         self.landing_color_button.setEnabled(False)
         self.landing_color_button.clicked.connect(self.choose_landing_color)
-        self.landing_sites_toggle.toggled.connect(self.landing_color_button.setEnabled)
+        self.landing_sites_toggle.toggled.connect(self.update_map_controls)
         landing_row.addWidget(self.landing_sites_toggle)
         landing_row.addStretch()
         landing_row.addWidget(self.landing_color_button)
@@ -799,6 +874,15 @@ class WindowUiMixin:
         self.color_button.clicked.connect(self.choose_color)
         form.addRow(self.color_button)
         labels_layout.addWidget(group)
+        for control in (self.art_style, self.grid_spacing, self.elevation_palette):
+            control.currentIndexChanged.connect(self.update_map_controls)
+            control.currentIndexChanged.connect(self.style_changed)
+        self.grid_opacity.valueChanged.connect(lambda value: self.map_opacity_changed("grid_opacity", value))
+        self.elevation_opacity.valueChanged.connect(lambda value: self.map_opacity_changed("elevation_opacity", value))
+        for control in (self.elevation_toggle, self.map_lit_only):
+            control.toggled.connect(self.update_map_controls)
+            control.toggled.connect(self.style_changed)
+        self.update_map_controls()
 
         group = QGroupBox(tr("排版选项"))
         option_box = QVBoxLayout(group)
