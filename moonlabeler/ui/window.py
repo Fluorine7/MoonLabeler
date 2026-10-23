@@ -384,6 +384,8 @@ class WindowUiMixin:
         self.contour_opacity.setEnabled(self.contour_toggle.isChecked())
         self.terminator_opacity.setEnabled(self.terminator_toggle.isChecked())
         self.terminator_source.setEnabled(self.terminator_toggle.isChecked())
+        self.map_light_threshold.setEnabled(self.map_light_toggle.isChecked())
+        self.map_light_auto.setEnabled(self.map_light_toggle.isChecked() and self.image is not None)
 
     def select_art_style(self, *args):
         if self.rebuilding:
@@ -397,6 +399,7 @@ class WindowUiMixin:
                 self.contour_toggle.setChecked(True)
                 self.elevation_opacity.setValue(100 if style == "topographic" else 72)
                 self.contour_opacity.setValue(75 if style == "topographic" else 48)
+                self.map_light_toggle.setChecked(True)
             finally:
                 self.rebuilding = False
         self.update_map_controls()
@@ -823,6 +826,30 @@ class WindowUiMixin:
         form.addRow(tr("等高距"), self.contour_interval)
         self.contour_opacity, opacity_row = self.ui_percent_slider(round(self.project.contour_opacity*100), tr("等高线不透明度"))
         form.addRow(tr("等高线不透明度"), opacity_row)
+        self.map_light_toggle = QCheckBox(tr("地图仅覆盖受光区域"))
+        self.map_light_toggle.setChecked(self.project.map_light_mask)
+        form.addRow(self.map_light_toggle)
+        self.pending_map_light_threshold = self.project.map_light_threshold
+        self.map_light_threshold = QSlider(Qt.Orientation.Horizontal)
+        self.map_light_threshold.setRange(0, 255)
+        self.map_light_threshold.setMinimumHeight(28)
+        self.map_light_threshold.setAccessibleName(tr("受光阈值"))
+        self.map_light_threshold.setToolTip(tr("按照片亮度估计；调高阈值会收窄覆盖，调低会扩大。拖动立即更新，滚轮只滚动面板。"))
+        self.map_light_readout = QLabel(tr("自动"))
+        self.map_light_readout.setObjectName("sliderValue")
+        self.map_light_readout.setFixedWidth(28)
+        self.map_light_readout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.map_light_auto = QPushButton(tr("自动"))
+        self.map_light_auto.setCheckable(True)
+        self.map_light_auto.setChecked(self.project.map_light_threshold == "auto")
+        self.map_light_auto.setFixedWidth(52)
+        self.map_light_auto.setToolTip(tr("重新使用照片自动估计的受光阈值。"))
+        threshold_row = QHBoxLayout()
+        threshold_row.setContentsMargins(0, 0, 0, 0)
+        threshold_row.addWidget(self.map_light_threshold, 1)
+        threshold_row.addWidget(self.map_light_readout)
+        threshold_row.addWidget(self.map_light_auto)
+        form.addRow(tr("受光阈值"), threshold_row)
         dem_row = QHBoxLayout()
         download = QPushButton(tr("下载基础高程"))
         download.clicked.connect(self.download_dem)
@@ -928,6 +955,10 @@ class WindowUiMixin:
         self.elevation_opacity.valueChanged.connect(lambda value: self.map_opacity_changed("elevation_opacity", value))
         self.contour_opacity.valueChanged.connect(lambda value: self.map_opacity_changed("contour_opacity", value))
         self.terminator_opacity.valueChanged.connect(lambda value: self.map_opacity_changed("terminator_opacity", value))
+        self.map_light_threshold.valueChanged.connect(self.map_light_threshold_changed)
+        self.map_light_auto.clicked.connect(self.reset_map_light_threshold)
+        self.map_light_toggle.toggled.connect(self.update_map_controls)
+        self.map_light_toggle.toggled.connect(self.apply_map_light_controls)
         for control in (self.elevation_toggle, self.contour_toggle, self.terminator_toggle):
             control.toggled.connect(self.update_map_controls)
             control.toggled.connect(self.style_changed)

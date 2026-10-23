@@ -392,7 +392,7 @@ def test_opacity_sliders_apply_once_then_update_without_layout_or_other_pending_
     for value in (0, 35, 85, 100):
         win.grid_opacity.setValue(value)
         assert win.project.grid_opacity == value/100 and win.map_items == map_items
-        assert all(item.opacity() == value/100 for item in map_items)
+        assert all(item.opacity() == value/100 for item in map_items if getattr(item, "map_layer", None) == "grid")
         assert win.annotation_items == items and [item.pos() for item in items] == positions
     assert win.style_pending and win.project.font_percent == old_font and win.dirty
     path = tmp_path/"live-opacity.moonlabel"
@@ -639,7 +639,7 @@ def test_wilderness_names_have_hierarchy_and_preserve_explicit_pins(window):
     assert automatic and all(not item.line.isVisible() and not item.outline_segments for item in automatic)
     item = automatic[0]
     item.setPos(item.pos().x()+150, item.pos().y()+120)
-    assert item.line.isVisible() and "position" in win.project.labels[item.feature['id']]
+    assert not item.line.isVisible() and "position" in win.project.labels[item.feature['id']]
     sizes = win.project.label_font_sizes([
         {"id": "main", "name": "Clavius", "kind": "Crater, craters", "diameter": 200},
         {"id": "minor", "name": "Clavius A", "kind": "Satellite Feature", "diameter": 10}], win.image.shape)

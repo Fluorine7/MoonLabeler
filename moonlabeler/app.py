@@ -34,12 +34,13 @@ from .ui.theme import STYLE
 from .ui.window import WindowUiMixin, label_drag_hint
 from .ui.wheel import protect_settings_from_wheel
 from .ui.map_layers import (add_map_layers, path_from_segments, GridCaption, ContourLayer, GridLayer,
-                            update_map_opacity, prepare_contour_preview)
+                            MapCoverage, update_map_coverage, update_map_opacity, prepare_contour_preview)
 from .annotation_style import (appearance, caption_typography, placed_caption_typography,
                                caption_text, caption_glyphs, photo_for_style)
 from .color_management import display_srgb, srgb_color_space, srgb_profile_bytes
 from .map_layers import (MapLayers, grid_lines, sample_elevation, colorize_elevation,
-                         elevation_alpha, contour_lines, resolved_contour_interval, build_terminator, legend_rect)
+                         elevation_alpha, contour_lines, resolved_contour_interval, build_terminator, legend_rect,
+                         photo_lightness)
 from .ui.compute import ComputeDialog
 from . import compute
 from .craters import DetectionOptions, detect_craters, detect_crater_rims
@@ -638,6 +639,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self._elevation_failed_key = None
         self._contour_key = self._contour_render = None
         self._grid_preview_key = self._grid_preview = None
+        self._photo_light_key = self._photo_lightness = None
         self._map_layers_pending = False
         self._dem_revision = 0
         self.reference_items = []
@@ -1240,6 +1242,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self._elevation_raster = None
         self._contour_key = self._contour_render = None
         self._grid_preview_key = self._grid_preview = None
+        self._photo_light_key = self._photo_lightness = None
         self.reference_items = []
         self.canvas.scene().clear()
         self.photo_item = self.canvas.scene().addPixmap(QPixmap.fromImage(qimage(photo_for_style(display_image, self.project.art_style))))
@@ -1360,6 +1363,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.terminator_toggle.setChecked(self.project.terminator_enabled)
         self.terminator_opacity.setValue(round(self.project.terminator_opacity*100))
         self.terminator_source.setCurrentIndex(self.terminator_source.findData(self.project.terminator_source))
+        self.map_light_toggle.setChecked(self.project.map_light_mask)
+        self.pending_map_light_threshold = self.project.map_light_threshold
+        self.update_map_light_hint()
         self.map_styles_toggle.setChecked(self.project.art_style != "standard" or bool(self.project.grid_spacing)
                                          or self.project.elevation_enabled or self.project.contour_enabled
                                          or self.project.terminator_enabled)
@@ -2000,6 +2006,64 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if not self.style_pending:
             self.settings_status.setText(tr("已更新"))
 
+    def current_photo_lightness(self):
+        if self.image is None:
+            return None
+        key = self.map_sampling_key() or (id(self.image),)
+        if key != self._photo_light_key:
+            self._photo_lightness = photo_lightness(self.project, self.image)
+            self._photo_light_key = key
+        return self._photo_lightness
+
+    def update_map_light_hint(self):
+        automatic = self.pending_map_light_threshold == "auto"
+        field = self.current_photo_lightness() if automatic else None
+        value = field.automatic_threshold if field is not None else 1 if automatic else self.pending_map_light_threshold
+        rebuilding, self.rebuilding = self.rebuilding, True
+        try:
+            self.map_light_threshold.setValue(value)
+            self.map_light_readout.setText(str(value))
+            self.map_light_auto.setChecked(automatic)
+        finally:
+            self.rebuilding = rebuilding
+
+    def map_light_threshold_changed(self, value):
+        if not self.rebuilding:
+            self.pending_map_light_threshold = value
+            self.apply_map_light_controls()
+
+    def reset_map_light_threshold(self):
+        if not self.rebuilding:
+            self.pending_map_light_threshold = "auto"
+            self.apply_map_light_controls()
+
+    def apply_map_light_controls(self, *args):
+        if self.rebuilding:
+            return
+        self.update_map_light_hint()
+        p = self.project
+        if not (p.grid_spacing or p.elevation_enabled or p.contour_enabled):
+            self.style_changed()
+            return
+        p.map_light_mask = self.map_light_toggle.isChecked()
+        p.map_light_threshold = self.pending_map_light_threshold
+        self.refresh_map_coverage()
+        update_map_coverage(self.map_items, self.map_layers.coverage)
+        self.update_grid_captions()
+        self._map_display_key = None
+        if self.image is not None:
+            self.dirty = True
+        if not self.style_pending:
+            self.settings_status.setText(tr("已更新"))
+
+    def refresh_map_coverage(self):
+        self.map_layers.coverage = self.map_layers.light_threshold = None
+        if self.project.map_light_mask:
+            field = self.current_photo_lightness()
+            if field is not None:
+                self.map_layers.coverage, self.map_layers.light_threshold = field.coverage(self.project.map_light_threshold)
+        self.update_map_light_hint()
+
     def update_font_hint(self):
         percentages = font_tier_percentages(self.font_size.value(), self.ui_font_step.value())
         if self.ui_font_step.value() == 0:
@@ -2035,6 +2099,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                            ("terminator_enabled", self.terminator_toggle.isChecked()),
                            ("terminator_opacity", self.terminator_opacity.value()/100),
                            ("terminator_source", self.terminator_source.currentData()),
+                           ("map_light_mask", self.map_light_toggle.isChecked()),
+                           ("map_light_threshold", self.pending_map_light_threshold),
                            ("illuminated_only", self.lit.isChecked()),
                            ("show_landing_sites", self.landing_sites_toggle.isChecked()),
                            ("landing_color", self.pending_landing_color),
@@ -2083,9 +2149,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
         bounds = [item.sceneBoundingRect() for item in self.annotation_items]
         if self.map_layers.elevation is not None or self.map_layers.contours is not None:
             bounds.append(QRectF(*legend_rect(self.image.shape)))
+        coverage = next((item.coverage_path for item in self.map_items if isinstance(item, MapCoverage)), None)
         for item in self.map_items:
             if isinstance(item, GridCaption):
                 visible = not any(item.sceneBoundingRect().intersects(rect) for rect in bounds)
+                if self.map_layers.coverage is not None and coverage is not None:
+                    visible = visible and coverage.contains(item.sceneBoundingRect())
                 item.setVisible(visible)
                 item.grid_line.show_label = visible
 
@@ -2105,13 +2174,15 @@ class MainWindow(WindowUiMixin, QMainWindow):
         display_key = (key, p.art_style, p.grid_spacing, p.grid_opacity, p.elevation_enabled,
                        p.elevation_palette, p.elevation_opacity,
                        p.contour_enabled, p.contour_interval, p.contour_opacity,
-                       p.terminator_enabled, p.terminator_opacity, p.terminator_source)
+                       p.terminator_enabled, p.terminator_opacity, p.terminator_source,
+                       p.map_light_mask, p.map_light_threshold)
         if display_key == self._map_display_key:
             return
         for item in self.map_items:
             self.canvas.scene().removeItem(item)
         self.map_items = []
         self.map_layers = MapLayers()
+        self.refresh_map_coverage()
         self._map_display_key = display_key
         self.set_map_layer_status()
         self.set_map_layer_status(terminator=True)
@@ -2381,7 +2452,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             result.setColorSpace(srgb_color_space())
             result.fill(QColor("#000"))
             painter = QPainter(result)
-            painter.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
+            painter.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing |
+                                   QPainter.RenderHint.SmoothPixmapTransform)
             self.canvas.scene().render(painter, QRectF(0,0,w,h), QRectF(0,0,w,h))
             painter.end()
             if not result.save(str(path), "PNG"):

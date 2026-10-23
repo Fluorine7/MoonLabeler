@@ -165,7 +165,7 @@ def _validate_project_data(data):
     if 'font_step_percent' in style:
         _number(style['font_step_percent'], 'style.font_step_percent', 0, 100)
     for key in ('illuminated_only', 'optimize_layout', 'crater_outlines', 'show_landing_sites',
-                'elevation_enabled', 'contour_enabled', 'terminator_enabled'):
+                'elevation_enabled', 'contour_enabled', 'terminator_enabled', 'map_light_mask'):
         if key in style and type(style[key]) is not bool:
             _invalid_field(f'style.{key}')
     for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color', 'font_weight',
@@ -185,6 +185,8 @@ def _validate_project_data(data):
             _number(style[key], f'style.{key}', 0, 1)
     if style.get('terminator_source', 'photo') not in ('photo', 'ephemeris'):
         _invalid_field('style.terminator_source')
+    if 'map_light_threshold' in style and style['map_light_threshold'] != 'auto':
+        _number(style['map_light_threshold'], 'style.map_light_threshold', 0, 255, integer=True)
     if 'language' in style and style['language'] not in LANGUAGE_CHOICES:
         _invalid_field('style.language')
     if 'color' in style:
@@ -368,6 +370,8 @@ class Project:
     terminator_enabled: bool = False
     terminator_opacity: float = 1.
     terminator_source: str = "photo"
+    map_light_mask: bool = False
+    map_light_threshold: int | str = "auto"
 
     def photo_points(self, points):
         """Map projected lunar coordinates into untouched photograph pixels."""
@@ -463,7 +467,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": _portable_path(self.terrain_path, base) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold")}}
         write_json(path, data)
 
     @classmethod
@@ -496,7 +500,7 @@ class Project:
         project.font_percent = None  # Older projects only store a pixel size.
         project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source"):
+            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"

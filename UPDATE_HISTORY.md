@@ -6,15 +6,32 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 1.9.2
+
+2026-10-23 · 受光覆盖、自动阈值与柔和过渡。
+
+本次仅更新源码并推送 GitHub，不构建安装包、不创建 Release。此前的打包继续暂停，现有本地 1.9.1 macOS 包不包含本次改动。
+
+- 恢复可选的“地图仅覆盖受光区域”，按照片亮度自动估计阈值；经纬网、高程和等高线共用柔和渐隐边界，保留亮坑缘包围的暗坑底。关闭后覆盖全部有效月面，地名、晨昏线与图例独立保留。
+- 阈值滑块实时更新，点击“自动”恢复照片估计；自动模式和手动数值随工程保存。滚轮只滚动面板，不修改阈值；其他待确认设置不被顺带应用。
+- 调节复用照片明暗及既有地图，不重新采样高程、提取等高线或排版标签。柔化蒙版只合成当前可见区域，避免高倍缩放分配整幅放大图像而卡顿。PNG / SVG 共用渐变蒙版，矢量路径仍可编辑。
+- 覆盖不依赖拍摄时间或太阳方向，也不修改原图与配准。选择艺术主题时预填开启；缺少新设置的旧工程保持原有覆盖，废弃的 `map_lit_only` 字段继续忽略。
+
+### English
+
+Source-only update, without packages or a Release. Restores optional photo-lit map coverage with an automatically estimated brightness threshold, a live manual slider and Auto reset. Elevation, contours and the grid share a softly feathered boundary; enclosed crater shadows remain covered, while names, the terminator and legend stay independent. Threshold controls preserve wheel protection and unrelated pending edits. Cached photo analysis and maps are reused, and compositing stays bounded by the viewport during high zoom. PNG/SVG use the same soft mask, with editable vector paths retained. Saved settings round-trip, older projects retain their previous coverage, and the original photo, ephemeris and registration remain unchanged.
+
 ## 1.9.1
 
 2026-10-23 · 艺术地图排版、图层性能与导出修复。
 
-提供本地打包的 macOS Apple Silicon 版与 GitHub Actions 构建的 Windows x64 版。Release 只附两个应用 ZIP 包；中间 wheel、日志、校验清单及验证报告留在 Actions 或本地。已有工程、原始标注与手工编辑继续保留。
+打包与发布暂停：已完成的本地 macOS 包先保留；Windows 云构建已取消，1.9.1 Release 尚未发布。恢复发布时只附 macOS Apple Silicon 与 Windows x64 两个应用 ZIP 包，中间文件留在 Actions 或本地。已有工程、原始标注与手工编辑继续保留。
 
 新增 **蔡明翰（[Evan Tsai](https://www.facebook.com/mjrt.mj)）** 的贡献致谢：繁体中文支持及 Windows 部分问题修复。软件内致谢和中英文文档同步更新。
 
-地图图层移除“仅覆盖受光面”，经纬网、高程和等高线统一覆盖全部有效月面，忽略旧工程的对应开关；原有受光地形名称筛选保留。“中世纪风”以古航海地图为审美参考，采用蓝灰古金配色、分类衬线地名、疏排弧形大地名和斜体地形名称，收起菱形、下划线及大坑圈，SVG 保留可编辑的逐字旋转文本组。另增旷野平面地形图主题与可独立调节的 DEM 等高线。
+地图图层在此版本移除“仅覆盖受光面”，经纬网、高程和等高线覆盖全部有效月面，忽略旧工程的对应开关；原有受光地形名称筛选保留。
+
+“中世纪风”以古航海地图为审美参考，采用蓝灰古金配色、分类衬线地名、疏排弧形大地名和斜体地形名称，收起菱形、下划线及大坑圈，SVG 保留可编辑的逐字旋转文本组。另增旷野平面地形图主题与可独立调节的 DEM 等高线。
 
 修复艺术地名一经 Cmd / Ctrl 拖动就永久增加引线的问题：保存位置不再改变显示风格；普通地名仅在拖动时显示定位辅助线，松开鼠标或修饰键、切离画布即隐藏，PNG / SVG 不导出辅助线。原始标注的引线、着陆点符号及旧工程的手动位置保留。
 
@@ -32,7 +49,7 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 
 ### English
 
-Provides a locally built macOS Apple Silicon app and a GitHub Actions-built Windows x64 app. Release attachments contain only these two app ZIPs; intermediate artifacts and reports stay in Actions or local output. Refines medieval and wilderness map styling, adds optional photo-estimated or theoretical terminators, and chooses contour spacing automatically. Improves canvas responsiveness and text-cache scaling; regional captions outside the lunar disc use a straight baseline, and ordinary art captions show locator guides only while dragging. Exports retain the source filename, with an sRGB-converted photo base and an embedded sRGB profile in PNG. Credits 蔡明翰 (Evan Tsai) for Traditional Chinese support and fixes for several Windows issues.
+Packaging and publication are paused; the Windows run was cancelled and no 1.9.1 release was published. On resumption, only the macOS and Windows app ZIPs will be attached. Refines medieval and wilderness map styling, adds optional photo-estimated or theoretical terminators, and chooses contour spacing automatically. Improves canvas responsiveness and text-cache scaling; regional captions outside the lunar disc use a straight baseline, and ordinary art captions show locator guides only while dragging. Exports retain the source filename, with an sRGB-converted photo base and an embedded sRGB profile in PNG. Credits 蔡明翰 (Evan Tsai) for Traditional Chinese support and fixes for several Windows issues.
 
 ## 0.9.0
 
@@ -42,7 +59,7 @@ Provides a locally built macOS Apple Silicon app and a GitHub Actions-built Wind
 - 手抄本采用系统衬线字体、浅金字芯、深色光晕、暖金引线和菱形纹饰；高程颜色融合原照片明暗，提高浓着色时的地形层次与文字可读性。
 - 网格和高程不透明度改为带百分比读数的滑块；图层首次应用后，拖动实时更新，不重新取样 DEM、不重排标签，也不应用其他待确认设置。工程、PNG 与 SVG 反映当前已应用的不透明度。
 - 统一保护数字、日期、下拉框和滑块：滚轮与触控板只滚动面板，控件聚焦后也不改值；键盘、按钮和明确拖动继续有效。新增控件沿用同一保护，交互约束写入项目 AGENTS.md。
-- 修复参考球面日夜判断误裁实拍亮地形的问题。高程图和经纬网优先使用照片中的可见地形范围，保留亮坑缘包围的暗坑底；无照片时才使用工程太阳方向。显示蒙版与星历、配准和 DEM 分开，不作为严格的物理日夜边界。
+- 修复参考球面日夜判断误裁实拍亮地形的问题。高程图和经纬网优先使用照片中的可见地形范围，边界柔和渐隐，保留亮坑缘包围的暗坑底；无照片时才使用工程太阳方向。显示蒙版与星历、配准和 DEM 分开，不作为严格的物理日夜边界。
 - 地名优先于经纬度数字，自动排版为高程色标预留空间。图层支持旋转、镜像及已有的目镜畸变校正；无数据及月盘外区域透明。高程显示栅格最长边为 1000 像素，精度受实际 DEM 限制。
 - SVG 保留可编辑文字、网格和纹饰；文字描边兼容忽略 SVG 2 `paint-order` 的渲染器。高程图后台生成，复用未变化的地理采样；重新配准或更换照片使缓存失效，数据缺失或生成失败时保留标注并阻止不完整导出。
 

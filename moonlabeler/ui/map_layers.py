@@ -5,10 +5,11 @@ import math
 from dataclasses import dataclass
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QImage, QPainter, QPainterPath, QPen, QPixmap, QTransform
-from PySide6.QtWidgets import QGraphicsItem, QGraphicsPixmapItem, QGraphicsPathItem
+from PySide6.QtWidgets import QGraphicsItem, QGraphicsPixmapItem, QGraphicsPathItem, QGraphicsEffect
 
 from ..map_layers import (grid_color, grid_appearance, grid_dashes, legend_rect, legend_image,
-                          legend_title, contour_appearance, terminator_appearance, terminator_dashes, line_strokes)
+                          legend_title, contour_appearance, terminator_appearance, terminator_dashes, line_strokes,
+                          feathered_coverage)
 
 
 def path_from_segments(segments):
@@ -18,6 +19,82 @@ def path_from_segments(segments):
         for point in segment[1:]:
             path.lineTo(*point)
     return path
+
+
+class PhotoCoverageEffect(QGraphicsEffect):
+    """Composite only the visible device area, including at large canvas zooms."""
+    def __init__(self, rect):
+        super().__init__()
+        self.rect = rect
+        self.mask = QImage()
+
+    def draw(self, painter):
+        transform = painter.worldTransform()
+        source = self.sourceBoundingRect(Qt.CoordinateSystem.LogicalCoordinates)
+        bounds = transform.mapRect(source).toAlignedRect().intersected(painter.viewport())
+        if bounds.isEmpty():
+            return
+        # QGraphicsOpacityEffect caches the entire transformed photo, which can
+        # allocate hundreds of megapixels when zoomed. Keep this buffer bounded
+        # by the viewport; exports use their original-size target instead.
+        dpr = painter.device().devicePixelRatioF()
+        image = QImage(round(bounds.width()*dpr), round(bounds.height()*dpr), QImage.Format.Format_ARGB32_Premultiplied)
+        image.setDevicePixelRatio(dpr)
+        image.fill(Qt.GlobalColor.transparent)
+        buffer = QPainter(image)
+        buffer.setRenderHints(painter.renderHints())
+        buffer.translate(-bounds.x(), -bounds.y())
+        buffer.setWorldTransform(transform, True)
+        self.drawSource(buffer)
+        buffer.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationIn)
+        buffer.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        buffer.drawImage(self.rect, self.mask)
+        buffer.end()
+        painter.save()
+        painter.setWorldTransform(QTransform())
+        painter.drawImage(bounds.topLeft(), image)
+        painter.restore()
+
+
+class MapCoverage(QGraphicsPathItem):
+    """A soft photo-space mask; labels, legend and terminator stay independent."""
+    def __init__(self, shape, coverage):
+        super().__init__()
+        self.rect = QRectF(0, 0, shape[1], shape[0])
+        self.setPen(QPen(Qt.PenStyle.NoPen))
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemHasNoContents)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemClipsChildrenToShape)
+        self.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        self.setZValue(1)
+        bounds = QPainterPath()
+        bounds.addRect(self.rect)
+        self.setPath(bounds)
+        self.effect = PhotoCoverageEffect(self.rect)
+        self.setGraphicsEffect(self.effect)
+        self.set_coverage(coverage)
+
+    def set_coverage(self, coverage):
+        path = QPainterPath()
+        if coverage is None:
+            path.addRect(self.rect)
+        else:
+            for polygon in coverage:
+                path.moveTo(*polygon[0])
+                for point in polygon[1:]:
+                    path.lineTo(*point)
+                path.closeSubpath()
+        self.coverage_path = path
+        self.effect.setEnabled(coverage is not None)
+        if coverage is not None:
+            mask = feathered_coverage((self.rect.height(), self.rect.width()), coverage)
+            self.effect.mask = array_image(mask)
+            self.effect.update()
+
+
+def update_map_coverage(items, coverage):
+    for item in items:
+        if isinstance(item, MapCoverage):
+            item.set_coverage(coverage)
 
 
 class ElevationLegend(QGraphicsItem):
@@ -261,6 +338,13 @@ def add_map_layers(scene, project, shape, layers, *, contour_preview=None, grid_
         caption.setZValue(5)
         caption.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         items.append(caption)
+    if items:
+        clip = MapCoverage(shape, layers.coverage)
+        scene.addItem(clip)
+        for item in items:
+            item.setParentItem(clip)
+        # Remove children from the scene before their parent during a refresh.
+        items.append(clip)
     if layers.terminator:
         style = terminator_appearance(project, shape)
         items.extend(_line_items(scene, layers.terminator, style, project.terminator_opacity,

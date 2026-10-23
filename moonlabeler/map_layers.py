@@ -57,6 +57,36 @@ class MapLayers:
     terminator: list = field(default_factory=list)
     terminator_unreliable: bool = False
     contour_interval: float | None = None  # Resolved km; the project can remain on "auto".
+    coverage: list | None = None  # Photo-space polygons; None covers all valid terrain.
+    light_threshold: int | None = None
+
+
+@dataclass
+class PhotoLightness:
+    values: np.ndarray
+    automatic_threshold: int
+    source_shape: tuple
+
+    def coverage(self, threshold="auto"):
+        """Keep broad bright regions and enclosed crater shadows, using cached lightness."""
+        level = self.automatic_threshold if threshold == "auto" else threshold
+        mask = np.uint8(self.values >= level)*255
+        # Close narrow shadow gaps before retaining external contours. Enclosed
+        # dark crater floors remain covered; the open dark hemisphere stays out.
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        scale = np.array([self.source_shape[1]/mask.shape[1], self.source_shape[0]/mask.shape[0]])
+        polygons = []
+        for contour in contours:
+            if cv2.contourArea(contour) < 3:
+                continue
+            points = cv2.approxPolyDP(contour, .35, True).reshape(-1, 2).astype(float)
+            if len(points) >= 3:
+                # Edge pixels represent the photograph boundary, not a one-pixel inset.
+                for axis, size in enumerate((mask.shape[1], mask.shape[0])):
+                    points[:, axis] = np.where(points[:, axis] == size-1, size, points[:, axis])
+                polygons.append((points*scale).tolist())
+        return polygons, int(level)
 
 
 @dataclass
@@ -64,6 +94,24 @@ class ContourLine:
     height_km: float
     segments: list
     major: bool
+
+
+def feathered_coverage(shape, coverage, *, max_edge=512):
+    """Shared soft coverage for Qt and SVG, bounded independently of photo size."""
+    h, w = shape[:2]
+    scale = min(1., max_edge/max(h, w))
+    width, height = max(1, round(w*scale)), max(1, round(h*scale))
+    alpha = np.zeros((height, width), np.uint8)
+    if coverage:
+        factors = np.array([width/w, height/h])
+        points = [np.round(np.asarray(polygon)*factors).astype(np.int32) for polygon in coverage]
+        cv2.fillPoly(alpha, points, 255)
+        # Feather at a stable fraction of the photograph, not the current zoom.
+        # The broad day/night boundary fades; the far dark hemisphere stays clear.
+        alpha = cv2.GaussianBlur(alpha, (0, 0), max(.8, min(width, height)*.008))
+    rgba = np.full((height, width, 4), 255, np.uint8)
+    rgba[:, :, 3] = alpha
+    return rgba
 
 
 def resolved_contour_interval(raster, project):
@@ -258,6 +306,36 @@ def photo_coordinates(project, pixels):
         points = center + delta*(original/np.maximum(radius, 1e-30))[:, None]*scale
     inverse = np.linalg.inv(np.vstack((project.matrix, [0., 0., 1.])))[:2]
     return transform_points(inverse, points)
+
+
+def photo_lightness(project, image, *, max_edge=512):
+    """Estimate a display threshold from the photo, independently of Sun/date/DEM.
+
+    The registered disk only selects histogram samples, excluding black borders
+    and watermarks. The coverage itself follows the photographed bright regions,
+    so a slightly inaccurate reference limb cannot erase real bright terrain.
+    """
+    h, w = image.shape[:2]
+    ratio = min(1., max_edge/max(h, w))
+    width, height = max(1, round(w*ratio)), max(1, round(h*ratio))
+    grey = np.asarray(Image.fromarray(image).convert("L").resize((width, height), Image.Resampling.BOX))
+    smooth = cv2.GaussianBlur(grey, (0, 0), max(.8, min(width, height)*.006))
+    if project.geometry is not None and project.matrix is not None:
+        y, x = np.mgrid[:height, :width]
+        pixels = np.column_stack(((x.ravel()+.5)*w/width, (y.ravel()+.5)*h/height))
+        _, _, disk = project.geometry.unproject(photo_coordinates(project, pixels))
+        samples = smooth.ravel()[disk]
+    else:
+        samples = smooth.ravel()
+    if samples.size:
+        high = float(np.percentile(samples, 95))
+        otsu, _ = cv2.threshold(samples.reshape(-1, 1), 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        # A conservative fraction of the foreground split retains dark maria and
+        # thin bright rims. Manual control can suppress stronger earthshine.
+        threshold = max(1, round(min(otsu*.35, high*.15)))
+    else:
+        threshold = 1
+    return PhotoLightness(smooth, threshold, (h, w))
 
 
 def _clip_segment(a, b, width, height):
@@ -514,6 +592,8 @@ def colorize_elevation(raster, project, *, image=None):
 def build_map_layers(project, shape, *, image=None):
     """Offline convenience API. The editor supplies its cached raster instead."""
     layers = MapLayers(grid_lines(project, shape))
+    if project.map_light_mask and image is not None:
+        layers.coverage, layers.light_threshold = photo_lightness(project, image).coverage(project.map_light_threshold)
     layers.terminator, layers.terminator_unreliable = build_terminator(project, shape, image=image)
     if project.elevation_enabled or project.contour_enabled:
         if not project.terrain_path:
@@ -564,6 +644,11 @@ def _svg_line(path, color, halo, width, dashes=()):
 def layers_svg(project, shape, layers):
     h, w = shape[:2]
     parts = []
+    if layers.coverage is not None:
+        mask = png_data(feathered_coverage(shape, layers.coverage))
+        parts.extend([f'<defs><mask id="photo-lit-coverage" maskUnits="userSpaceOnUse" x="0" y="0" width="{w}" height="{h}">'
+                      f'<image width="{w}" height="{h}" preserveAspectRatio="none" xlink:href="data:image/png;base64,{mask}"/></mask></defs>',
+                      f'<g id="photo-lit-map-layers" mask="url(#photo-lit-coverage)" data-threshold="{layers.light_threshold}">'])
     if project.elevation_enabled:
         if layers.elevation is None:
             raise ValueError("高程图尚未生成；请先生成或关闭高程着色再导出。")
@@ -588,6 +673,8 @@ def layers_svg(project, shape, layers):
                 x, y = line.label_position
                 parts.append(svg_caption(line.label, x, y, size, color, "#10151d",
                                          max(1., size*.12), f'grid-text-{index}'))
+        parts.append('</g>')
+    if layers.coverage is not None:
         parts.append('</g>')
     if project.terminator_enabled:
         if layers.terminator_unreliable:

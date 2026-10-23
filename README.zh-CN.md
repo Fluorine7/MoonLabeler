@@ -1,6 +1,6 @@
 # MoonLabeler 中文使用说明
 
-当前源码版本：**1.9.1**（2026-10-23）。[本次更新](UPDATE_HISTORY.md#191)。[Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.1) 提供本地打包的 macOS Apple Silicon 版和云端构建的 Windows x64 版，仅附两个应用 ZIP 包。
+当前源码版本：**1.9.2**（2026-10-23）。[本次更新](UPDATE_HISTORY.md#192)。本次仅更新源码并推送 GitHub，不打包、不创建 Release；现有独立 App 下载仍为 [0.8.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0)，不包含本次新功能。恢复发布时仅附 macOS 与 Windows 两个应用 ZIP 包。
 
 作者：**Fluorine Zhu** · **GPL-3.0-or-later** · [English / 项目主页](README.md) · [更新历史](UPDATE_HISTORY.md)
 
@@ -8,13 +8,13 @@
 
 ## 下载 macOS App
 
-Apple Silicon（M1 或更新机型）、**macOS 14.4+ / 15 或更新版本**：从 [v1.9.1 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.1) 下载 `MoonLabeler-1.9.1-macos-arm64.zip`，完整解压后打开 `MoonLabeler.app`，也可拖入“应用程序”。内含 Python、Qt、最小 OpenCV、FITS 支持和离线星历，无需另装 Python 或编译器；不适用于 Intel Mac。
+Apple Silicon（M1 或更新机型）、**macOS 14.4+ / 15 或更新版本**：从 [v0.8.0 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0) 下载 `MoonLabeler-0.8.0-macos-arm64.zip`，完整解压后打开 `MoonLabeler.app`，也可拖入“应用程序”。内含 Python、Qt、最小 OpenCV、FITS 支持和离线星历，无需另装 Python 或编译器；不适用于 Intel Mac。
 
 目前 App 使用临时签名，未经过 Apple 公证。首次下载若被 macOS 拦截，请在“系统设置 → 隐私与安全性”中允许该 App 运行。安装、验证与本机重新打包步骤见 [macOS App 说明](docs/macos-app.md)。
 
 ## 下载 Windows 版
 
-从同一 Release 下载 `MoonLabeler-1.9.1-windows-x64.zip`，完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹。无需安装 Python 或编译器。构建日志、开发用 wheel 与校验报告保留在 Actions 产物中，不放入 Release 附件。
+从同一 Release 下载 `MoonLabeler-0.8.0-windows-x64.zip`，完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹。无需安装 Python 或编译器。1.9.1 云构建已取消；后续发布只附应用包，中间文件保留在 Actions 或本地。
 
 ## 从源码打开
 
@@ -164,7 +164,7 @@ cd MoonLabeler
 - **晨昏线**：独立开关，默认关闭，不需要 DEM。开启后默认使用“照片估计”：依据照片的大范围亮暗区拟合参考球面边界，排除孤立的暗坑和局部阴影，使用虚线标明近似估计。原图、工程时间、太阳方向及配准保持不变；无法找到可靠交界时提示并留空，需关闭晨昏线或切换依据后再导出。准确时间已知时，可选“工程时间（理论）”，按保存的太阳方向绘制零太阳高度边界，以实线表示；时间不准时可能与实拍偏离。两种方式均不模拟山峰、坑壁的精确局部阴影，也不裁切高程、等高线或经纬网。PNG 包含当前线条，SVG 保留矢量路径与来源标记；仅理论线附带工程计算时间，照片估计不声称恢复了拍摄时间。
 - **高程着色**：可选“地形色”“靛蓝与古金”或“旷野橄榄棕”，单独调整不透明度。颜色融合原照片的明暗纹理，较高不透明度下仍保留地形层次；色标展示基础配色。颜色表示相对 **1737.4 km 参考半径**的高度，**不是温度**。色标为 −9 至 +9 km，超出范围使用端点色；无数据及月盘外区域透明。
 
-地图图层统一覆盖全部有数据的可见月面，不再按照片亮度或太阳方向裁切。“地图图层仅覆盖受光面”已移除，旧工程中的对应设置忽略。原有“仅标注受光地形”的名称筛选独立保留。图层展示不修改工程时间、太阳方向、配准或 DEM；投影月缘与实拍轮廓存在偏差时，仍需检查配准。
+**地图仅覆盖受光区域**按照片明暗自动估计覆盖范围，边界柔和渐隐，保留亮坑缘包围的暗坑底。选择艺术主题时预填开启；已有工程缺少新设置时保持原有覆盖。拖动“受光阈值”滑块可实时调整：调高收窄覆盖，调低扩大，点击“自动”恢复估计；关闭开关可覆盖全部有效月面。调节复用照片明暗缓存及既有地图，不重采样 DEM、不提取等高线、不重排地名，也不会应用其他待确认参数。阈值和自动模式随工程保存，预览与 PNG / SVG 共用覆盖边界。名称筛选、晨昏线、图例独立保留；覆盖不依赖太阳方向，也不修改原图、工程时间、配准或 DEM。此处是显示范围的明暗估计，投影月缘与实拍轮廓存在偏差时仍需检查配准。旧版已废弃的 `map_lit_only` 字段继续忽略。
 
 经纬网和等高线使用加粗线芯与细衬边，提高适合窗口显示时的辨识度；100% 不透明度显示完整线色。中世纪等高线采用亮古金，旷野采用深棕配浅色衬边，主等高线与零度经纬线进一步加粗；晨昏线用铜橙色（旷野主题为浅青色）区分。
 
