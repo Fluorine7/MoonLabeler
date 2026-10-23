@@ -5,6 +5,10 @@
 开发阶段误写的 1.9.x 已统一更正为 0.9.x。详细实现与验证记录可查 Git 历史。
 Development versions labelled 1.9.x are corrected to 0.9.x; implementation details remain in Git history.
 
+## 未发布 / Unreleased
+
+- 高程图例支持 Cmd / Ctrl 拖动，位置随工程保存并用于 PNG / SVG。 / Movable elevation legend with saved and exported position.
+
 ## 0.9.3
 
 2026-10-24

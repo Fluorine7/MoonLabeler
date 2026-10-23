@@ -7,6 +7,8 @@ from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QImage, QPainter, QPainterPath, QPen, QPixmap, QTransform
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsPixmapItem, QGraphicsPathItem, QGraphicsEffect
 
+from .drag import DRAG_KEY, ModifierDragItem
+from ..i18n import trf
 from ..map_layers import (grid_color, grid_appearance, grid_dashes, legend_rect, legend_image,
                           legend_title, contour_appearance, terminator_appearance, terminator_dashes, line_strokes,
                           feathered_coverage)
@@ -97,15 +99,33 @@ def update_map_coverage(items, coverage):
             item.set_coverage(coverage)
 
 
-class ElevationLegend(QGraphicsItem):
-    def __init__(self, shape, project, contour_interval=None):
+class ElevationLegend(ModifierDragItem):
+    def __init__(self, shape, project, contour_interval=None, *, moved=None):
         super().__init__()
-        self.rect = QRectF(*legend_rect(shape))
+        self._ready = False
+        self.photo_shape = shape
+        x, y, w, h = legend_rect(shape, project.legend_position)
+        self.rect = QRectF(0, 0, w, h)
         self.project = project
+        self.moved = moved
         self.contour_interval = project.contour_interval if contour_interval is None else contour_interval
         self.ramp = array_image(legend_image(shape, project.elevation_palette))
         self.setZValue(6)
-        self.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
+        self.setToolTip(trf("按住 {key} 拖动图例", key=DRAG_KEY))
+        self.setPos(x, y)
+        self._ready = True
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            x, y, _, _ = legend_rect(self.photo_shape, (value.x(), value.y()))
+            return QPointF(x, y)
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged and self._ready:
+            position = [self.pos().x(), self.pos().y()]
+            self.project.legend_position = position
+            if self.moved is not None:
+                self.moved(position)
+        return super().itemChange(change, value)
 
     def boundingRect(self):
         return self.rect
@@ -299,7 +319,7 @@ def _line_items(scene, segments, appearance, opacity, layer, z, dashes=()):
     return items
 
 
-def add_map_layers(scene, project, shape, layers, *, contour_preview=None, grid_preview=None):
+def add_map_layers(scene, project, shape, layers, *, contour_preview=None, grid_preview=None, legend_moved=None):
     items = []
     h, w = shape[:2]
     if layers.elevation is not None:
@@ -350,7 +370,7 @@ def add_map_layers(scene, project, shape, layers, *, contour_preview=None, grid_
         items.extend(_line_items(scene, layers.terminator, style, project.terminator_opacity,
                                  "terminator", 5.5, terminator_dashes(project, style[2])))
     if layers.elevation is not None or layers.contours is not None:
-        legend = ElevationLegend(shape, project, layers.contour_interval)
+        legend = ElevationLegend(shape, project, layers.contour_interval, moved=legend_moved)
         scene.addItem(legend)
         items.append(legend)
     return items

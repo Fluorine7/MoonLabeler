@@ -617,10 +617,12 @@ def grid_color(project):
     return "#f0cc7b" if project.art_style == "manuscript" else "#a7d9ed"
 
 
-def legend_rect(shape):
+def legend_rect(shape, position=None):
     h, w = shape[:2]
     unit = min(h, w)/100
-    return (2*unit, h-8*unit, min(30*unit, w-4*unit), 6*unit)
+    width, height = min(30*unit, w-4*unit), 6*unit
+    x, y = (2*unit, h-8*unit) if position is None else position
+    return (min(max(0., x), w-width), min(max(0., y), h-height), width, height)
 
 
 def legend_image(shape, palette):
@@ -696,7 +698,7 @@ def layers_svg(project, shape, layers):
 
 
 def legend_svg(project, shape, *, contour_interval=None):
-    x, y, w, h = legend_rect(shape)
+    x, y, w, h = legend_rect(shape, project.legend_position)
     u = h/6
     title = legend_title(project, contour_interval)
     interval = project.contour_interval if contour_interval is None else contour_interval

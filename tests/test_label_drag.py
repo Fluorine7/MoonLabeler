@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 from moonlabeler.app import Canvas, Annotation
 from moonlabeler.project import Project
+from moonlabeler.ui.map_layers import ElevationLegend
 
 CTRL = Qt.KeyboardModifier.ControlModifier  # Qt maps this to Command on macOS.
 NONE = Qt.KeyboardModifier.NoModifier
@@ -41,6 +42,91 @@ def mouse(canvas, kind, pos, modifiers=NONE):
     event = QMouseEvent(kind, QPointF(pos), QPointF(canvas.viewport().mapToGlobal(pos)),
                         button, buttons, modifiers)
     QApplication.sendEvent(canvas.viewport(), event)
+
+
+@pytest.fixture(params=[.5, 2.])
+def legend_view(request):
+    application = QApplication.instance() or QApplication([])
+    canvas = Canvas()
+    canvas.resize(600, 450)
+    canvas.setSceneRect(0, 0, 2000, 1600)
+    project = Project(art_style='manuscript', elevation_enabled=True, legend_position=[800., 680.])
+    moves = []
+    legend = ElevationLegend((1600, 2000, 3), project, moved=moves.append)
+    canvas.scene().addItem(legend)
+    canvas.scale(request.param, request.param)
+    canvas.show()
+    canvas.centerOn(1040, 730)
+    application.processEvents()
+    yield canvas, legend, project, moves
+    canvas.close()
+
+
+def test_ordinary_drag_and_wheel_over_legend_only_navigate(legend_view):
+    from PySide6.QtGui import QWheelEvent
+    canvas, legend, project, moves = legend_view
+    start = point(canvas, legend)
+    original = legend.pos()
+    scroll = canvas.horizontalScrollBar().value()
+    mouse(canvas, QEvent.Type.MouseButtonPress, start)
+    mouse(canvas, QEvent.Type.MouseMove, start+QPoint(40, 20))
+    mouse(canvas, QEvent.Type.MouseButtonRelease, start+QPoint(40, 20))
+    assert canvas.horizontalScrollBar().value() != scroll
+    assert legend.pos() == original and project.legend_position == [800., 680.] and not moves
+    start = point(canvas, legend)
+    scale = canvas.transform().m11()
+    wheel = QWheelEvent(QPointF(start), QPointF(canvas.viewport().mapToGlobal(start)),
+                        QPoint(), QPoint(0, 120), Qt.MouseButton.NoButton,
+                        NONE, Qt.ScrollPhase.NoScrollPhase, False)
+    QApplication.sendEvent(canvas.viewport(), wheel)
+    assert canvas.transform().m11() > scale
+    assert legend.pos() == original and not moves
+
+
+def test_modifier_drag_moves_legend_and_stops_on_key_release_or_focus_loss(legend_view):
+    canvas, legend, project, moves = legend_view
+    start = point(canvas, legend)
+    original = legend.pos()
+    scroll = canvas.horizontalScrollBar().value()
+    mouse(canvas, QEvent.Type.MouseButtonPress, start, CTRL)
+    mouse(canvas, QEvent.Type.MouseMove, start+QPoint(40, 20), CTRL)
+    assert legend.pos() == original+QPointF(40, 20)/canvas.transform().m11()
+    assert project.legend_position == [legend.pos().x(), legend.pos().y()] == moves[-1]
+    assert canvas.horizontalScrollBar().value() == scroll
+    stopped = legend.pos()
+    QTest.keyRelease(canvas, Qt.Key.Key_Control)
+    mouse(canvas, QEvent.Type.MouseMove, start+QPoint(80, 40), CTRL)
+    assert legend.pos() == stopped
+    mouse(canvas, QEvent.Type.MouseButtonRelease, start+QPoint(80, 40))
+    start = point(canvas, legend)
+    mouse(canvas, QEvent.Type.MouseButtonPress, start, CTRL)
+    QApplication.sendEvent(canvas, QFocusEvent(QEvent.Type.FocusOut))
+    mouse(canvas, QEvent.Type.MouseMove, start+QPoint(40, 20), CTRL)
+    assert legend.pos() == stopped
+    mouse(canvas, QEvent.Type.MouseButtonRelease, start)
+
+
+def test_reference_pick_on_legend_takes_precedence(legend_view):
+    canvas, legend, project, moves = legend_view
+    picked = []
+    canvas.point_clicked.connect(lambda x, y: picked.append((x, y)))
+    canvas.picking = True
+    QTest.mouseClick(canvas.viewport(), LEFT, CTRL, point(canvas, legend))
+    assert len(picked) == 1 and not moves
+    assert project.legend_position == [800., 680.]
+
+
+def test_legend_stays_inside_photo_when_dragged_past_edges(legend_view):
+    canvas, legend, project, moves = legend_view
+    start = point(canvas, legend)
+    mouse(canvas, QEvent.Type.MouseButtonPress, start, CTRL)
+    mouse(canvas, QEvent.Type.MouseMove, start-QPoint(10000, 10000), CTRL)
+    assert legend.pos() == QPointF(0, 0)
+    mouse(canvas, QEvent.Type.MouseMove, start+QPoint(10000, 10000), CTRL)
+    assert legend.sceneBoundingRect().right() == 2000
+    assert legend.sceneBoundingRect().bottom() == 1600
+    mouse(canvas, QEvent.Type.MouseButtonRelease, start, CTRL)
+    assert project.legend_position == moves[-1]
 
 
 @pytest.mark.parametrize('modifier', [NONE, Qt.KeyboardModifier.MetaModifier, Qt.KeyboardModifier.ShiftModifier])

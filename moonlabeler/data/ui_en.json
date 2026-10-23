@@ -3,6 +3,7 @@
   "strings": {
     "首次应用后，拖动立即更新图层不透明度；滚轮只滚动面板。": "After applying once, drag to update layer opacity immediately. Scrolling only moves the panel.",
     "{hint} · 双击编辑文字": "{hint} · Double-click to edit text",
+    "按住 {key} 拖动图例": "Hold {key} and drag to move the legend",
     "候选 {number} · 中心 ({x:.1f}, {y:.1f})\n点击选中；请核对坑缘和地名。": "Candidate {number} · centre ({x:.1f}, {y:.1f})\nClick to select; check the crater rim and feature name.",
     "检测到 {count} 个疑似坑缘；未通过自动配准验证。": "Detected {count} possible crater rims; automatic registration did not pass validation.",
     "月面照片标注": "Lunar photo annotation",

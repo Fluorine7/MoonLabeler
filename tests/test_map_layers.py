@@ -508,6 +508,100 @@ def test_legend_reserves_space_without_moving_user_pins():
     assert placements["pin"][:2] == (500, 540)
 
 
+def test_legend_position_roundtrip_and_legacy_default(tmp_path):
+    path = tmp_path/'legend.moonlabel'
+    p = Project(image_path=str(tmp_path/'photo.png'), legend_position=[60.5, 80.25])
+    p.save(path)
+    loaded = Project.load(path)
+    assert loaded.legend_position == p.legend_position
+    assert legend_rect((600, 800, 3), loaded.legend_position)[:2] == (60.5, 80.25)
+    data = json.loads(path.read_text())
+    del data['style']['legend_position']
+    path.write_text(json.dumps(data))
+    legacy = Project.load(path)
+    assert legacy.legend_position is None
+    assert legend_rect((600, 800, 3), legacy.legend_position) == legend_rect((600, 800, 3))
+
+
+@pytest.mark.parametrize('elevation', [False, True])
+def test_svg_legend_uses_saved_position_for_elevation_and_contours(tmp_path, elevation):
+    p = project(elevation_enabled=elevation, contour_enabled=not elevation, legend_position=[60, 80])
+    path = tmp_path/'legend.svg'
+    export_svg(path, np.zeros((600, 800, 3), np.uint8), [], p,
+               layers=MapLayers(elevation=np.zeros((2, 2, 4), np.uint8) if elevation else None,
+                                contours=[], contour_interval=.5))
+    ns = {'s': 'http://www.w3.org/2000/svg'}
+    legend = ET.parse(path).find('.//s:g[@id="elevation-legend"]/s:rect', ns)
+    assert (float(legend.get('x')), float(legend.get('y'))) == (60, 80)
+
+
+def test_dragged_legend_reuses_layers_and_matches_png_svg_and_reopened_project(window, tmp_path, monkeypatch):
+    from moonlabeler import app as app_module
+    from moonlabeler.ui.map_layers import ElevationLegend
+    win = window
+    data = dem()
+    dem_path = tmp_path/'legend-dem.npz'
+    np.savez(dem_path, height_km=data.data, north=data.north, west=data.west, pixels_per_degree=data.ppd)
+    win.dem_path = win.project.terrain_path = str(dem_path)
+    calls = []
+    def sample(p, shape, elevation, *, image=None):
+        calls.append(True)
+        return sample_elevation(p, shape, elevation, max_edge=128)
+    monkeypatch.setattr(app_module, 'sample_elevation', sample)
+    win.elevation_toggle.setChecked(True)
+    win.apply_label_settings()
+    deadline = time.monotonic()+10
+    while win.busy and time.monotonic() < deadline:
+        QApplication.processEvents()
+        time.sleep(.005)
+    assert not win.busy and len(calls) == 1
+    legend = next(item for item in win.map_items if isinstance(item, ElevationLegend))
+    assert win.project.legend_position is None
+    old_rect = legend.sceneBoundingRect()
+    before = tmp_path/'legend-before.png'
+    win.render_png(before)
+    items, labels = list(win.map_items), list(win.annotation_items)
+    positions = [item.pos() for item in labels]
+    layers = win.map_layers
+    font = win.project.font_percent
+    win.font_size.setValue(2.4)  # Moving the legend must not apply pending styles.
+    win.dirty = False
+    legend.setPos(60, 60)
+    assert win.project.legend_position == [60, 60] and win.dirty
+    assert win.style_pending and win.project.font_percent == font
+    assert win.map_layers is layers and win.map_items == items
+    assert win.annotation_items == labels and [item.pos() for item in labels] == positions
+    assert len(calls) == 1
+    png, svg = tmp_path/'legend-moved.png', tmp_path/'legend-moved.svg'
+    win.render_png(png)
+    export_svg(svg, win.image, win.annotation_entries(), win.project, win.annotation_leaders(), layers=layers)
+    rendered = QImage(win.image.shape[1], win.image.shape[0], QImage.Format.Format_RGB32)
+    rendered.fill(0xff000000)
+    painter = QPainter(rendered)
+    QSvgRenderer(str(svg)).render(painter)
+    painter.end()
+    native = np.array(Image.open(png).convert('RGB'))
+    vector = np.asarray(rendered.constBits()).reshape(rendered.height(), rendered.width(), 4)[:, :, :3][:, :, ::-1]
+    unit = legend.boundingRect().height()/6
+    x, y = round(60+2*unit), round(60+2.7*unit)
+    assert np.max(abs(native[y, x].astype(float)-vector[y, x])) < 6
+    old_x, old_y = round(old_rect.x()+2*unit), round(old_rect.y()+2.7*unit)
+    previous = np.array(Image.open(before).convert('RGB'))
+    assert np.max(abs(native[old_y, old_x].astype(float)-previous[old_y, old_x])) > 10
+    saved = tmp_path/'moved.moonlabel'
+    win.project.save(saved)
+    win.dirty = False
+    win.open_project(saved)
+    deadline = time.monotonic()+10
+    while win.busy and time.monotonic() < deadline:
+        QApplication.processEvents()
+        time.sleep(.005)
+    assert not win.busy
+    reopened = next(item for item in win.map_items if isinstance(item, ElevationLegend))
+    assert reopened.pos().x() == reopened.pos().y() == 60
+    assert win.project.legend_position == [60, 60]
+
+
 def test_contours_interpolate_actual_heights_and_leave_missing_boundaries_open():
     heights = np.tile(np.linspace(-2, 2, 41), (31, 1)).astype(np.float32)
     heights[10:20, 17:24] = np.nan

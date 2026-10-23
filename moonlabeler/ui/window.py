@@ -22,7 +22,6 @@ Layout contract notes:
 Do not import app.py here (it imports this mixin).
 """
 from pathlib import Path
-import sys
 from PySide6.QtCore import Qt, QDate, QDateTime, QEvent, QTimer, QTime, QTimeZone
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
@@ -37,8 +36,7 @@ from ..project import LANGUAGE_CHOICES
 from ..map_layers import CONTOUR_INTERVALS
 from ..i18n import tr, trf
 
-# Qt's ControlModifier is Command on macOS.
-LABEL_DRAG_KEY = 'Cmd' if sys.platform == 'darwin' else 'Ctrl'
+from .drag import DRAG_KEY as LABEL_DRAG_KEY
 
 
 def label_drag_hint():

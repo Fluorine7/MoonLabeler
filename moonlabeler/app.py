@@ -34,6 +34,7 @@ from .capture_time import winjupos_capture_time
 from .ui.theme import STYLE
 from .ui.window import WindowUiMixin, label_drag_hint
 from .ui.wheel import protect_settings_from_wheel
+from .ui.drag import ModifierDragItem
 from .ui.map_layers import (add_map_layers, path_from_segments, GridCaption, ContourLayer, GridLayer,
                             MapCoverage, update_map_coverage, update_map_opacity, prepare_contour_preview)
 from .annotation_style import (appearance, caption_typography, placed_caption_typography,
@@ -236,7 +237,7 @@ class Canvas(QGraphicsView):
     def cancel_label_drag(self):
         scene = self.scene()
         item = scene.mouseGrabberItem() if scene is not None else None
-        if isinstance(item, Annotation):
+        if isinstance(item, ModifierDragItem):
             item.end_drag()
 
     def keyReleaseEvent(self, event):
@@ -365,7 +366,7 @@ def caption_path(text, size, font, typography):
     return path
 
 
-class Annotation(QGraphicsItem):
+class Annotation(ModifierDragItem):
     MAX_FALLBACK_PIXELS = 65536
 
     def __init__(self, feature, anchor, text, project, moved, edit, *, font_size=None):
@@ -396,10 +397,6 @@ class Annotation(QGraphicsItem):
         self._preview_key = QPixmapCache.Key()
         self._fallback_preview = QPixmap()
         self._export_mode = False
-        self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                      QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
-        self._drag_offset = None
-        self.setCursor(Qt.CursorShape.OpenHandCursor)
         self.setToolTip(trf("{hint} · 双击编辑文字", hint=label_drag_hint()))
         self.setZValue(20)
         self.line = QGraphicsLineItem()
@@ -547,38 +544,8 @@ class Annotation(QGraphicsItem):
         self.edit(self.feature)
         event.accept()
 
-    def mousePressEvent(self, event):
-        self._drag_offset = None
-        # Qt ControlModifier is Command on macOS, Ctrl on Windows/Linux:
-        # https://doc.qt.io/qt-6/macos-issues.html#special-keys
-        if event.button() == Qt.MouseButton.LeftButton and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-            self._drag_offset = event.scenePos()-self.pos()
-            self.scene().clearSelection()
-            self.setSelected(True)
-            self.setCursor(Qt.CursorShape.ClosedHandCursor)
-            self.update_map_leader()
-            event.accept()
-        else:
-            self.end_drag()
-            event.ignore()  # Let ScrollHandDrag pan, even over a label.
-
-    def mouseMoveEvent(self, event):
-        if (self._drag_offset is not None and event.buttons() & Qt.MouseButton.LeftButton
-                and event.modifiers() & Qt.KeyboardModifier.ControlModifier):
-            self.setPos(event.scenePos()-self._drag_offset)
-        else:
-            # Releasing the modifier ends this drag; don't jump if re-pressed.
-            self.end_drag()
-        event.accept()
-
-    def end_drag(self):
-        self._drag_offset = None
-        self.setCursor(Qt.CursorShape.OpenHandCursor)
+    def drag_state_changed(self):
         self.update_map_leader()
-
-    def mouseReleaseEvent(self, event):
-        self.end_drag()
-        event.accept()
 
 
 class CraterOverlay(QGraphicsItem):
@@ -2240,12 +2207,18 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.dirty = True
             self.update_grid_captions()
 
+    def move_legend(self, position):
+        if not self.rebuilding:
+            self.project.legend_position = position
+            self.dirty = True
+            self.update_grid_captions()
+
     def update_grid_captions(self):
         # Feature names have priority over coordinate captions. Keep the same
         # visibility in the SVG, including after the user drags a name.
         bounds = [item.sceneBoundingRect() for item in self.annotation_items]
         if self.map_layers.elevation is not None or self.map_layers.contours is not None:
-            bounds.append(QRectF(*legend_rect(self.image.shape)))
+            bounds.append(QRectF(*legend_rect(self.image.shape, self.project.legend_position)))
         coverage = next((item.coverage_path for item in self.map_items if isinstance(item, MapCoverage)), None)
         for item in self.map_items:
             if isinstance(item, GridCaption):
@@ -2355,7 +2328,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         grid_key = (key, p.art_style, p.grid_spacing)
         grid_preview = self._grid_preview if grid_key == self._grid_preview_key else None
         self.map_items = add_map_layers(self.canvas.scene(), p, self.image.shape, self.map_layers,
-                                        contour_preview=preview, grid_preview=grid_preview)
+                                        contour_preview=preview, grid_preview=grid_preview, legend_moved=self.move_legend)
         self._grid_preview = next((item.prepared for item in self.map_items if isinstance(item, GridLayer)), None)
         self._grid_preview_key = grid_key
 
@@ -2449,7 +2422,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if self.project.optimize_layout:
             placements, self.auto_omitted = arrange_labels(requests(), w, h, gap=max(5., reference_font*(.8 if self.project.art_style == "topographic" else .4)),
                                                           max_labels=self.project.max_labels,
-                                                          obstacles=[legend_rect(self.image.shape)] if (self.project.elevation_enabled or self.project.contour_enabled) and (self.project.terrain_path or self.dem_path) else [])
+                                                          obstacles=[legend_rect(self.image.shape, self.project.legend_position)] if (self.project.elevation_enabled or self.project.contour_enabled) and (self.project.terrain_path or self.dem_path) else [])
         else:
             placements = {request.key: (*(request.fixed or (request.anchor[0]+request.radius+8, request.anchor[1]-request.height/2)),
                                         request.width, request.height) for request in islice(requests(), self.project.max_labels)}
