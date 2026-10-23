@@ -104,7 +104,10 @@ def test_elevation_fully_covers_bright_and_dark_ground_without_changing_geometry
 
 def test_real_clavius_photo_does_not_lose_bright_ground_to_example_date():
     root = Path(__file__).parents[1]
-    p = Project.load(root/"examples/auto-clavius.moonlabel")
+    project_path = root/"examples/auto-clavius.moonlabel"
+    if not project_path.exists():
+        pytest.skip("Local Clavius project is unavailable")
+    p = Project.load(project_path)
     source = Path(p.image_path)
     dem_path = root/".cache/terrain/LDEM_16.LBL"
     if not source.exists() or not dem_path.exists() or not dem_path.with_suffix(".IMG").exists():
@@ -702,22 +705,27 @@ def test_classical_curved_svg_renders_like_native_text(tmp_path):
     photograph = np.zeros((400, 800, 3), np.uint8)
     size = p.label_font_sizes([feature], photograph.shape)['sea']
     item = Annotation(feature, [0, 0], caption_text(p, feature), p, lambda *a: None, lambda *a: None, font_size=size)
-    native = QImage(800, 400, QImage.Format.Format_RGB32)
+    # Compare glyph geometry at higher sampling density. Windows text hinting
+    # and path antialiasing can put the same small edge on adjacent pixels at
+    # 1x. Keep both world coordinates and the overlap requirement unchanged.
+    render_scale = 4
+    native = QImage(800*render_scale, 400*render_scale, QImage.Format.Format_RGB32)
     native.fill(0xff000000)
     painter = QPainter(native)
     painter.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
+    painter.scale(render_scale, render_scale)
     painter.translate(80, 150)
     item.paint(painter, None)
     painter.end()
     path = tmp_path/'arc.svg'
     export_svg(path, photograph, [(feature, [0, 0], [80, 150])], p)
-    svg = QImage(800, 400, QImage.Format.Format_RGB32)
+    svg = QImage(800*render_scale, 400*render_scale, QImage.Format.Format_RGB32)
     svg.fill(0xff000000)
     painter = QPainter(svg)
     QSvgRenderer(str(path)).render(painter)
     painter.end()
     def face(image):
-        pixels = np.asarray(image.constBits()).reshape(400, 800, 4)[:, :, :3]
+        pixels = np.asarray(image.constBits()).reshape(image.height(), image.width(), 4)[:, :, :3]
         return (pixels > 150).all(axis=2)
     first, second = face(native), face(svg)
     assert (first & second).sum()/(first | second).sum() > .75
@@ -908,7 +916,10 @@ def test_full_opacity_vectors_remain_visible_when_fitted_on_light_and_dark_groun
 def test_real_photo_estimated_terminator_does_not_bisect_bright_copernicus_ground():
     from PIL import ImageFilter
     root = Path(__file__).parents[1]
-    p = Project.load(root/'examples/auto-copernicus.moonlabel')
+    project_path = root/'examples/auto-copernicus.moonlabel'
+    if not project_path.exists():
+        pytest.skip('Local Copernicus project is unavailable')
+    p = Project.load(project_path)
     if not Path(p.image_path).exists():
         pytest.skip('Local Copernicus photo is unavailable')
     p.terminator_enabled = True
