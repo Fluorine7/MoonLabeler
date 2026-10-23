@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from dataclasses import replace
 from itertools import islice
 from pathlib import Path
+from threading import Event
 import os
 import csv
 import json
@@ -132,19 +133,25 @@ class Canvas(QGraphicsView):
         self.picking = False
         QPixmapCache.setCacheLimit(max(QPixmapCache.cacheLimit(), 64*1024))
         self._text_worker = None
+        self._text_cancel = None
         self._text_timer = QTimer(self)
         self._text_timer.setSingleShot(True)
-        self._text_timer.setInterval(80)
+        self._text_timer.setInterval(180)
         self._text_timer.timeout.connect(self.refine_text_caches)
 
+    def postpone_text_refinement(self):
+        if self._text_cancel is not None:
+            self._text_cancel.set()
+        self._text_timer.start()
+
     def update_text_caches(self):
+        self.postpone_text_refinement()
         transform = self.transform()
         scale = max(math.hypot(transform.m11(), transform.m12()),
                     math.hypot(transform.m21(), transform.m22()))*self.viewport().devicePixelRatioF()
         for item in self.scene().items():
             if isinstance(item, Annotation):
                 item.cache_for_view(scale)
-        self._text_timer.start()
 
     def refine_text_caches(self):
         if self._text_worker is not None:
@@ -152,14 +159,28 @@ class Canvas(QGraphicsView):
         visible = self.mapToScene(self.viewport().rect()).boundingRect()
         requests = []
         for item in self.scene().items(visible):
-            if isinstance(item, Annotation) and item._cache_size is not None and item._preview_size != item._cache_size:
+            if (isinstance(item, Annotation) and item._cache_size is not None
+                    and (item._preview_size != item._cache_size or not QPixmapCache.find(item._preview_key, QPixmap()))):
                 requests.append((item, item._cache_size, item._text_revision, item.text_raster_request(item._cache_size)))
         if not requests:
             return
         # Only QImages and immutable path/style snapshots cross threads. Keep
         # the previous pixels at the same scene bounds throughout navigation.
-        self._text_worker = Worker(lambda: [(item, size, revision, rasterize_caption(*request))
-                                           for item, size, revision, request in requests])
+        cancel = self._text_cancel = Event()
+        def render_batch():
+            results = []
+            for item, size, revision, request in requests:
+                if cancel.is_set():
+                    break
+                image = rasterize_caption(*request, cancel)
+                if image is not None:
+                    results.append((item, size, revision, image))
+                # PySide's native glyph painting can hold the GIL. Yield
+                # between captions so navigation can cancel an obsolete batch.
+                if cancel.wait(.001):
+                    break
+            return results
+        self._text_worker = Worker(render_batch)
         self._text_worker.signals.result.connect(self.text_caches_ready)
         self._text_worker.signals.finished.connect(self.text_caches_finished)
         QThreadPool.globalInstance().start(self._text_worker)
@@ -170,10 +191,24 @@ class Canvas(QGraphicsView):
             if item in current and item._cache_size == size and item._text_revision == revision:
                 item.install_text_preview(image, size)
                 item.update()
+            elif item in current:
+                self._text_timer.start()
 
     def text_caches_finished(self):
+        interrupted = self._text_cancel.is_set()
         self._text_worker = None
-        self._text_timer.start()  # Coalesce any zooms that arrived during painting.
+        self._text_cancel = None
+        if interrupted:
+            self._text_timer.start()
+        # A completed batch waits for the next navigation request. Otherwise a
+        # viewport exceeding Qt's shared cache budget can refine/evict forever.
+
+    def scrollContentsBy(self, dx, dy):
+        # Hand-panning also needs to interrupt refinement, even though it does
+        # not change the caption scale. Qt can call this during construction.
+        if hasattr(self, '_text_timer'):
+            self.postpone_text_refinement()
+        super().scrollContentsBy(dx, dy)
 
     def scale(self, sx, sy):
         super().scale(sx, sy)
@@ -254,25 +289,67 @@ def label_font(pixel_size, project=None, feature=None):
     return font
 
 
-def paint_caption(painter, path, halo, halo_width, color, face_width):
-    painter.strokePath(path, QPen(QColor(halo), halo_width, Qt.PenStyle.SolidLine,
-                                  Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-    if face_width:
-        painter.strokePath(path, QPen(QColor(color), face_width, Qt.PenStyle.SolidLine,
-                                      Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+def paint_caption(painter, path, halo, halo_width, color, face_width, *, stroke_paths=None, cancel=None):
+    for ink, width in ((halo, halo_width), (color, face_width)):
+        if width:
+            pen = QPen(QColor(ink), width, Qt.PenStyle.SolidLine,
+                       Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+            for part in stroke_paths if stroke_paths is not None else (path,):
+                if cancel is not None and cancel.wait(.001):
+                    return False
+                painter.strokePath(part, pen)
     painter.fillPath(path, QColor(color))
+    return True
 
 
-def rasterize_caption(size, bounds, path, halo, halo_width, color, face_width):
+def caption_stroke_paths(path):
+    """Batch closed glyph contours without a long, uninterruptible paint call.
+
+    Preserve Bezier curves and paint all halos before the foreground. The fill
+    still uses the complete path so counters and overlapping glyphs keep their
+    original winding rule. Vector exports continue to use the original path.
+    """
+    parts, part, index = [], QPainterPath(), 0
+    while index < path.elementCount():
+        point = path.elementAt(index)
+        if point.isMoveTo():
+            if not part.isEmpty():
+                parts.append(part)
+            part = QPainterPath()
+            part.moveTo(point.x, point.y)
+        elif point.isLineTo():
+            part.lineTo(point.x, point.y)
+        else:
+            control, end = path.elementAt(index+1), path.elementAt(index+2)
+            part.cubicTo(point.x, point.y, control.x, control.y, end.x, end.y)
+            index += 2
+        index += 1
+    if not part.isEmpty():
+        parts.append(part)
+    batches, batch = [], QPainterPath()
+    for part in parts:
+        if batch.elementCount()+part.elementCount() > 128 and not batch.isEmpty():
+            batches.append(batch)
+            batch = QPainterPath()
+        batch.addPath(part)
+    if not batch.isEmpty():
+        batches.append(batch)
+    return batches
+
+
+def rasterize_caption(size, bounds, path, halo, halo_width, color, face_width, cancel=None):
+    if cancel is not None and cancel.is_set():
+        return None
     image = QImage(*size, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(Qt.GlobalColor.transparent)
     painter = QPainter(image)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.scale(size[0]/bounds.width(), size[1]/bounds.height())
     painter.translate(-bounds.x(), -bounds.y())
-    paint_caption(painter, path, halo, halo_width, color, face_width)
+    complete = paint_caption(painter, path, halo, halo_width, color, face_width,
+                             stroke_paths=caption_stroke_paths(path), cancel=cancel)
     painter.end()
-    return image
+    return image if complete else None
 
 
 def caption_path(text, size, font, typography):
@@ -289,6 +366,8 @@ def caption_path(text, size, font, typography):
 
 
 class Annotation(QGraphicsItem):
+    MAX_FALLBACK_PIXELS = 65536
+
     def __init__(self, feature, anchor, text, project, moved, edit, *, font_size=None):
         super().__init__()
         self.feature, self.anchor, self.text = feature, QPointF(*anchor), text
@@ -315,6 +394,7 @@ class Annotation(QGraphicsItem):
         self._cache_size = self._cache_density = None
         self._preview_size = None
         self._preview_key = QPixmapCache.Key()
+        self._fallback_preview = QPixmap()
         self._export_mode = False
         self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                       QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
@@ -370,9 +450,14 @@ class Annotation(QGraphicsItem):
         self._text_revision += 1
         QPixmapCache.remove(self._preview_key)
         self._preview_size = None
+        self._fallback_preview = QPixmap()
         if self._view_scale is not None:
             self.cache_for_view(self._view_scale)
         self.update()
+        if self.scene() is not None:
+            for view in self.scene().views():
+                if isinstance(view, Canvas):
+                    view.postpone_text_refinement()
 
     def cache_for_view(self, scale):
         self._view_scale = scale
@@ -406,9 +491,17 @@ class Annotation(QGraphicsItem):
                 self.appearance.halo_width(self.font_size), self.color, self.appearance.face_width(self.font_size))
 
     def install_text_preview(self, image, size):
+        preview = QPixmap.fromImage(image)
         QPixmapCache.remove(self._preview_key)
-        self._preview_key = QPixmapCache.insert(QPixmap.fromImage(image))
+        self._preview_key = QPixmapCache.insert(preview)
         self._preview_size = size
+        # Qt may evict a full-resolution preview at any time. Keep a small
+        # scene-owned copy so a later wheel/pan frame never has to repaint it.
+        scale = min(1., math.sqrt(self.MAX_FALLBACK_PIXELS/(size[0]*size[1])))
+        width, height = max(1, int(size[0]*scale)), max(1, int(size[1]*scale))
+        if width*height > self._fallback_preview.width()*self._fallback_preview.height():
+            self._fallback_preview = preview.scaled(width, height, Qt.AspectRatioMode.IgnoreAspectRatio,
+                                                    Qt.TransformationMode.SmoothTransformation)
 
     def paint(self, painter, option, widget=None):
         if self._export_mode or self._cache_size is None:
@@ -416,9 +509,13 @@ class Annotation(QGraphicsItem):
         else:
             preview = QPixmap()
             if not QPixmapCache.find(self._preview_key, preview):
-                image = rasterize_caption(*self.text_raster_request(self._cache_size))
-                self.install_text_preview(image, self._cache_size)
-                preview = QPixmap.fromImage(image)
+                if self._fallback_preview.isNull():
+                    width, height = self._cache_size
+                    scale = min(1., math.sqrt(self.MAX_FALLBACK_PIXELS/(width*height)))
+                    size = max(1, int(width*scale)), max(1, int(height*scale))
+                    image = rasterize_caption(*self.text_raster_request(size))
+                    self.install_text_preview(image, size)
+                preview = self._fallback_preview
             # Explicit source/target rectangles keep cache density independent
             # of scene geometry. Qt's custom ItemCoordinateCache size can scale
             # outlined glyphs a second time on some raster paint engines.

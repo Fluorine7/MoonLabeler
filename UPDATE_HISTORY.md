@@ -6,6 +6,21 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 1.9.3
+
+2026-10-24 · 艺术标注导航响应与文字缓存优化。
+
+本次仅更新源码并推送 GitHub，打包与 Release 发布继续暂停。
+
+- 修复后台补齐文字清晰度时仍阻塞界面的问题：复杂描边按小段绘制并主动让出执行时间；缩放、拖动或弧形地名换行时及时取消过时任务，停止操作后再补齐清晰度。取消中的半成品不会覆盖完整文字。
+- 为每个标签保留不超过 65,536 像素的预览，Qt 共享缓存被回收后继续复用，避免下一帧同步重画整段地名。完成的任务不因缓存容量不足反复重绘；过期字号、位置形状或已移除标签的结果继续丢弃。
+- 字体、字号、颜色、曲线、字内留白与 PNG / SVG 输出保留。滚轮只缩放画布或滚动面板，不修改参数。
+- 100 项相关测试通过，覆盖滚轮保护、拖动、缓存回收、取消任务、界面响应及预览与矢量绘制对比。以 `1001.jpg`（8412 × 6512、111 个标签、2× 像素密度）在本机回放反复缩放、暂停后继续及拖动：缩放事件最长约 16 ms，拖动约 9 ms；后台工作期间主界面最长响应间隔由约 92 ms 降至约 26 ms。此为本机回放结果，不代表所有设备的性能。
+
+### English
+
+Source-only update; packaging and Release publication remain paused. Art-caption strokes now use small interruptible batches that yield between native paint calls. Navigation cancels obsolete work and resumes detail refinement after an idle interval. Each caption retains a bounded fallback preview, avoiding synchronous full-size redraws after shared-cache eviction. Completed batches no longer keep rebuilding an over-budget cache. Incomplete or stale results are discarded; font sizes, styling, wheel protection and PNG/SVG output are preserved. All 100 related tests passed. Local 2×-density replay on `1001.jpg` recorded maximum zoom/pan event times of approximately 16/9 ms and a maximum UI heartbeat gap of 26 ms, down from 92 ms; results are specific to the test machine.
+
 ## 1.9.2
 
 2026-10-23 · 受光覆盖、自动阈值与柔和过渡。

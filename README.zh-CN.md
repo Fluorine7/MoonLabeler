@@ -1,6 +1,6 @@
 # MoonLabeler 中文使用说明
 
-当前源码版本：**1.9.2**（2026-10-23）。[本次更新](UPDATE_HISTORY.md#192)。本次仅更新源码并推送 GitHub，不打包、不创建 Release；现有独立 App 下载仍为 [0.8.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0)，不包含本次新功能。恢复发布时仅附 macOS 与 Windows 两个应用 ZIP 包。
+当前源码版本：**1.9.3**（2026-10-24）。[本次更新](UPDATE_HISTORY.md#193)：优化艺术标注缩放、拖动和文字缓存恢复。本次仅更新源码并推送 GitHub，不打包、不创建 Release；现有独立 App 下载仍为 [0.8.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0)，不包含本次改动。恢复发布时仅附 macOS 与 Windows 两个应用 ZIP 包。
 
 作者：**Fluorine Zhu** · **GPL-3.0-or-later** · [English / 项目主页](README.md) · [更新历史](UPDATE_HISTORY.md)
 

@@ -1,16 +1,16 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：1.9.2** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：1.9.3** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
 
 [中文使用说明](README.zh-CN.md) · [Update History / 更新历史](UPDATE_HISTORY.md) · [Acknowledgements / 致谢](ACKNOWLEDGEMENTS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 
-**1.9.2 · 2026-10-23:** 恢复可选的地图受光覆盖，按照片亮度自动估计阈值，支持实时滑块与恢复自动。边缘柔和渐隐，预览与 PNG / SVG 一致；高倍缩放保持流畅，滚轮不改参数。详见[本次更新](UPDATE_HISTORY.md#192)。
-Restores optional photo-lit map coverage with an automatic brightness threshold, a live slider and an Auto reset. Soft edges match in the preview and PNG/SVG, with bounded rendering during zoom and wheel-safe controls. See the [release notes](UPDATE_HISTORY.md#192).
+**1.9.3 · 2026-10-24:** 优化艺术标注缩放、拖动和暂停后继续操作时的响应。复杂文字分段绘制，导航及时取消过时任务；缓存被回收时复用有界预览，停下后补齐清晰度。保留字号、艺术外观、滚轮保护及 PNG / SVG 输出。详见[本次更新](UPDATE_HISTORY.md#193)。
+Improves art-label navigation, including pauses between gestures. Caption strokes use interruptible batches; bounded fallback previews avoid synchronous redraws after cache eviction, with detail refined after navigation stops. Font sizes, styling, wheel-safe controls and PNG/SVG output are preserved. See the [release notes](UPDATE_HISTORY.md#193).
 
-**1.9.2 is a source-only update.** No packages are built and no Release is created for this update. The earlier 1.9.1 Windows build was cancelled. The current downloadable apps remain at 0.8.0 and do not include these changes. On resumption, only the macOS and Windows app ZIPs will be attached; intermediates and reports stay in Actions or local output.
+**1.9.3 is a source-only update.** No packages are built and no Release is created for this update. The earlier 1.9.1 Windows build was cancelled. The current downloadable apps remain at 0.8.0 and do not include these changes. On resumption, only the macOS and Windows app ZIPs will be attached; intermediates and reports stay in Actions or local output.
 
 **macOS App (0.8.0):** [Download v0.8.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0), choose `MoonLabeler-0.8.0-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
 
