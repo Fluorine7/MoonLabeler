@@ -65,7 +65,7 @@ python -m pip uninstall -y opencv-python opencv-contrib-python opencv-python-hea
 python -m pip install --upgrade ".[fits]"
 ```
 
-[依赖审计与构建细节](docs/security-audit-2026-10-22.md) · [macOS 打包](docs/macos-app.md)
+[macOS 打包 / macOS build guide](docs/macos-app.md)
 
 ## 0.7.12
 

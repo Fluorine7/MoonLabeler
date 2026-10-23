@@ -15,7 +15,7 @@ MoonLabeler 作者 / Author：**Fluorine Zhu**。代码采用 [GPL-3.0-or-later]
 | **JPL 与 Skyfield 贡献者** | [DE421 星历](https://ssd.jpl.nasa.gov/planets/eph_export.html)与[月面参考系计算](https://rhodesmill.org/skyfield/planetary.html)。Ephemerides and lunar geometry. |
 | **NASA NSSDCA、LROC 与 Galileo 团队** | [阿波罗 / 嫦娥位置](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html)及[Galileo 回归测试图片](https://science.nasa.gov/photojournal/earths-moon/)。Landing coordinates and test imagery. |
 | **Zelda Dungeon** | [旷野之息交互地图](https://www.zeldadungeon.net/breath-of-the-wild-interactive-map/)提供主题审美参考；本项目等高线由 LOLA DEM 生成。Map-style reference. |
-| **chase-kusterer/lunar_stack、wdoppenberg/crater-detection、Christian / Derksen / Watkins、cosinekitty/astronomy** | 月缘、坑群和星历方法研究，范围见[研究记录](REPOSITORY_RESEARCH.md)。Research references. |
+| **chase-kusterer、wdoppenberg、Christian / Derksen / Watkins、cosinekitty** | 月缘、坑群和星历方法参考：[lunar_stack](https://github.com/chase-kusterer/lunar_stack)、[crater-detection](https://github.com/wdoppenberg/crater-detection)、[Astronomy Engine](https://github.com/cosinekitty/astronomy)。Method references. |
 | **Matt Pocock 与 skills 贡献者** | [开发与调试工作流](https://github.com/mattpocock/skills)。Development workflows. |
 | **Python、Qt / PySide6、NumPy、Pillow、imagecodecs、OpenCV、Skyfield、PyShp、Astropy、wgpu-py / wgpu-native、Apple MLX / Metal 贡献者** | 界面、数值计算、图像处理和可选 GPU 后端。Runtime foundations; individual licences are listed in the third-party notices. |
 

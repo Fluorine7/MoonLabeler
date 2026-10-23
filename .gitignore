@@ -32,3 +32,16 @@ dist/
 
 /wheelhouse/
 /native-verification.json
+
+# Local development notes, screenshots and archived build reports.
+/REPOSITORY_RESEARCH.md
+/TSUKIKAGE_RESEARCH.md
+/UI_HANDOFF.txt
+/docs/ui/
+/docs/releases/
+/docs/security-audit-*.md
+
+# Imported source copies and generated example exports.
+/lunar_chinese_names.json
+/lunar_nomenclature*.json
+/examples/demo-annotated.*
