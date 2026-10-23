@@ -1,78 +1,23 @@
-# 致谢与算法来源
+# 致谢 / Acknowledgements
 
-MoonLabeler 作者：**Fluorine Zhu**。本项目代码采用 **GPL-3.0-or-later**，完整许可见 [LICENSE](LICENSE)；第三方代码与数据的原有条款见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+MoonLabeler 作者 / Author：**Fluorine Zhu**。代码采用 [GPL-3.0-or-later](LICENSE)；第三方代码、数据和依赖的条款见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-感谢 **蔡明翰（[Evan Tsai](https://www.facebook.com/mjrt.mj)）** 贡献繁体中文支持及 Windows 部分问题修复。
+| 贡献者 / Contributors | 贡献与来源 / Contribution |
+| --- | --- |
+| **蔡明翰（[Evan Tsai](https://www.facebook.com/mjrt.mj)）** | 繁体中文支持及 Windows 部分问题修复。Traditional Chinese support and Windows fixes. |
+| **樊仕达（10deg）** | 提供 moonlib 几何代码参考、LPND 中文地名与综合地貌资料，以及旷野风主题建议。[Tsukikage 高程标注修正](https://github.com/10deg/tsukikage/commit/88c0353883864d6d3556e85625852f57415908c7)启发了本项目独立实现的高程落点修正。Geometry references, name data and map-style suggestions. |
+| **Jim Mosher、Henrik Bondo — LTVT** | 已知地形校准与 DEM 光照方法参考：[照片校准](https://github.com/pavolgaj/ltvt/wiki/User-Photo-Calibration-Window)、[DEM 选项](https://github.com/pavolgaj/ltvt/wiki/DEM-Options)、[研究所用版本](https://github.com/fermigas/ltvt/tree/ae048c7b8b0e8d2945b8f67e660d105d8a8e1dcb)。Calibration and terrain-lighting references; independently implemented in Python/Qt. |
+| **Ram Maruboina — Lunar Crater Detector** | [固定 MIT 版本](https://github.com/rammaruboina-rgb/lunar-crater-detector/tree/0babc2a6fb3d02cfbf58aa9bafe9f44edf8dc3dd)的预处理、椭圆拟合和 Hough 圆检测思路用于疑似坑检测；版权与完整许可保留在第三方声明中。Adapted crater-candidate detection. |
+| **C. Akinlar、C. Topal、OpenCV 贡献者** | [EdgeDrawing / EDCircles](https://github.com/opencv/opencv_contrib/blob/4.x/modules/ximgproc/include/opencv2/ximgproc/edge_drawing.hpp) 坑缘检测。Rim detection. |
+| **NASA SVS、Ernie Wright（USRA）、Noah Petro（NASA/GSFC）、LRO / LROC / LOLA 团队** | [月面纹理](https://svs.gsfc.nasa.gov/4720/)、[高程数据](https://lola.gsfc.nasa.gov/)与[月相参考](https://svs.gsfc.nasa.gov/5587/)。纹理重压缩来源见[随数据保存的记录](moonlabeler/data/moon_albedo_2k.provenance.json)。Lunar textures, elevation and visual references. |
+| **USGS / IAU、LPND、NADC 与地名资料整理者** | [地形目录](https://planetarynames.wr.usgs.gov/GIS_Downloads)、[LPND 中文译名](https://lpnd.bao.ac.cn/#/search?is=1)与[NADC 旧译名别名](https://nadc.china-vo.org/astrodict/)。Name catalogues and translations. |
+| **Virtual Moon Atlas 维护者** | 综合快照中的[扩展地貌与分类资料](https://www.ap-i.net/avl/en/start)。Supplemental reference data. |
+| **JPL 与 Skyfield 贡献者** | [DE421 星历](https://ssd.jpl.nasa.gov/planets/eph_export.html)与[月面参考系计算](https://rhodesmill.org/skyfield/planetary.html)。Ephemerides and lunar geometry. |
+| **NASA NSSDCA、LROC 与 Galileo 团队** | [阿波罗 / 嫦娥位置](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html)及[Galileo 回归测试图片](https://science.nasa.gov/photojournal/earths-moon/)。Landing coordinates and test imagery. |
+| **Zelda Dungeon** | [旷野之息交互地图](https://www.zeldadungeon.net/breath-of-the-wild-interactive-map/)提供主题审美参考；本项目等高线由 LOLA DEM 生成。Map-style reference. |
+| **chase-kusterer/lunar_stack、wdoppenberg/crater-detection、Christian / Derksen / Watkins、cosinekitty/astronomy** | 月缘、坑群和星历方法研究，范围见[研究记录](REPOSITORY_RESEARCH.md)。Research references. |
+| **Matt Pocock 与 skills 贡献者** | [开发与调试工作流](https://github.com/mattpocock/skills)。Development workflows. |
+| **Python、Qt / PySide6、NumPy、Pillow、imagecodecs、OpenCV、Skyfield、PyShp、Astropy、wgpu-py / wgpu-native、Apple MLX / Metal 贡献者** | 界面、数值计算、图像处理和可选 GPU 后端。Runtime foundations; individual licences are listed in the third-party notices. |
 
-感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考，并持续提供 **LPND 中文地名与综合月面地貌资料**，包括 2026-10-16 的 `lunar_nomenclature(1).json` 更新。
-
-同时感谢他指出标注的地形高程问题。[Tsukikage 1.4.0 的边缘标注修正](https://github.com/10deg/tsukikage/commit/88c0353883864d6d3556e85625852f57415908c7)启发了 0.7.11 的高程快照和坑缘视觉中心修正。MoonLabeler 复用自身已有的 LOLA 采样、投影、连续坑缘及椭圆拟合代码，独立实现最终标注修正；未复制其标注源码。目录圆周加高程仍是参考轮廓，不等同于识别到真实坑壁。
-
-感谢樊仕达提出旷野之息等高线风格的建议。“旷野地形图”主题参考 [Zelda Dungeon 的 Breath of the Wild 交互地图](https://www.zeldadungeon.net/breath-of-the-wild-interactive-map/)的橄榄棕底色、深色等高线和浅色地名层次。月面曲线由 MoonLabeler 根据 LOLA DEM 独立生成，未使用游戏地图、图标、字体或纹理资源。
-
-向 **Jim Mosher 与 Henrik Bondo** 致敬。他们创建的 **Lunar Terminator Visualization Tool（LTVT）** 将月面几何、已知地形校准和高程光照模拟带给了业余观测者。
-
-MoonLabeler 参考这些公开方法，以 Python / Qt 独立实现当前功能。当前项目没有复制 LTVT 的 Delphi 源码，也不是原作者发布的 LTVT 版本。
-
-- [LTVT 历史](https://github.com/pavolgaj/ltvt/wiki/History-of-LTVT)
-- [LTVT 源码与文档存档](https://github.com/pavolgaj/ltvt)
-- 本次研究的源码版本：`fermigas/ltvt`，提交 `ae048c7b8b0e8d2945b8f67e660d105d8a8e1dcb`。
-
-## 来源与实现对应
-
-| 来源支持的方法或事实 | 直接来源 | 当前实现与限制 |
-| --- | --- | --- |
-| 确定拍摄几何后，两个已知地形可求比例、旋转和偏移；第三点可检查校准 | [LTVT 照片校准文档](https://github.com/pavolgaj/ltvt/wiki/User-Photo-Calibration-Window) | 多点相似变换最小二乘拟合；显式比较镜像；加入逐点偏差与留出检查。参考球面投影可加入本地高程，拟合与显示使用一致的落点。 |
-| 高程坡度和地形遮挡可用于模拟月面光照；Lambert 与 Lommel–Seeliger 是可选模型 | [LTVT DEM 选项](https://github.com/pavolgaj/ltvt/wiki/DEM-Options) | 实现坡度法线与有限步长的太阳射线遮挡；未实现完整三维表面求交及反照率纹理。 |
-| LOLA 高度为 DN × SCALING_FACTOR；半径需要再加 OFFSET | [官方 LDEM_16 标签](https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/LDEM_16.LBL) | 将高度转换为 km，相对 1737.4 km 参考球面；检查数据坐标系、采样和长度。 |
-| LDEM_16 为像素中心网格，16 像素/度，约 1895.21 m/采样点 | [LRO / LOLA 官方数据目录](https://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/) | 双线性插值，全球经度接缝环绕；可按需读取更高分辨率区域数据。输出像素不等于地形分辨率。 |
-
-Lommel–Seeliger 使用 `cos(i) / (cos(i) + cos(e))`；Lambert 使用 `max(cos(i), 0)`。其中 `i` 为相对地形法线的入射角，`e` 为出射角。显示提亮和 Gamma 仅用于参考图显示，不作为测光结果。
-
-## 其他数据与软件
-
-疑似坑中心检测改编自 **Ram Maruboina** 的 [Lunar Crater Detector](https://github.com/rammaruboina-rgb/lunar-crater-detector/tree/0babc2a6fb3d02cfbf58aa9bafe9f44edf8dc3dd)（MIT）。使用其 OpenCV 预处理、轮廓椭圆拟合和 Hough 圆检测思路，加入可配置半径、边缘支持检查、原图/局部视野坐标、人工复核与修正流程。未集成原仓库可选的 scikit-image Hough 椭圆路径或地貌陡峭度分类。完整版权和许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
-
-自动识别的部分坑缘检测调用 OpenCV contrib 的 **EDCircles / EdgeDrawing**，致谢 C. Akinlar、C. Topal 及 OpenCV 维护者。[官方接口与算法引用](https://github.com/opencv/opencv_contrib/blob/4.x/modules/ximgproc/include/opencv2/ximgproc/edge_drawing.hpp)。它合并边缘弧段并拟合椭圆，不提供月面地名识别。
-
-目录匹配研究了 [wdoppenberg/crater-detection](https://github.com/wdoppenberg/crater-detection) 的三坑图案识别方法，以及 [Christian、Derksen、Watkins 的论文](https://arxiv.org/abs/2009.01228)。当前独立实现使用地面已知视角下的中心三角形边长比和半径比，再验证其他坑；没有复制该仓库代码、安装 Ellipse R-CNN 或声称实现论文中的通用椭圆投影不变量。
-
-整月盘纹理配准使用 **NASA LRO / LROC 团队**的全球纹理图。致谢 NASA Scientific Visualization Studio、**Ernie Wright（USRA）**、**Noah Petro（NASA/GSFC）**及 LROC / LOLA 团队，来源为 [CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/)。源码内置的 2048×1024 JPEG 经第三方镜像重压缩，保留原分辨率；原始 URL、固定镜像提交和处理说明见 [数据来源记录](moonlabeler/data/moon_albedo_2k.provenance.json)。它用于视觉配准，不作为定量测光数据。当前用双向 SIFT、相似变换 RANSAC 和月盘范围检查恢复地图到照片的位置，不将纹理点虚构为地名。
-
-- 月面地名：[USGS / IAU Planetary Nomenclature GIS](https://planetarynames.wr.usgs.gov/GIS_Downloads)。
-- 中文地名优先采用樊仕达（10deg）提供的 [LPND 月球与行星地名库](https://lpnd.bao.ac.cn/#/search?is=1) 资料，感谢资料整理者及地名库维护团队。2026-10-16 的综合快照有 10,431 条记录，其中 9,040 条含中文（9,031 条标注为 LPND、9 条另有来源），1,391 条仍为英文待译名；保留各条来源、原文与附带元数据。旧 [NADC 天文学名词](https://nadc.china-vo.org/astrodict/) 词表保留作搜索别名及缺失项兜底，感谢中国天文学会天文学名词审定委员会、编订者及数据中心。卫星坑显示作紧凑格式处理，不修改原始全称。来源标签沿用所提供快照，未逐条在线复核；部分旧 NADC 链接不作为 LPND 译名的依据。
-- 感谢 [Virtual Moon Atlas](https://www.ap-i.net/avl/en/start) 维护者。贡献者综合快照中的扩展地貌与分类注明来自 VMA，现作为资料保留，不替换 USGS 配准目录或已有着陆点数据，未引入其软件代码。
-- 星历与月球姿态：[JPL DE421](https://ssd.jpl.nasa.gov/planets/eph_export.html)，通过 [Skyfield 月面参考系接口](https://rhodesmill.org/skyfield/planetary.html)计算。
-- 着陆点：[NASA NSSDCA 月面人造物位置表](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html)，感谢 NSSDCA 与 LROC 团队。采用阿波罗登月舱下降级及嫦娥着陆器坐标，DE421 平均地球 / 极轴坐标系，北纬、东经为正；内置数据记录来源日期，不包含其代码。
-- 高程：[LRO / LOLA](https://lola.gsfc.nasa.gov/) 科学团队及数据生产者。
-- 在线参考：[NASA SVS 2026 月相与天平动](https://svs.gsfc.nasa.gov/5587/)。
-- 配准回归照片：[NASA Galileo PIA00405](https://science.nasa.gov/photojournal/earths-moon/)。它用于已知图像变换的回归测试，未用于证明独立照片识别精度。
-- 界面、数值与图像处理：Qt / PySide6、NumPy、Pillow、OpenCV、Skyfield 和 PyShp。
-- [wgpu-py / wgpu-native](https://github.com/pygfx/wgpu-py)：提供跨平台 GPU 执行接口；WGSL 高程光照内核由 MoonLabeler 实现。
-- Apple MLX / Metal：为 Apple 芯片提供可选 GPU 计算后端；高程光照内核由 MoonLabeler 实现。
-
-## Acknowledgements and provenance (English)
-
-MoonLabeler is authored by **Fluorine Zhu** and released under **GNU GPL version 3 or later**. We gratefully acknowledge the researchers, amateur astronomers, software developers, and data teams whose open work made this project possible.
-
-- **蔡明翰 ([Evan Tsai](https://www.facebook.com/mjrt.mj)):** Contributed Traditional Chinese support and fixes for several Windows issues.
-- **Jim Mosher and Henrik Bondo — LTVT:** Their work inspired the known-terrain calibration and DEM lighting workflows. MoonLabeler independently implements these ideas in Python / Qt; it does not include LTVT Delphi source. See the [LTVT archive](https://github.com/pavolgaj/ltvt) and the calibration and DEM references above.
-- **Ram Maruboina — Lunar Crater Detector:** Parts of the OpenCV preprocessing, ellipse-fitting, and Hough-circle approach were adapted from the fixed MIT-licensed version linked above. The original copyright and full MIT permission notice are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- **C. Akinlar, C. Topal, and OpenCV contributors:** EdgeDrawing / EDCircles provides partial-edge grouping and ellipse detection. This is image geometry detection, not lunar place-name identification.
-- **NASA SVS, Ernie Wright, Noah Petro, LRO, LROC, and LOLA teams:** Lunar textures, elevation data, and visualization references. The bundled texture's canonical source, fixed mirror, and JPEG recompression provenance are recorded with the data.
-- **USGS / IAU planetary nomenclature contributors:** Terrain names, positions, categories, and diameters.
-- **NASA NSSDCA and LROC:** [Landing-location coordinates](https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html) for Apollo LM descent stages and Chang’e landers, in the DE421 mean Earth / polar axis frame (north/east positive). The bundled data retain source and retrieval dates; no upstream code is included.
-- **JPL and Skyfield contributors:** Ephemerides, lunar orientation, and observing geometry.
-- **樊仕达 (10deg) — moonlib:** Provided code as a reference for this project's lunar geometry research and implementation, and continues to supply Chinese-name and combined lunar-nomenclature data, including `lunar_nomenclature(1).json` dated 2026-10-16.
-- **10deg — Tsukikage:** His [1.4.0 limb-annotation correction](https://github.com/10deg/tsukikage/commit/88c0353883864d6d3556e85625852f57415908c7) and explanation of elevation offsets informed version 0.7.11's annotation-height snapshots and visual rim centres. This is independently implemented using MoonLabeler's existing LOLA sampling, projection, crest tracing and ellipse fitting; no upstream annotation source was copied. An elevation-adjusted catalogue circle remains a reference outline rather than a detected photographic crater wall.
-- **LPND maintainers and 樊仕达 (10deg):** The current combined snapshot contains 10,431 records: 9,040 Chinese captions (9,031 labelled LPND and 9 separately sourced additions) and 1,391 English placeholders still awaiting translation. LPND wording takes precedence. Original terms and metadata remain intact; lettered crater captions use compact formatting. Source labels come from the supplied snapshot, not a fresh online verification of every entry. Retained historical NADC URLs do not substantiate LPND wording.
-- **[Virtual Moon Atlas maintainers](https://www.ap-i.net/avl/en/start):** The supplied snapshot attributes supplemental formations and classification to VMA. These remain reference data without replacing the active USGS registration catalogue or the existing landing-site data. No VMA software code is incorporated.
-- **National Astronomical Data Center and Chinese astronomical terminology contributors:** The earlier sourced terminology table remains available for search aliases and missing-entry fallback, without overriding LPND translations.
-- **chase-kusterer/lunar_stack, wdoppenberg/crater-detection, and cosinekitty/astronomy:** Studied for image matching, crater-pattern methods, and possible future ephemeris alternatives. Their code and models are not incorporated into the current application. Scope and fixed versions are documented in [REPOSITORY_RESEARCH.md](REPOSITORY_RESEARCH.md).
-- The new wide-limb fallback independently fits the lunar outer circle and compares phase and high-pass LROC albedo templates. The limb-fitting approach was informed by the lunar_stack research; no SAM, learned model, or upstream source code is included. It rejects short polar arcs and ambiguous rotations or reflections.
-- **Matt Pocock and contributors to [skills](https://github.com/mattpocock/skills):** Development and debugging workflows used during development. Skills are development aids, not runtime recognition algorithms, and are not bundled here.
-- **Qt / PySide6, NumPy, Pillow, OpenCV, Skyfield, PyShp, and the Python ecosystem:** The application's UI, numerical, imaging, and data-reading foundations.
-- **[wgpu-py / wgpu-native](https://github.com/pygfx/wgpu-py):** Cross-platform GPU execution. The WGSL terrain-shading kernel is implemented by MoonLabeler.
-- **Apple MLX / Metal:** Optional GPU execution on Apple silicon. The terrain-shading kernel is implemented by MoonLabeler.
-
-Thank you to the lunar photographers who provided local test images. Their photographs and derived exports are not included in this public source repository.
+感谢提供实拍测试照片的月面摄影者。私人照片与派生导出不包含在公开仓库中。
+Thanks to the lunar photographers who supplied local test images; their private photographs and exports are excluded from this repository.

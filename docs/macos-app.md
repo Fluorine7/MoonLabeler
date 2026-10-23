@@ -1,21 +1,34 @@
-# macOS Apple Silicon App
+# macOS App
 
-The 0.9.3 release combines a locally built macOS app with the Windows app built in GitHub Actions. Release attachments contain only the two app ZIPs; build intermediates and verification reports stay in local output or Actions artifacts. These packages include photo-threshold coverage controls, the latest navigation fixes and numeric input beside the map sliders.
+Apple Silicon (M1 or newer), **macOS 14.4+**. Download and opening instructions: [user guide](../README.zh-CN.md#下载与打开).
 
-Download `MoonLabeler-0.9.3-macos-arm64.zip` from the [v0.9.3 release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.9.3). Extract the whole archive, then open `MoonLabeler.app` or drag it into Applications. Requires an Apple Silicon Mac (M1 or newer) and macOS 14.4 or newer, including macOS 15. Intel Macs are not supported by this archive.
+## Local build
 
-The app includes CPython 3.12, Qt 6.12, the private codec-free OpenCV, FITS support, imagecodecs/libtiff, examples and all four JPL ephemeris kernels. Users do not install Python, Xcode or a compiler. Caches and preferences are stored in `~/Library/Caches/MoonLabeler`; the app does not write into its installation folder.
+Use an isolated Python 3.12+ environment with the project dependencies, `astropy`, `wgpu>=0.32,<0.33` and `pyinstaller==6.22.3`. The release environment uses Python 3.12.15. Install the project to build its private minimal OpenCV:
 
-The current app uses an ad-hoc signature and is not Apple notarized. If macOS blocks a downloaded app, review its origin and allow it in System Settings → Privacy & Security. Code signature integrity checks do not imply Apple Developer ID trust or notarization.
+```bash
+/path/to/python -m pip install --no-deps .
+./build-macos.command /path/to/python
+```
 
-## Local packaging
+Output: `dist/MoonLabeler.app` and `dist/MoonLabeler-<version>-macos-arm64.zip`. The script bundles offline ephemerides, checks ARM64 dependencies and their minimum OS versions, verifies signatures, and runs the packaged functional checks before creating the ZIP.
 
-Build on an Apple Silicon Mac. Use an isolated Python 3.12 environment containing the project's requirements, `astropy>=8.0.2`, `wgpu>=0.32,<0.33` and `pyinstaller==6.22.3`. Install the project into that environment with `python -m pip install --no-deps .` to build the private OpenCV extension, or reuse a compatible verified wheel from Actions artifacts. Never substitute the full upstream OpenCV wheels. The source launch environment does not need to be changed.
+## Qt compatibility
 
-Inspect the actual PySide/Shiboken binaries: the initial 6.12.0 PyPI wheels had macOS 26 deployment targets on the bindings despite their macOS 14 wheel tags. For this app, rebuild the required bindings from the unmodified [v6.12.0 source commit `f50facb83fc3dc5f3240c854668c7a6dd93871b2`](https://github.com/pyside/pyside-setup/tree/f50facb83fc3dc5f3240c854668c7a6dd93871b2), against the official Qt 6.12.0 SDK with Clang 22.1.8. Use `setup.py bdist_wheel --qtpaths=<SDK>/bin/qtpaths --module-subset=Core,Gui,Widgets,Network,DBus --parallel=4 --macos-arch=arm64 --macos-deployment-target=14.4 --standalone`. Set `MACOSX_DEPLOYMENT_TARGET=14.4` and `CMAKE_PREFIX_PATH` to that SDK. CMake must ignore other Homebrew Qt installations (`CMAKE_IGNORE_PREFIX_PATH=/opt/homebrew`); disable optional Qt6Qml and Qt6UiTools discovery, which the app does not use. Use the upstream `create_wheels.py --no-examples --build-dir=<build-dir>` to produce the split Essentials/Shiboken wheels, then replace the original wheels in the isolated packaging environment. The native check rejects accidental use of the incompatible binaries. This is a source rebuild, not editing the deployment target of precompiled binaries.
+The initial PySide6/Shiboken6 6.12.0 PyPI bindings require macOS 26 despite their macOS 14 wheel tags. For macOS 14.4 support, use bindings rebuilt from the unmodified [v6.12.0 source](https://github.com/pyside/pyside-setup/tree/f50facb83fc3dc5f3240c854668c7a6dd93871b2), against the official Qt 6.12 SDK with Clang 22.1.8:
 
-Run `./build-macos.command /absolute/path/to/environment/bin/python`. The script validates the ephemeris, creates the icon, builds `dist/MoonLabeler.app`, checks every Mach-O dependency for ARM64 and a deployment target no newer than macOS 14.4, verifies code signatures and creates a ZIP using `ditto` to preserve bundle links. `LSMinimumSystemVersion` is 14.4; the binary checks independently enforce it for Python, Qt and every other included native library. The local build host can be newer than macOS 14.
+```bash
+python setup.py bdist_wheel --qtpaths=<SDK>/bin/qtpaths \
+  --module-subset=Core,Gui,Widgets,Network,DBus --parallel=4 \
+  --macos-arch=arm64 --macos-deployment-target=14.4 --standalone
+```
 
-For a frozen functional check, run the bundled executable with `MOONLABELER_BUNDLE_CHECK=/absolute/path/to/report.json`, `QT_QPA_PLATFORM=offscreen` and `MOONLABELER_CACHE` pointing to an empty writable directory. This invokes a fixed bundled check, then exits with success/failure. It verifies bundled dependencies, offline geometry, manual mirrored and automatic SIFT registration, circular/elliptical crater rims, 16-bit RGB TIFF, FITS, example-project loading, annotation editing data, project roundtrip, ICC-to-sRGB conversion, asynchronous art-map layers and PNG/SVG exports. Normal launches do not run this check.
+Set `MACOSX_DEPLOYMENT_TARGET=14.4`, `CMAKE_PREFIX_PATH` to the SDK and `CMAKE_IGNORE_PREFIX_PATH=/opt/homebrew`; disable optional Qt6Qml and Qt6UiTools discovery. Use upstream `create_wheels.py --no-examples --build-dir=<build-dir>` to create the split Essentials/Shiboken wheels and install them in the packaging environment. The bundle check rejects incompatible binaries.
 
-The `macOS App compatibility` workflow downloads the **same locally built archive** and runs the frozen check and normal GUI startup on the standard macOS 14 and macOS 15 ARM64 runners. It does not compile or rebuild the app, install Python dependencies, or use larger paid runners. Its input SHA-256 pins the exact artifact under test. Reports distinguish these OS runs from verification on the local build host; they do not claim testing every Mac/GPU configuration.
+## Verification and release
+
+`build-macos.command` runs the bundled dependency, offline registration, image-reading, project and PNG/SVG checks. The **macOS App compatibility** workflow then tests the same published ZIP on macOS 14 and 15 using its SHA-256; it does not rebuild the app.
+
+Release attachments contain only the macOS and Windows app ZIPs. Keep reports and intermediate files in local output or Actions artifacts.
+
+The app is ad-hoc signed and is not Apple-notarized. Its cache and preferences are stored under `~/Library/Caches/MoonLabeler`.
