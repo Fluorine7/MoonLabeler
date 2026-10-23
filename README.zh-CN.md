@@ -1,6 +1,6 @@
 # MoonLabeler 中文使用说明
 
-当前源码版本：**1.9.3**（2026-10-24）。[本次更新](UPDATE_HISTORY.md#193)：优化艺术标注缩放、拖动和文字缓存恢复。本次仅更新源码并推送 GitHub，不打包、不创建 Release；现有独立 App 下载仍为 [0.8.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0)，不包含本次改动。恢复发布时仅附 macOS 与 Windows 两个应用 ZIP 包。
+当前版本：**1.9.3**（2026-10-24）。[本次更新](UPDATE_HISTORY.md#193)：优化艺术标注缩放、拖动和文字缓存恢复；不透明度与受光阈值支持手工输入，回车或移开焦点后生效，并保留滚轮不改数值的保护。[v1.9.3 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.3) 仅附本地打包的 macOS 与云端构建的 Windows 两个应用 ZIP 包。
 
 作者：**Fluorine Zhu** · **GPL-3.0-or-later** · [English / 项目主页](README.md) · [更新历史](UPDATE_HISTORY.md)
 
@@ -8,13 +8,13 @@
 
 ## 下载 macOS App
 
-Apple Silicon（M1 或更新机型）、**macOS 14.4+ / 15 或更新版本**：从 [v0.8.0 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0) 下载 `MoonLabeler-0.8.0-macos-arm64.zip`，完整解压后打开 `MoonLabeler.app`，也可拖入“应用程序”。内含 Python、Qt、最小 OpenCV、FITS 支持和离线星历，无需另装 Python 或编译器；不适用于 Intel Mac。
+Apple Silicon（M1 或更新机型）、**macOS 14.4+ / 15 或更新版本**：从 [v1.9.3 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.3) 下载 `MoonLabeler-1.9.3-macos-arm64.zip`，完整解压后打开 `MoonLabeler.app`，也可拖入“应用程序”。内含 Python、Qt、最小 OpenCV、FITS 支持和离线星历，无需另装 Python 或编译器；不适用于 Intel Mac。
 
 目前 App 使用临时签名，未经过 Apple 公证。首次下载若被 macOS 拦截，请在“系统设置 → 隐私与安全性”中允许该 App 运行。安装、验证与本机重新打包步骤见 [macOS App 说明](docs/macos-app.md)。
 
 ## 下载 Windows 版
 
-从同一 Release 下载 `MoonLabeler-0.8.0-windows-x64.zip`，完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹。无需安装 Python 或编译器。1.9.1 云构建已取消；后续发布只附应用包，中间文件保留在 Actions 或本地。
+从同一 Release 下载 `MoonLabeler-1.9.3-windows-x64.zip`，完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹。无需安装 Python 或编译器。Release 只附应用包，中间文件保留在 Actions 或本地。
 
 ## 从源码打开
 
