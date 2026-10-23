@@ -10,7 +10,9 @@ Register your own lunar photographs, place editable terrain labels, and export a
 **0.9.0 · 2026-10-23:** 新增可选手抄本艺术主题、月面经纬网与高程着色；不透明度滑块实时更新，参数滚轮保护，以及实拍亮地形误裁修复。详见[本次更新](UPDATE_HISTORY.md#090)。
 Optional manuscript styling, selenographic grids and elevation colours, with live opacity sliders, wheel-safe settings and photo-aware lighting masks. See the [release notes](UPDATE_HISTORY.md#090).
 
-**macOS App:** [Download v0.9.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.9.0), choose `MoonLabeler-0.9.0-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
+**0.9.0 availability:** Source code is available; installer builds are deferred. The downloadable apps remain at 0.8.0 and do not include the new 0.9.0 features.
+
+**macOS App (0.8.0):** [Download v0.8.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0), choose `MoonLabeler-0.8.0-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
 
 ![MoonLabeler — explicitly synthetic editing example / 合成编辑示例](docs/moonlabeler.png)
 

@@ -1,6 +1,8 @@
 # macOS Apple Silicon App
 
-Download `MoonLabeler-0.9.0-macos-arm64.zip` from the [v0.9.0 release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.9.0). Extract the whole archive, then open `MoonLabeler.app` or drag it into Applications. Requires an Apple Silicon Mac (M1 or newer) and macOS 14.4 or newer, including macOS 15. Intel Macs are not supported by this archive.
+The 0.9.0 source is available, but its installer build is deferred. The latest downloadable macOS app remains 0.8.0 and does not include the new 0.9.0 features.
+
+Download `MoonLabeler-0.8.0-macos-arm64.zip` from the [v0.8.0 release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0). Extract the whole archive, then open `MoonLabeler.app` or drag it into Applications. Requires an Apple Silicon Mac (M1 or newer) and macOS 14.4 or newer, including macOS 15. Intel Macs are not supported by this archive.
 
 The app includes CPython 3.12, Qt 6.12, the private codec-free OpenCV, FITS support, imagecodecs/libtiff, examples and all four JPL ephemeris kernels. Users do not install Python, Xcode or a compiler. Caches and preferences are stored in `~/Library/Caches/MoonLabeler`; the app does not write into its installation folder.
 

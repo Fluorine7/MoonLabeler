@@ -20,13 +20,15 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 
 ### 升级
 
-已有 `.moonlabel` 工程继续使用，旧工程默认保持原始样式并关闭地图图层。在“标注 → 艺术与地图图层（可选）”启用；首次使用高程着色需下载基础 LOLA 数据或导入 DEM。源码用户按原安装方式更新；独立 App 用户需下载 0.9.0 安装包。
+已有 `.moonlabel` 工程继续使用，旧工程默认保持原始样式并关闭地图图层。在“标注 → 艺术与地图图层（可选）”启用；首次使用高程着色需下载基础 LOLA 数据或导入 DEM。源码用户按原安装方式更新。0.9.0 安装包暂缓构建，现有独立 App 下载仍为 0.8.0，不包含本次新功能。
 
 ### 发布前验证
 
-本机项目测试 **582 项通过、6 项按条件跳过**，涵盖实拍识别、球面及地形投影、工程兼容、PNG / SVG 导出、滑块拖动、滚轮保护与光照误裁回归。另检查高程不透明度 85% / 100% 的实拍效果，以及原始模式切回后的像素一致性。跨平台自动化检查和安装包验证记录见该版本的 GitHub Actions。
+本机项目测试 **582 项通过、6 项按条件跳过**，涵盖实拍识别、球面及地形投影、工程兼容、PNG / SVG 导出、滑块拖动、滚轮保护与光照误裁回归。另检查高程不透明度 85% / 100% 的实拍效果，以及原始模式切回后的像素一致性。本次推送触发的 GitHub Actions 已取消，跨平台检查与安装包构建、验证暂缓。
 
 ### English
+
+Source update only for now: installer builds are deferred, and the existing 0.8.0 downloads do not include these changes.
 
 Adds optional manuscript styling, selenographic grids and LOLA elevation colours while preserving the original annotation workflow, registration and manual edits. Elevation colours retain photographed relief; brighter serif lettering and dark halos improve contrast. Opacity sliders update applied layers immediately without moving labels or resampling the DEM. Wheel gestures scroll settings panels without changing focused values, and canvas zoom remains available.
 

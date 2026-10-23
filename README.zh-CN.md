@@ -1,6 +1,6 @@
 # MoonLabeler 中文使用说明
 
-当前版本：**0.9.0**（2026-10-23）。[本次更新](UPDATE_HISTORY.md#090)
+当前源码版本：**0.9.0**（2026-10-23）。[本次更新](UPDATE_HISTORY.md#090)。安装包暂缓构建，现有下载仍为 0.8.0，不包含 0.9.0 新功能。
 
 作者：**Fluorine Zhu** · **GPL-3.0-or-later** · [English / 项目主页](README.md) · [更新历史](UPDATE_HISTORY.md)
 
@@ -8,7 +8,7 @@
 
 ## 下载 macOS App
 
-Apple Silicon（M1 或更新机型）、**macOS 14.4+ / 15 或更新版本**：从 [v0.9.0 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.9.0) 下载 `MoonLabeler-0.9.0-macos-arm64.zip`，完整解压后打开 `MoonLabeler.app`，也可拖入“应用程序”。内含 Python、Qt、最小 OpenCV、FITS 支持和离线星历，无需另装 Python 或编译器；不适用于 Intel Mac。
+Apple Silicon（M1 或更新机型）、**macOS 14.4+ / 15 或更新版本**：从 [v0.8.0 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0) 下载 `MoonLabeler-0.8.0-macos-arm64.zip`，完整解压后打开 `MoonLabeler.app`，也可拖入“应用程序”。内含 Python、Qt、最小 OpenCV、FITS 支持和离线星历，无需另装 Python 或编译器；不适用于 Intel Mac。
 
 目前 App 使用临时签名，未经过 Apple 公证。首次下载若被 macOS 拦截，请在“系统设置 → 隐私与安全性”中允许该 App 运行。安装、验证与本机重新打包步骤见 [macOS App 说明](docs/macos-app.md)。
 
