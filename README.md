@@ -1,20 +1,20 @@
 # MoonLabeler
 
-**Author / 作者：Fluorine Zhu** · **Version / 版本：1.9.3** · **GPL-3.0-or-later**
+**Author / 作者：Fluorine Zhu** · **Version / 版本：0.9.3** · **GPL-3.0-or-later**
 
 Register your own lunar photographs, place editable terrain labels, and export annotated PNG / SVG images.
 在自己的月面照片上配准地形、排布可编辑标签，并导出 PNG / SVG。
 
 [中文使用说明](README.zh-CN.md) · [Update History / 更新历史](UPDATE_HISTORY.md) · [Acknowledgements / 致谢](ACKNOWLEDGEMENTS.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 
-**1.9.3 · 2026-10-24:** 优化艺术标注缩放、拖动和暂停后继续操作时的响应。复杂文字分段绘制，导航及时取消过时任务；缓存被回收时复用有界预览，停下后补齐清晰度。保留字号、艺术外观、滚轮保护及 PNG / SVG 输出。详见[本次更新](UPDATE_HISTORY.md#193)。
-Improves art-label navigation, including pauses between gestures. Caption strokes use interruptible batches; bounded fallback previews avoid synchronous redraws after cache eviction, with detail refined after navigation stops. Font sizes, styling, wheel-safe controls and PNG/SVG output are preserved. See the [release notes](UPDATE_HISTORY.md#193).
+**0.9.3 · 2026-10-24:** 优化艺术标注缩放、拖动和暂停后继续操作时的响应。复杂文字分段绘制，导航及时取消过时任务；缓存被回收时复用有界预览，停下后补齐清晰度。保留字号、艺术外观、滚轮保护及 PNG / SVG 输出。详见[本次更新](UPDATE_HISTORY.md#093)。
+Improves art-label navigation, including pauses between gestures. Caption strokes use interruptible batches; bounded fallback previews avoid synchronous redraws after cache eviction, with detail refined after navigation stops. Font sizes, styling, wheel-safe controls and PNG/SVG output are preserved. See the [release notes](UPDATE_HISTORY.md#093).
 
-**1.9.3 app packages:** The [v1.9.3 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.3) contains only the locally built macOS app ZIP and the Windows app ZIP built in GitHub Actions. Build intermediates and verification reports stay in Actions or local output. Map opacity and photo-threshold sliders now also accept precise numeric input; press Enter or leave the field to apply it, with wheel protection preserved.
+**0.9.3 app packages:** The [v0.9.3 Release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.9.3) contains only the locally built macOS app ZIP and the Windows app ZIP built in GitHub Actions. Build intermediates and verification reports stay in Actions or local output. Map opacity and photo-threshold sliders now also accept precise numeric input; press Enter or leave the field to apply it, with wheel protection preserved.
 
-**macOS App (1.9.3):** [Download v1.9.3](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.3), choose `MoonLabeler-1.9.3-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
+**macOS App (0.9.3):** [Download v0.9.3](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.9.3), choose `MoonLabeler-0.9.3-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
 
-**Windows x64 (1.9.3):** Download `MoonLabeler-1.9.3-windows-x64.zip` from the same release, extract the entire archive and run `MoonLabeler.exe`. Keep the `_internal` folder alongside it; no Python or compiler installation is required.
+**Windows x64 (0.9.3):** Download `MoonLabeler-0.9.3-windows-x64.zip` from the same release, extract the entire archive and run `MoonLabeler.exe`. Keep the `_internal` folder alongside it; no Python or compiler installation is required.
 
 ![MoonLabeler — explicitly synthetic editing example / 合成编辑示例](docs/moonlabeler.png)
 

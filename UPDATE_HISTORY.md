@@ -6,7 +6,11 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
-## 1.9.3
+## 0.9.3
+
+版本编号更正：0.9.x 开发阶段曾误写为 1.9.x；正式发布版本为 **0.9.3**。以下开发记录按正确编号归档，历史提交与曾生成的本地包名称保留用于追溯。
+
+Version correction: development builds were mistakenly numbered 1.9.x. The correct release is **0.9.3**; historical commit titles and local archive names remain as recorded.
 
 2026-10-24 · 艺术标注导航响应、文字缓存优化与精确数值输入。
 
@@ -22,7 +26,7 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 
 App publication resumes with a locally built macOS Apple Silicon ZIP and a Windows x64 ZIP built in GitHub Actions; only these two app archives are attached to the Release. Art-caption strokes now use small interruptible batches that yield between native paint calls. Navigation cancels obsolete work and resumes detail refinement after an idle interval. Each caption retains a bounded fallback preview, avoiding synchronous full-size redraws after shared-cache eviction. Completed batches no longer keep rebuilding an over-budget cache. Incomplete or stale results are discarded; font sizes, styling, wheel protection and PNG/SVG output are preserved. All four map-opacity sliders and the photo-threshold slider also support precise numeric input, applied on Enter or focus loss, with Auto threshold and live updates preserved. All 100 related navigation tests passed. Local 2×-density replay on `1001.jpg` recorded maximum zoom/pan event times of approximately 16/9 ms and a maximum UI heartbeat gap of 26 ms, down from 92 ms; results are specific to the test machine.
 
-## 1.9.2
+## 0.9.2
 
 2026-10-23 · 受光覆盖、自动阈值与柔和过渡。
 
@@ -37,7 +41,7 @@ App publication resumes with a locally built macOS Apple Silicon ZIP and a Windo
 
 Source-only update, without packages or a Release. Restores optional photo-lit map coverage with an automatically estimated brightness threshold, a live manual slider and Auto reset. Elevation, contours and the grid share a softly feathered boundary; enclosed crater shadows remain covered, while names, the terminator and legend stay independent. Threshold controls preserve wheel protection and unrelated pending edits. Cached photo analysis and maps are reused, and compositing stays bounded by the viewport during high zoom. PNG/SVG use the same soft mask, with editable vector paths retained. Saved settings round-trip, older projects retain their previous coverage, and the original photo, ephemeris and registration remain unchanged.
 
-## 1.9.1
+## 0.9.1
 
 2026-10-23 · 艺术地图排版、图层性能与导出修复。
 

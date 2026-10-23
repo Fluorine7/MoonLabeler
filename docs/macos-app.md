@@ -1,8 +1,8 @@
 # macOS Apple Silicon App
 
-The 1.9.3 release combines a locally built macOS app with the Windows app built in GitHub Actions. Release attachments contain only the two app ZIPs; build intermediates and verification reports stay in local output or Actions artifacts. These packages include photo-threshold coverage controls, the latest navigation fixes and numeric input beside the map sliders.
+The 0.9.3 release combines a locally built macOS app with the Windows app built in GitHub Actions. Release attachments contain only the two app ZIPs; build intermediates and verification reports stay in local output or Actions artifacts. These packages include photo-threshold coverage controls, the latest navigation fixes and numeric input beside the map sliders.
 
-Download `MoonLabeler-1.9.3-macos-arm64.zip` from the [v1.9.3 release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.3). Extract the whole archive, then open `MoonLabeler.app` or drag it into Applications. Requires an Apple Silicon Mac (M1 or newer) and macOS 14.4 or newer, including macOS 15. Intel Macs are not supported by this archive.
+Download `MoonLabeler-0.9.3-macos-arm64.zip` from the [v0.9.3 release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.9.3). Extract the whole archive, then open `MoonLabeler.app` or drag it into Applications. Requires an Apple Silicon Mac (M1 or newer) and macOS 14.4 or newer, including macOS 15. Intel Macs are not supported by this archive.
 
 The app includes CPython 3.12, Qt 6.12, the private codec-free OpenCV, FITS support, imagecodecs/libtiff, examples and all four JPL ephemeris kernels. Users do not install Python, Xcode or a compiler. Caches and preferences are stored in `~/Library/Caches/MoonLabeler`; the app does not write into its installation folder.
 

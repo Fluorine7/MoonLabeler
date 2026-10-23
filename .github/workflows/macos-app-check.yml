@@ -7,7 +7,7 @@ on:
         description: Release containing the locally built archive
         required: true
         type: string
-        default: v1.9.3
+        default: v0.9.3
       asset_name:
         description: Locally built Release ZIP to test (no cloud build)
         required: true
