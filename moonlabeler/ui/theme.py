@@ -100,7 +100,7 @@ QSlider::handle:horizontal {{ width: 14px; height: 14px; margin: -5px 0;
 QSlider::handle:horizontal:hover {{ background: #f6d7a9; }}
 QSlider::handle:horizontal:disabled {{ background: #4a5361; border-color: #4a5361; }}
 QSlider::sub-page:horizontal:disabled {{ background: #4a5361; }}
-QLabel#sliderValue {{ color: {TEXT_2}; }}
+QSpinBox#sliderValue {{ padding: 5px 6px; }}
 
 QCheckBox {{ spacing: 7px; color: #c3cedb; }}
 QCheckBox:disabled {{ color: {DISABLED_TEXT}; }}

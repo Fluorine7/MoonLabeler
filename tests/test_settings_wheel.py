@@ -45,7 +45,8 @@ def wheel(widget, delta=120, *, touchpad=False):
 
 @pytest.mark.parametrize("field", ["font_size", "ui_font_step", "grid_opacity", "elevation_opacity",
                                    "diameter", "maximum", "art_style", "grid_spacing",
-                                   "elevation_palette", "contour_interval", "contour_opacity", "terminator_opacity", "terminator_source", "map_light_threshold", "language", "font_weight"])
+                                   "elevation_palette", "contour_interval", "contour_opacity", "terminator_opacity", "terminator_source", "map_light_threshold", "language", "font_weight",
+                                   "grid_opacity_value", "elevation_opacity_value", "contour_opacity_value", "terminator_opacity_value", "map_light_readout"])
 @pytest.mark.parametrize("focused", [False, True])
 def test_wheel_over_setting_never_changes_value(window, field, focused):
     control = getattr(window, field)
@@ -83,7 +84,8 @@ def test_every_native_parameter_including_date_time_ignores_wheel(window):
 
 
 @pytest.mark.parametrize("field,editor", [("font_size", False), ("font_size", True),
-                                         ("grid_opacity", False), ("grid_spacing", False)])
+                                         ("grid_opacity", False), ("grid_spacing", False),
+                                         ("grid_opacity_value", True), ("map_light_readout", True)])
 def test_wheel_over_parameter_scrolls_outer_panel(window, field, editor):
     control = getattr(window, field)
     area = control.parentWidget()
@@ -96,6 +98,46 @@ def test_wheel_over_parameter_scrolls_outer_panel(window, field, editor):
     wheel(control.lineEdit() if editor else control, -120)
     assert setting_value(control) == before
     assert bar.value() > 0, "The parameter must pass the gesture to the surrounding page"
+
+
+@pytest.mark.parametrize("field,readout", [
+    ("grid_opacity", "grid_opacity_value"), ("elevation_opacity", "elevation_opacity_value"),
+    ("contour_opacity", "contour_opacity_value"), ("terminator_opacity", "terminator_opacity_value"),
+    ("map_light_threshold", "map_light_readout"),
+])
+def test_slider_numbers_accept_precise_typing_and_stay_in_sync(window, field, readout):
+    slider, editor = getattr(window, field), getattr(window, readout)
+    maximum = 255 if field == "map_light_threshold" else 100
+    editor.setFocus()
+    editor.selectAll()
+    before = slider.value()
+    QTest.keyClicks(editor, "37")
+    assert slider.value() == before, "Do not apply a partially typed multi-digit number"
+    QTest.keyClick(editor, Qt.Key.Key_Return)
+    assert slider.value() == editor.value() == 37
+    for value in (0, maximum):
+        slider.setValue(value)
+        assert editor.value() == value
+        assert editor.fontMetrics().horizontalAdvance(editor.text()) <= editor.lineEdit().width()
+    editor.selectAll()
+    QTest.keyClicks(editor, "23")
+    window.apply_map_styles_button.setFocus()
+    QApplication.processEvents()
+    assert slider.value() == editor.value() == 23
+    before = slider.value()
+    for touchpad in (False, True):
+        wheel(editor.lineEdit(), -120, touchpad=touchpad)
+    assert slider.value() == editor.value() == before
+    assert (editor.minimum(), editor.maximum()) == (0, maximum)
+
+
+def test_number_field_follows_layer_enablement_through_background_work(window):
+    window.map_light_toggle.setChecked(False)
+    assert not window.map_light_threshold.isEnabled() and not window.map_light_readout.isEnabled()
+    window.sidebar.setEnabled(False)
+    window.map_light_toggle.setChecked(True)
+    window.sidebar.setEnabled(True)
+    assert window.map_light_threshold.isEnabled() and window.map_light_readout.isEnabled()
 
 
 def test_new_dropdown_popup_can_scroll_without_changing_selection(window):

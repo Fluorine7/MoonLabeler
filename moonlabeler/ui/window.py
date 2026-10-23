@@ -89,25 +89,36 @@ class WindowUiMixin:
             combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         return combo
 
-    def ui_percent_slider(self, value, name):
+    def ui_numeric_slider(self, value, name, maximum, suffix=""):
         slider = QSlider(Qt.Orientation.Horizontal)
-        slider.setRange(0, 100)
+        slider.setRange(0, maximum)
         slider.setValue(value)
         slider.setTracking(True)
         slider.setMinimumHeight(28)
         slider.setAccessibleName(name)
-        slider.setToolTip(tr("首次应用后，拖动立即更新图层不透明度；滚轮只滚动面板。"))
-        readout = QLabel(f"{value}%")
+        readout = QSpinBox()
+        readout.setRange(0, maximum)
+        readout.setSuffix(suffix)
+        readout.setValue(value)
+        readout.setKeyboardTracking(False)
         readout.setObjectName("sliderValue")
-        readout.setFixedWidth(42)
+        readout.setAccessibleName(name)
+        readout.setFixedWidth(80 if suffix else 64)
         readout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        slider.valueChanged.connect(lambda percent: readout.setText(f"{percent}%"))
+        slider.valueChanged.connect(readout.setValue)
+        readout.valueChanged.connect(slider.setValue)
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(10)
         row.addWidget(slider, 1)
         row.addWidget(readout)
-        return slider, row
+        return slider, readout, row
+
+    def ui_percent_slider(self, value, name):
+        slider, readout, row = self.ui_numeric_slider(value, name, 100, "%")
+        for control in (slider, readout):
+            control.setToolTip(tr("首次应用后，拖动立即更新图层不透明度；滚轮只滚动面板。"))
+        return slider, readout, row
 
     # Manual calibration section (collapsed by default). These two methods are
     # the presentation hook for app.py: open the section when a manual pick
@@ -377,14 +388,17 @@ class WindowUiMixin:
         self.font_weight.setEnabled(original)
         self.color_button.setEnabled(original)
         self.landing_color_button.setEnabled(original and self.landing_sites_toggle.isChecked())
-        self.grid_opacity.setEnabled(bool(self.grid_spacing.currentData()))
-        self.elevation_opacity.setEnabled(self.elevation_toggle.isChecked())
+        for slider, readout, enabled in (
+                (self.grid_opacity, self.grid_opacity_value, bool(self.grid_spacing.currentData())),
+                (self.elevation_opacity, self.elevation_opacity_value, self.elevation_toggle.isChecked()),
+                (self.contour_opacity, self.contour_opacity_value, self.contour_toggle.isChecked()),
+                (self.terminator_opacity, self.terminator_opacity_value, self.terminator_toggle.isChecked()),
+                (self.map_light_threshold, self.map_light_readout, self.map_light_toggle.isChecked())):
+            slider.setEnabled(enabled)
+            readout.setEnabled(enabled)
         self.elevation_palette.setEnabled(self.elevation_toggle.isChecked())
         self.contour_interval.setEnabled(self.contour_toggle.isChecked())
-        self.contour_opacity.setEnabled(self.contour_toggle.isChecked())
-        self.terminator_opacity.setEnabled(self.terminator_toggle.isChecked())
         self.terminator_source.setEnabled(self.terminator_toggle.isChecked())
-        self.map_light_threshold.setEnabled(self.map_light_toggle.isChecked())
         self.map_light_auto.setEnabled(self.map_light_toggle.isChecked() and self.image is not None)
 
     def select_art_style(self, *args):
@@ -793,7 +807,7 @@ class WindowUiMixin:
         for degrees in (10, 15, 30):
             self.grid_spacing.addItem(f"{degrees}°", degrees)
         form.addRow(tr("月面经纬网"), self.grid_spacing)
-        self.grid_opacity, opacity_row = self.ui_percent_slider(round(self.project.grid_opacity*100), tr("网格不透明度"))
+        self.grid_opacity, self.grid_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.grid_opacity*100), tr("网格不透明度"))
         form.addRow(tr("网格不透明度"), opacity_row)
         self.terminator_toggle = QCheckBox(tr("叠加晨昏线"))
         form.addRow(self.terminator_toggle)
@@ -801,7 +815,7 @@ class WindowUiMixin:
         self.terminator_source.addItem(tr("照片估计"), "photo")
         self.terminator_source.addItem(tr("工程时间（理论）"), "ephemeris")
         form.addRow(tr("晨昏线依据"), self.terminator_source)
-        self.terminator_opacity, opacity_row = self.ui_percent_slider(round(self.project.terminator_opacity*100), tr("晨昏线不透明度"))
+        self.terminator_opacity, self.terminator_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.terminator_opacity*100), tr("晨昏线不透明度"))
         form.addRow(tr("晨昏线不透明度"), opacity_row)
         self.terminator_status = self.ui_note("")
         self.terminator_status.hide()
@@ -813,7 +827,7 @@ class WindowUiMixin:
         self.elevation_palette.addItem(tr("靛蓝与古金"), "antique")
         self.elevation_palette.addItem(tr("旷野橄榄棕"), "wilderness")
         form.addRow(tr("高程配色"), self.elevation_palette)
-        self.elevation_opacity, opacity_row = self.ui_percent_slider(round(self.project.elevation_opacity*100), tr("高程不透明度"))
+        self.elevation_opacity, self.elevation_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.elevation_opacity*100), tr("高程不透明度"))
         form.addRow(tr("高程不透明度"), opacity_row)
         self.contour_toggle = QCheckBox(tr("叠加等高线"))
         form.addRow(self.contour_toggle)
@@ -824,30 +838,21 @@ class WindowUiMixin:
         self.contour_interval.setCurrentIndex(self.contour_interval.findData(self.project.contour_interval))
         self.contour_interval.setToolTip(tr("按真实月面高程生成，每五条加粗；细节受 DEM 分辨率限制。"))
         form.addRow(tr("等高距"), self.contour_interval)
-        self.contour_opacity, opacity_row = self.ui_percent_slider(round(self.project.contour_opacity*100), tr("等高线不透明度"))
+        self.contour_opacity, self.contour_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.contour_opacity*100), tr("等高线不透明度"))
         form.addRow(tr("等高线不透明度"), opacity_row)
         self.map_light_toggle = QCheckBox(tr("地图仅覆盖受光区域"))
         self.map_light_toggle.setChecked(self.project.map_light_mask)
         form.addRow(self.map_light_toggle)
         self.pending_map_light_threshold = self.project.map_light_threshold
-        self.map_light_threshold = QSlider(Qt.Orientation.Horizontal)
-        self.map_light_threshold.setRange(0, 255)
-        self.map_light_threshold.setMinimumHeight(28)
-        self.map_light_threshold.setAccessibleName(tr("受光阈值"))
-        self.map_light_threshold.setToolTip(tr("按照片亮度估计；调高阈值会收窄覆盖，调低会扩大。拖动立即更新，滚轮只滚动面板。"))
-        self.map_light_readout = QLabel(tr("自动"))
-        self.map_light_readout.setObjectName("sliderValue")
-        self.map_light_readout.setFixedWidth(28)
-        self.map_light_readout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        value = 1 if self.pending_map_light_threshold == "auto" else self.pending_map_light_threshold
+        self.map_light_threshold, self.map_light_readout, threshold_row = self.ui_numeric_slider(value, tr("受光阈值"), 255)
+        for control in (self.map_light_threshold, self.map_light_readout):
+            control.setToolTip(tr("按照片亮度估计；调高阈值会收窄覆盖，调低会扩大。拖动立即更新，滚轮只滚动面板。"))
         self.map_light_auto = QPushButton(tr("自动"))
         self.map_light_auto.setCheckable(True)
         self.map_light_auto.setChecked(self.project.map_light_threshold == "auto")
         self.map_light_auto.setFixedWidth(52)
         self.map_light_auto.setToolTip(tr("重新使用照片自动估计的受光阈值。"))
-        threshold_row = QHBoxLayout()
-        threshold_row.setContentsMargins(0, 0, 0, 0)
-        threshold_row.addWidget(self.map_light_threshold, 1)
-        threshold_row.addWidget(self.map_light_readout)
         threshold_row.addWidget(self.map_light_auto)
         form.addRow(tr("受光阈值"), threshold_row)
         dem_row = QHBoxLayout()

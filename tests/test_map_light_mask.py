@@ -155,11 +155,15 @@ def test_slider_and_auto_are_live_without_rebuilding_layers_or_labels(window, mo
     monkeypatch.setattr(win, "refresh_map_layers", reject)
     for name in ("photo_lightness", "sample_elevation", "colorize_elevation", "contour_lines"):
         monkeypatch.setattr(app_module, name, reject)
-    win.map_light_threshold.setValue(255)
+    win.map_light_readout.selectAll()
+    QTest.keyClicks(win.map_light_readout, "255")
+    QTest.keyClick(win.map_light_readout, Qt.Key.Key_Return)
     assert win.project.map_light_threshold == 255 and not win.map_light_auto.isChecked()
+    assert win.map_light_readout.value() == win.map_light_threshold.value() == 255
     assert win.map_layers.coverage != original
     QTest.mouseClick(win.map_light_auto, Qt.MouseButton.LeftButton)
     assert win.project.map_light_threshold == "auto" and win.map_light_threshold.value() == automatic
+    assert win.map_light_readout.value() == automatic
     assert win.map_layers.coverage == original
     win.map_light_toggle.setChecked(False)
     assert win.map_layers.coverage is None and not win.project.map_light_mask

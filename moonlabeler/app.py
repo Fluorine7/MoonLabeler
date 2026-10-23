@@ -2119,7 +2119,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         rebuilding, self.rebuilding = self.rebuilding, True
         try:
             self.map_light_threshold.setValue(value)
-            self.map_light_readout.setText(str(value))
+            self.map_light_readout.setValue(value)
             self.map_light_auto.setChecked(automatic)
         finally:
             self.rebuilding = rebuilding

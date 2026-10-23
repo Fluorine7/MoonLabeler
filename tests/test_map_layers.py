@@ -390,7 +390,13 @@ def test_opacity_sliders_apply_once_then_update_without_layout_or_other_pending_
     assert win.style_pending
     monkeypatch.setattr(win, "refresh_annotations", lambda: pytest.fail("Opacity must not regenerate labels"))
     for value in (0, 35, 85, 100):
-        win.grid_opacity.setValue(value)
+        if value in (0, 85):
+            win.grid_opacity_value.selectAll()
+            QTest.keyClicks(win.grid_opacity_value, str(value))
+            QTest.keyClick(win.grid_opacity_value, Qt.Key.Key_Return)
+        else:
+            win.grid_opacity.setValue(value)
+        assert win.grid_opacity_value.value() == win.grid_opacity.value() == value
         assert win.project.grid_opacity == value/100 and win.map_items == map_items
         assert all(item.opacity() == value/100 for item in map_items if getattr(item, "map_layer", None) == "grid")
         assert win.annotation_items == items and [item.pos() for item in items] == positions
