@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**0.9.3** · Fluorine Zhu · GPL-3.0-or-later
+**0.9.4** · Fluorine Zhu · GPL-3.0-or-later
 
 Register lunar photographs, edit terrain labels, and export annotated PNG or SVG images.
 为月面照片配准、标注地名并导出图片。
@@ -12,6 +12,8 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 ## 中文
 
 ### 下载
+
+0.9.4 暂仅更新源码，安装包仍为 0.9.3。
 
 | 系统 | 安装包 | 打开方式 |
 | --- | --- | --- |
@@ -36,7 +38,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 - 可选中世纪风、旷野地形图、经纬网、高程着色、等高线与晨昏线。
 - 不透明度和受光阈值实时调整，支持滑块及数字输入；原图、配准和手工编辑保留。
 
-艺术主题使用去色后的显示底图。具体操作见[中文指南](README.zh-CN.md)。
+艺术主题使用去色后的显示底图；切回“原始标注”会关闭地图图层，点击应用即可恢复。具体操作见[中文指南](README.zh-CN.md)。
 
 ### 从源码运行
 
@@ -53,6 +55,8 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 ## English
 
 ### Download
+
+0.9.4 is a source update only; the downloadable apps remain at 0.9.3.
 
 | Platform | Package | Open after extracting |
 | --- | --- | --- |
@@ -77,7 +81,7 @@ Ordinary dragging pans the canvas; the wheel zooms it or scrolls settings withou
 - Optional **medieval** and **wilderness topographic** themes, lunar coordinate grids, elevation colours, contours and terminators.
 - Live opacity and photo-lit coverage controls. Sliders also accept numeric input; press Enter or leave the field to apply it.
 
-Art themes use a desaturated display copy of the photograph. The original image and calibration stay intact. Map layers and edits are saved with projects and included in exports. See the [art-layer guide](README.zh-CN.md#可选艺术样式与地图图层).
+Art themes use a desaturated display copy. Switching to Original annotations turns off map layers; click Apply to restore the original appearance. The original image, calibration and manual edits stay intact. See the [art-layer guide](README.zh-CN.md#可选艺术样式与地图图层).
 
 ### Source installation
 

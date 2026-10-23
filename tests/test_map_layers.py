@@ -277,6 +277,47 @@ def window():
     win.close()
 
 
+@pytest.mark.parametrize("style", ["manuscript", "topographic"])
+def test_original_preset_clears_art_layers_and_keeps_project_edits(window, style, monkeypatch):
+    win = window
+    item = win.annotation_items[0]
+    item.setPos(120, 240)
+    win.project.labels[item.feature["id"]]["text"] = "手工地名"
+    win.project.color, win.project.font_weight = "#abcded", "normal"
+    win.project.art_style = style
+    win.project.grid_spacing = 30
+    win.project.elevation_enabled = win.project.contour_enabled = True
+    win.project.terminator_enabled = win.project.map_light_mask = True
+    win.project.map_light_threshold = 47
+    win.project.contour_interval = .5
+    win.sync_controls()  # Loading a saved art project must keep its custom settings.
+    assert win.grid_spacing.currentData() == 30 and win.terminator_toggle.isChecked()
+    assert win.map_light_threshold.value() == 47 and win.contour_interval.currentData() == .5
+    edits, anchors = deepcopy(win.project.labels), deepcopy(win.project.anchors)
+    matrix, photo = win.project.matrix.copy(), win.image.copy()
+    with monkeypatch.context() as selecting:
+        selecting.setattr(win, "refresh_map_coverage", lambda: pytest.fail("Selecting a preset must not repaint the applied layers"))
+        win.art_style.setCurrentIndex(win.art_style.findData("standard"))
+    assert win.grid_spacing.currentData() == 0
+    assert not any(toggle.isChecked() for toggle in (win.elevation_toggle, win.contour_toggle,
+                                                   win.terminator_toggle, win.map_light_toggle))
+    assert win.project.art_style == style and win.project.elevation_enabled and win.style_pending
+    win.apply_map_styles_button.click()
+    assert win.project.art_style == "standard" and not win.style_pending
+    assert not any((win.project.grid_spacing, win.project.elevation_enabled, win.project.contour_enabled,
+                    win.project.terminator_enabled, win.project.map_light_mask))
+    assert not win.map_items
+    assert win.project.color == "#abcded" and win.project.font_weight == "normal"
+    assert win.font_weight.isEnabled() and win.color_button.isEnabled()
+    assert win.project.labels == edits and win.project.anchors == anchors
+    assert np.array_equal(win.project.matrix, matrix) and np.array_equal(win.image, photo)
+    # Original annotations can still have an independently selected map layer.
+    win.grid_spacing.setCurrentIndex(win.grid_spacing.findData(15))
+    win.apply_map_styles_button.click()
+    assert win.project.art_style == "standard" and win.project.grid_spacing == 15
+    assert win.map_layers.grid
+
+
 def test_art_toggle_preserves_edits_calibration_and_original_pixels(window, tmp_path):
     win = window
     item = win.annotation_items[0]
@@ -700,7 +741,6 @@ def test_wilderness_preset_and_contour_only_live_export_preserve_originals(windo
     assert loaded.art_style == "topographic" and loaded.contour_opacity == 1.
     win.sync_controls()
     win.art_style.setCurrentIndex(0)
-    win.contour_toggle.setChecked(False)
     win.apply_label_settings()
     win.render_png(tmp_path/"restored.png")
     assert np.array_equal(np.array(Image.open(original)), np.array(Image.open(tmp_path/"restored.png")))

@@ -5,10 +5,16 @@
 开发阶段误写的 1.9.x 已统一更正为 0.9.x。详细实现与验证记录可查 Git 历史。
 Development versions labelled 1.9.x are corrected to 0.9.x; implementation details remain in Git history.
 
-## 未发布 / Unreleased
+## 0.9.4
+
+2026-10-24
 
 - 高程图例支持 Cmd / Ctrl 拖动，位置随工程保存并用于 PNG / SVG。 / Movable elevation legend with saved and exported position.
 - 名称语言明确区分简繁双语，并将两个双语选项置顶。 / Distinct Simplified/Traditional bilingual choices, both listed first.
+- 切回原始标注时统一关闭地图图层，保留原始文字设置、配准及手工编辑。 / Switching back to Original annotations clears map layers and preserves text settings, calibration and manual edits.
+- 清理公开仓库中的开发截图、报告和内部记录。 / Removed development screenshots, reports and internal notes from the public tree.
+
+本次仅更新源码，暂不打包。 / Source update only; no new application packages.
 
 ## 0.9.3
 

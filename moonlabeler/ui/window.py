@@ -403,17 +403,24 @@ class WindowUiMixin:
         if self.rebuilding:
             return
         style = self.art_style.currentData()
-        if style in ("topographic", "manuscript"):
-            self.rebuilding = True
-            try:
+        # Stage the whole preset together; live slider/mask handlers must not
+        # partially update the previously applied project during this switch.
+        self.rebuilding = True
+        try:
+            if style == "standard":
+                self.grid_spacing.setCurrentIndex(self.grid_spacing.findData(0))
+                for toggle in (self.elevation_toggle, self.contour_toggle,
+                               self.terminator_toggle, self.map_light_toggle):
+                    toggle.setChecked(False)
+            elif style in ("topographic", "manuscript"):
                 self.elevation_palette.setCurrentIndex(self.elevation_palette.findData("wilderness" if style == "topographic" else "antique"))
                 self.elevation_toggle.setChecked(True)
                 self.contour_toggle.setChecked(True)
                 self.elevation_opacity.setValue(100 if style == "topographic" else 72)
                 self.contour_opacity.setValue(75 if style == "topographic" else 48)
                 self.map_light_toggle.setChecked(True)
-            finally:
-                self.rebuilding = False
+        finally:
+            self.rebuilding = False
         self.update_map_controls()
         self.style_changed()
 
