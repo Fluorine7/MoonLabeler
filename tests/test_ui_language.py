@@ -63,7 +63,7 @@ def test_combo_boxes_keep_simplified_project_values(traditional_window):
     labels = [window.language.itemText(i) for i in range(window.language.count())]
     values = [window.language.itemData(i) for i in range(window.language.count())]
     assert values == list(LANGUAGE_CHOICES)
-    assert "繁體中文" in labels and "雙語（繁體）" in labels
+    assert labels == ["雙語（簡體）", "雙語（繁體）", "簡體中文", "繁體中文", "英語"]
     window.language.setCurrentIndex(window.language.findData("繁体中文"))
     window.apply_label_settings()
     assert window.project.language == "繁体中文"
@@ -243,6 +243,9 @@ EN_STRINGS = {
     "中文": "Chinese",
     "繁体中文": "Traditional Chinese",
     "双语（繁体）": "Bilingual (Traditional)",
+    "双语（简体）": "Bilingual (Simplified)",
+    "简体中文": "Simplified Chinese",
+    "英语": "English",
     "请先打开照片。": "Please open a photo first.",
     "操作未完成。": "Operation not completed.",
     "检测到 {count} 个疑似坑缘；未通过自动配准验证。": "Found {count} possible crater rims; automatic registration failed.",
@@ -279,7 +282,7 @@ def test_english_combo_boxes_keep_simplified_project_values(english_window):
     labels = [window.language.itemText(i) for i in range(window.language.count())]
     values = [window.language.itemData(i) for i in range(window.language.count())]
     assert values == list(LANGUAGE_CHOICES)
-    assert labels == ["Bilingual", "English", "Chinese", "Traditional Chinese", "Bilingual (Traditional)"]
+    assert labels == ["Bilingual (Simplified)", "Bilingual (Traditional)", "Simplified Chinese", "Traditional Chinese", "English"]
     window.language.setCurrentIndex(window.language.findData("繁体中文"))
     window.apply_label_settings()
     assert window.project.language == "繁体中文"

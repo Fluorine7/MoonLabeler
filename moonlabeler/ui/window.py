@@ -911,8 +911,15 @@ class WindowUiMixin:
         group = QGroupBox(tr("名称与文字"))
         form = self.ui_form(group)
         self.language = self.ui_combo()
+        language_labels = {
+            "双语": tr("双语（简体）"),
+            "双语（繁体）": tr("双语（繁体）"),
+            "中文": tr("简体中文"),
+            "繁体中文": tr("繁体中文"),
+            "英文": tr("英语"),
+        }
         for choice in LANGUAGE_CHOICES:
-            self.language.addItem(tr(choice), choice)
+            self.language.addItem(language_labels[choice], choice)
         self.language.setCurrentIndex(max(0, self.language.findData(self.project.language)))
         self.language.currentTextChanged.connect(self.style_changed)
         form.addRow(tr("名称语言"), self.language)

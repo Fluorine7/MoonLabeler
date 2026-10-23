@@ -520,7 +520,6 @@ DYNAMIC_ARGUMENTS = {
     "i18n.py:trf:template": "the template is translated by tr() inside i18n itself",
     "ui/compute.py:__init__:compute.status()": "compute.status() literals are scanned (MESSAGE_FUNCTIONS)",
     "ui/compute.py:__init__:compute.status(self.mode.currentData())": "same",
-    "ui/window.py:build_sidebar:choice": "name-language picker: LANGUAGE_CHOICES are scanned",
     "ui/window.py:ui_refresh_crater_review:item.text()": "crater feature list: catalogue feature names",
 }
 

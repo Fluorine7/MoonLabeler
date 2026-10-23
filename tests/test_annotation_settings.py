@@ -31,7 +31,7 @@ def test_style_edits_wait_for_generate_and_preserve_dragged_label(monkeypatch):
     refreshes = []
     refresh = window.refresh_annotations
     monkeypatch.setattr(window, "refresh_annotations", lambda: (refreshes.append(True), refresh()))
-    window.language.setCurrentText("中文")
+    window.language.setCurrentIndex(window.language.findData("中文"))
     window.maximum.setValue(240)
     window.font_size.setValue(1.8)
     window.ui_font_step.setValue(.3)

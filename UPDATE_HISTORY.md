@@ -8,6 +8,7 @@ Development versions labelled 1.9.x are corrected to 0.9.x; implementation detai
 ## 未发布 / Unreleased
 
 - 高程图例支持 Cmd / Ctrl 拖动，位置随工程保存并用于 PNG / SVG。 / Movable elevation legend with saved and exported position.
+- 名称语言明确区分简繁双语，并将两个双语选项置顶。 / Distinct Simplified/Traditional bilingual choices, both listed first.
 
 ## 0.9.3
 

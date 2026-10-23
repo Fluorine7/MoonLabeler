@@ -29,8 +29,8 @@ from .annotation_style import (ART_STYLES, appearance, manuscript_fonts,
                                caption_text, caption_span, svg_serif_family, photo_for_style)
 from .map_layers import GRID_SPACINGS, CONTOUR_INTERVALS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg
 
-# Label name language choices shown in the UI and accepted in project files.
-LANGUAGE_CHOICES = ("双语", "英文", "中文", "繁体中文", "双语（繁体）")
+# Stable project-file values, in the order shown by the name-language picker.
+LANGUAGE_CHOICES = ("双语", "双语（繁体）", "中文", "繁体中文", "英文")
 TRADITIONAL_LANGUAGES = ("繁体中文", "双语（繁体）")
 
 # Label text weight accepted in project files; bold keeps CJK strokes legible

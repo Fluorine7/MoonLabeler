@@ -65,7 +65,7 @@ def test_project_round_trips_traditional_language(tmp_path):
 
 
 def test_language_choices_are_shared_with_validator():
-    assert LANGUAGE_CHOICES == ("双语", "英文", "中文", "繁体中文", "双语（繁体）")
+    assert LANGUAGE_CHOICES == ("双语", "双语（繁体）", "中文", "繁体中文", "英文")
 
 
 def test_gui_offers_traditional_and_regenerates_labels():
@@ -79,7 +79,7 @@ def test_gui_offers_traditional_and_regenerates_labels():
     window = MainWindow()
     window.error = lambda message: (_ for _ in ()).throw(AssertionError(message))
     window.open_project(str(Path(__file__).parents[1] / "examples/demo.moonlabel"))
-    assert [window.language.itemText(i) for i in range(window.language.count())] == list(LANGUAGE_CHOICES)
+    assert [window.language.itemText(i) for i in range(window.language.count())] == ["双语（简体）", "双语（繁体）", "简体中文", "繁体中文", "英语"]
     window.language.setCurrentText("双语（繁体）")
     window.generate_labels_button.click()
     assert window.project.language == "双语（繁体）"
