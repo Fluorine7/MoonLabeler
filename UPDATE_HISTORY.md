@@ -10,7 +10,7 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 
 2026-10-23 · 艺术地图排版、图层性能与导出修复。
 
-本次仅更新源码，安装包继续暂缓构建；现有独立 App 下载仍为 0.8.0。已有工程、原始标注与手工编辑继续保留。
+提供本地打包的 macOS Apple Silicon 版与 GitHub Actions 构建的 Windows x64 版。Release 只附两个应用 ZIP 包；中间 wheel、日志、校验清单及验证报告留在 Actions 或本地。已有工程、原始标注与手工编辑继续保留。
 
 新增 **蔡明翰（[Evan Tsai](https://www.facebook.com/mjrt.mj)）** 的贡献致谢：繁体中文支持及 Windows 部分问题修复。软件内致谢和中英文文档同步更新。
 
@@ -32,7 +32,7 @@ Entries are listed newest first. Versions from 0.4.4 onward are reconstructed fr
 
 ### English
 
-Source update only; installer builds remain deferred. Refines medieval and wilderness map styling, adds optional photo-estimated or theoretical terminators, and chooses contour spacing automatically. Improves canvas responsiveness and text-cache scaling; regional captions outside the lunar disc use a straight baseline, and ordinary art captions show locator guides only while dragging. Exports retain the source filename, with an sRGB-converted photo base and an embedded sRGB profile in PNG. Credits 蔡明翰 (Evan Tsai) for Traditional Chinese support and fixes for several Windows issues.
+Provides a locally built macOS Apple Silicon app and a GitHub Actions-built Windows x64 app. Release attachments contain only these two app ZIPs; intermediate artifacts and reports stay in Actions or local output. Refines medieval and wilderness map styling, adds optional photo-estimated or theoretical terminators, and chooses contour spacing automatically. Improves canvas responsiveness and text-cache scaling; regional captions outside the lunar disc use a straight baseline, and ordinary art captions show locator guides only while dragging. Exports retain the source filename, with an sRGB-converted photo base and an embedded sRGB profile in PNG. Credits 蔡明翰 (Evan Tsai) for Traditional Chinese support and fixes for several Windows issues.
 
 ## 0.9.0
 

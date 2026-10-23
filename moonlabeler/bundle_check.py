@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import platform
 import sys
+import time
 import traceback
 
 
@@ -25,6 +26,9 @@ def run(report_path):
         import imagecodecs
         from astropy.io import fits
         from PySide6.QtWidgets import QApplication
+        from PySide6.QtGui import QColorSpace
+        from . import __version__
+        from .color_management import display_srgb, srgb_profile_bytes
         from ._opencv import cv2
         from .registration import auto_register, fit_similarity, transform_points
         from .craters import detect_crater_rims
@@ -37,6 +41,7 @@ def run(report_path):
         assert not any(hasattr(cv2, name) for name in ("imread", "imwrite", "VideoCapture", "imshow"))
         assert callable(cv2.SIFT_create) and callable(cv2.ximgproc.createEdgeDrawing)
         report["opencv"] = cv2.__version__
+        report["app_version"] = __version__
         report["libtiff"] = imagecodecs.tiff_version()
         report["checks"].append("bundled Python, Qt and private codec-free OpenCV")
 
@@ -103,6 +108,35 @@ def run(report_path):
         assert (output / "annotated.svg").stat().st_size > 10000
         assert window.grab().save(str(output / "application.png"))
         report["checks"].append("Qt demo project, editable annotations, save/reopen, PNG and SVG exports")
+
+        profiled = output / "linear-srgb.png"
+        midtone = np.full((24, 32, 3), 128, np.uint8)
+        Image.fromarray(midtone).save(profiled, icc_profile=bytes(QColorSpace(QColorSpace.NamedColorSpace.SRgbLinear).iccProfile()))
+        converted = display_srgb(midtone, profiled)
+        assert 185 <= converted.min() <= converted.max() <= 190 and np.all(midtone == 128)
+        y, x = np.mgrid[:180, :360]
+        dem_path = output / "synthetic-dem.npz"
+        np.savez(dem_path, height_km=(2*np.sin(x*.12)*np.cos(y*.08)).astype(np.float32),
+                 north=90, west=0, pixels_per_degree=1)
+        window.dem_path = str(dem_path)
+        window.art_style.setCurrentIndex(window.art_style.findData("manuscript"))
+        window.grid_spacing.setCurrentIndex(window.grid_spacing.findData(30))
+        window.apply_label_settings()
+        deadline = time.monotonic()+30
+        while window.busy and time.monotonic() < deadline:
+            application.processEvents()
+            time.sleep(.005)
+        assert not errors and not window.busy, [str(error) for error in errors]
+        assert window.map_layers.elevation is not None and window.map_layers.contours
+        assert window.project.art_style == "manuscript" and window.project.contour_interval == "auto"
+        window.elevation_opacity.setValue(65)
+        window.render_png(output / "art-annotated.png")
+        with Image.open(output / "art-annotated.png") as rendered:
+            assert rendered.size == (1600, 1450) and rendered.info.get("icc_profile") == srgb_profile_bytes()
+        export_svg(output / "art-annotated.svg", window.image, window.annotation_entries(), window.project,
+                   window.annotation_leaders(), layers=window.map_layers)
+        assert ET.parse(output / "art-annotated.svg").getroot().tag.endswith("svg")
+        report["checks"].append("ICC to sRGB conversion, art labels, asynchronous contours/grid and art PNG/SVG exports")
         try:
             import wgpu
         except ImportError:

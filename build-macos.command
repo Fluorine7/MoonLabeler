@@ -8,6 +8,7 @@ export MACOSX_DEPLOYMENT_TARGET=14.4
 export PYTHONUTF8=1
 export PYINSTALLER_CONFIG_DIR="$PWD/.cache/pyinstaller-macos"
 "$BUILD_PYTHON" -c 'import platform, sys; assert sys.platform == "darwin" and platform.machine() == "arm64"; assert sys.version_info >= (3, 12); import PyInstaller, astropy, wgpu; from moonlabeler._opencv import cv2; assert not hasattr(cv2, "imread")'
+"$BUILD_PYTHON" -c 'from importlib.metadata import version; from moonlabeler import __version__; assert version("moonlabeler") == __version__, "Install the current project in the packaging environment first"'
 "$BUILD_PYTHON" -c 'from datetime import datetime, timezone; from pathlib import Path; from moonlabeler.geometry import compute_geometry; compute_geometry(datetime(2026, 1, 1, tzinfo=timezone.utc), Path(".cache/ephemeris"))'
 mkdir -p build
 "$BUILD_PYTHON" tools/make_icon.py build/moonlabeler.icns --size 1024

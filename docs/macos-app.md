@@ -1,8 +1,8 @@
 # macOS Apple Silicon App
 
-The 0.9.0 source is available, but its installer build is deferred. The latest downloadable macOS app remains 0.8.0 and does not include the new 0.9.0 features.
+The 1.9.1 macOS app is built locally and distributed alongside the Windows x64 app built by GitHub Actions. Release attachments contain only the two app ZIPs; build intermediates and verification reports stay in local output or Actions artifacts.
 
-Download `MoonLabeler-0.8.0-macos-arm64.zip` from the [v0.8.0 release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0). Extract the whole archive, then open `MoonLabeler.app` or drag it into Applications. Requires an Apple Silicon Mac (M1 or newer) and macOS 14.4 or newer, including macOS 15. Intel Macs are not supported by this archive.
+Download `MoonLabeler-1.9.1-macos-arm64.zip` from the [v1.9.1 release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.1). Extract the whole archive, then open `MoonLabeler.app` or drag it into Applications. Requires an Apple Silicon Mac (M1 or newer) and macOS 14.4 or newer, including macOS 15. Intel Macs are not supported by this archive.
 
 The app includes CPython 3.12, Qt 6.12, the private codec-free OpenCV, FITS support, imagecodecs/libtiff, examples and all four JPL ephemeris kernels. Users do not install Python, Xcode or a compiler. Caches and preferences are stored in `~/Library/Caches/MoonLabeler`; the app does not write into its installation folder.
 
@@ -16,6 +16,6 @@ Inspect the actual PySide/Shiboken binaries: the initial 6.12.0 PyPI wheels had 
 
 Run `./build-macos.command /absolute/path/to/environment/bin/python`. The script validates the ephemeris, creates the icon, builds `dist/MoonLabeler.app`, checks every Mach-O dependency for ARM64 and a deployment target no newer than macOS 14.4, verifies code signatures and creates a ZIP using `ditto` to preserve bundle links. `LSMinimumSystemVersion` is 14.4; the binary checks independently enforce it for Python, Qt and every other included native library. The local build host can be newer than macOS 14.
 
-For a frozen functional check, run the bundled executable with `MOONLABELER_BUNDLE_CHECK=/absolute/path/to/report.json`, `QT_QPA_PLATFORM=offscreen` and `MOONLABELER_CACHE` pointing to an empty writable directory. This invokes a fixed bundled check, then exits with success/failure. It verifies bundled dependencies, offline geometry, manual mirrored and automatic SIFT registration, circular/elliptical crater rims, 16-bit RGB TIFF, FITS, example-project loading, annotation editing data, project roundtrip and PNG/SVG exports. Normal launches do not run this check.
+For a frozen functional check, run the bundled executable with `MOONLABELER_BUNDLE_CHECK=/absolute/path/to/report.json`, `QT_QPA_PLATFORM=offscreen` and `MOONLABELER_CACHE` pointing to an empty writable directory. This invokes a fixed bundled check, then exits with success/failure. It verifies bundled dependencies, offline geometry, manual mirrored and automatic SIFT registration, circular/elliptical crater rims, 16-bit RGB TIFF, FITS, example-project loading, annotation editing data, project roundtrip, ICC-to-sRGB conversion, asynchronous art-map layers and PNG/SVG exports. Normal launches do not run this check.
 
 The `macOS App compatibility` workflow downloads the **same locally built archive** and runs the frozen check and normal GUI startup on the standard macOS 14 and macOS 15 ARM64 runners. It does not compile or rebuild the app, install Python dependencies, or use larger paid runners. Its input SHA-256 pins the exact artifact under test. Reports distinguish these OS runs from verification on the local build host; they do not claim testing every Mac/GPU configuration.

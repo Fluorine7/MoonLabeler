@@ -2,7 +2,8 @@ name: Windows portable build
 
 # Builds the portable dist/MoonLabeler/MoonLabeler.exe with build-windows.ps1 (PyInstaller
 # one-folder build with the minimal OpenCV, JPL kernels and FITS support). The zip is kept
-# as a workflow artifact; pushing a v* tag also attaches it to that GitHub release.
+# as a workflow artifact; pushing a v* tag attaches only the app ZIP to a release
+# draft. Publish the draft after adding and validating the locally built macOS app.
 
 on:
   push:
@@ -69,13 +70,13 @@ jobs:
         run: python -m pip install --upgrade "pip>=26.2" "setuptools>=83" wheel "cmake>=3.31,<5" "ninja>=1.11,<2" "numpy>=2.5.4,<3" "certifi>=2026.10.19"
       - name: Build application wheel with minimal OpenCV
         run: python -m pip wheel --no-deps --no-build-isolation -w wheelhouse .
-      - name: Install the built wheel, FITS support and PyInstaller
+      - name: Install the built wheel, test dependencies, FITS support and PyInstaller
         shell: python
         run: |
           from pathlib import Path
           import subprocess, sys
           wheel = next(Path("wheelhouse").glob("*.whl")).resolve()
-          subprocess.check_call([sys.executable, "-m", "pip", "install", f"moonlabeler[fits] @ {wheel.as_uri()}", "pyinstaller>=6.22,<7"])
+          subprocess.check_call([sys.executable, "-m", "pip", "install", f"moonlabeler[dev,fits] @ {wheel.as_uri()}", "pyinstaller>=6.22,<7"])
       - name: Verify native modules, codecs, and linked libraries
         run: python native/verify_opencv.py --output native-verification.json
       - name: Record portable packaging dependencies
@@ -84,6 +85,10 @@ jobs:
         run: python -m pip install "pip-audit>=2.10.1,<3"
       - name: Audit portable packaging environment
         run: python -m pip_audit --disable-pip --no-deps -r portable-audit-requirements.txt
+      - name: Run source regression tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q
       - name: Read version
         id: version
         shell: pwsh
@@ -140,6 +145,7 @@ jobs:
             $report = Get-Content (Join-Path $evidence 'frozen-check.json') -Raw | ConvertFrom-Json
             if (-not $report.success) { throw 'Frozen check did not report success' }
             if ($report.python -ne '3.12.15') { throw "Unpatched Python in the EXE: $($report.python)" }
+            if ($report.app_version -ne '${{ steps.version.outputs.version }}') { throw "Wrong application version in the EXE: $($report.app_version)" }
             Copy-Item (Join-Path $evidence 'frozen-check.json') 'portable-frozen-verification.json'
           } finally {
             $env:PATH = $savedPath
@@ -238,75 +244,44 @@ jobs:
           path: portable
           run-id: ${{ steps.source.outputs.run_id }}
           github-token: ${{ github.token }}
-      - name: Publish user downloads and one checksum manifest
+      - name: Upload only the Windows app to the release draft
         shell: python
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.release_tag || github.ref_name }}
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
-          import hashlib, json, os, re, shutil, subprocess, time, tomllib
+          import hashlib, json, os, re, subprocess, tomllib
           from pathlib import Path
           repo, sha, tag = (os.environ[k] for k in ('GITHUB_REPOSITORY', 'SOURCE_SHA', 'TAG'))
-          version = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
+          version = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version']
           assert tag == 'v' + version
+          name = f'MoonLabeler-{version}-windows-x64.zip'
+          allowed = {name, f'MoonLabeler-{version}-macos-arm64.zip'}
+          archive = Path('portable') / 'dist' / name
+          checksum = archive.with_suffix('.zip.sha256').read_text(encoding='ascii').strip().split()
+          assert len(checksum) == 2 and checksum[1] == name and re.fullmatch('[0-9a-fA-F]{64}', checksum[0])
+          expected = checksum[0].lower()
+          with archive.open('rb') as stream:
+              assert hashlib.file_digest(stream, 'sha256').hexdigest() == expected, 'Downloaded artifact checksum mismatch'
           def gh(*args):
               return subprocess.check_output(['gh', *args], text=True)
-          deadline = time.monotonic() + 40 * 60
-          while time.monotonic() < deadline:
-              endpoint = f'repos/{repo}/actions/workflows/checks.yml/runs?head_sha={sha}&event=push&branch=main&per_page=5'
-              runs = json.loads(gh('api', endpoint))['workflow_runs']
-              if runs and runs[0]['status'] == 'completed':
-                  tests = runs[0]
-                  assert tests['conclusion'] == 'success', f"Release tests failed: {tests['html_url']}"
-                  break
-              time.sleep(20)
-          else:
-              raise RuntimeError('Timed out waiting for three-platform tests')
-          gh('run', 'download', str(tests['id']), '--repo', repo, '--pattern', 'minimal-opencv-*', '--dir', 'tested-wheels')
-          assets = Path('release-assets')
-          assets.mkdir()
-          wheels = list(Path('tested-wheels').glob('*/wheelhouse/*.whl'))
-          assert len(wheels) == 3 and len({w.parent.parent.name for w in wheels}) == 3
-          for wheel in wheels:
-              assert wheel.name.startswith(f'moonlabeler-{version}-')
-              # Linux has no standalone app; other wheels and verification reports
-              # remain in Actions artifacts instead of cluttering user downloads.
-              if wheel.name.endswith('-linux_x86_64.whl'):
-                  shutil.copyfile(wheel, assets/wheel.name)
-          assert len(list(assets.glob('*.whl'))) == 1, 'Expected the Linux install wheel'
-          name = f'MoonLabeler-{version}-windows-x64.zip'
-          portable = Path('portable')
-          checksum = (portable/'dist'/(name+'.sha256')).read_text().strip().split()
-          assert len(checksum) == 2 and checksum[1] == name and re.fullmatch('[0-9a-fA-F]{64}', checksum[0])
-          expected = {name: checksum[0].lower()}
-          shutil.copyfile(portable/'dist'/name, assets/name)
-          for path in assets.iterdir():
-              if path.name not in expected:
-                  with path.open('rb') as stream:
-                      expected[path.name] = hashlib.file_digest(stream, 'sha256').hexdigest()
-          manifest = ''.join(f'{digest}  {name}\n' for name, digest in sorted(expected.items()))
-          (assets/'SHA256SUMS').write_text(manifest, encoding='utf-8')
-          expected['SHA256SUMS'] = hashlib.sha256(manifest.encode()).hexdigest()
-          entry = Path('UPDATE_HISTORY.md').read_text().split(f'## {version}\n', 1)[1].split('\n## ', 1)[0].strip()
-          entry = re.sub(r'\]\((?!https?://|#)([^)]+)\)', lambda m: f'](https://github.com/{repo}/blob/{tag}/{m[1]})', entry)
-          intro = (f'## 下载 / Downloads\n\nWindows x64：下载 `{name}`，完整解压后运行 `MoonLabeler.exe`，保留 `_internal` 文件夹；无需安装 Python 或编译器。\n\n'
-              'Linux x64 的 wheel（Ubuntu CI 构建）需要 CPython 3.12 和兼容的系统运行库；使用 `python -m pip install <文件.whl>` 安装。构建报告、依赖清单和开发用 wheel 保留在 Actions 产物中。\n\n')
-          notes = Path('release-notes.md')
-          notes.write_text(intro + entry + f'\n\nSource: `{sha}`. [Release tests]({tests["html_url"]})\n', encoding='utf-8')
-          base = ['gh', 'release']
-          existing = subprocess.run(base + ['view', tag, '--repo', repo, '--json', 'isDraft'], text=True, capture_output=True)
+          existing = subprocess.run(['gh', 'release', 'view', tag, '--repo', repo, '--json', 'isDraft,assets'], text=True, capture_output=True)
           if existing.returncode == 0:
-              assert json.loads(existing.stdout)['isDraft'], 'Refusing to overwrite a published release'
+              release = json.loads(existing.stdout)
+              assert release['isDraft'], 'Refusing to overwrite a published release'
+              assert {a['name'] for a in release['assets']} <= allowed, 'Unexpected release attachment'
           else:
-              subprocess.check_call(base + ['create', tag, '--repo', repo, '--verify-tag', '--draft', '--title', f'MoonLabeler {version}', '--notes-file', str(notes)])
-          subprocess.check_call(base + ['upload', tag, '--repo', repo, '--clobber'] + [str(p) for p in sorted(assets.iterdir())])
+              entry = Path('UPDATE_HISTORY.md').read_text(encoding='utf-8').split(f'## {version}\n', 1)[1].split('\n## ', 1)[0].strip()
+              entry = re.sub(r'\]\((?!https?://|#)([^)]+)\)', lambda m: f'](https://github.com/{repo}/blob/{tag}/{m[1]})', entry)
+              notes = Path('release-notes.md')
+              notes.write_text(entry + f'\n\nSource: `{sha}`.\n', encoding='utf-8')
+              gh('release', 'create', tag, '--repo', repo, '--verify-tag', '--draft', '--title', f'MoonLabeler {version}', '--notes-file', str(notes))
+          gh('release', 'upload', tag, '--repo', repo, '--clobber', str(archive))
           releases = json.loads(gh('api', f'repos/{repo}/releases?per_page=100'))
           drafts = [r for r in releases if r['tag_name'] == tag and r['draft']]
           assert len(drafts) == 1, 'Expected one release draft'
-          release = drafts[0]
-          actual = {a['name']: a.get('digest') for a in release['assets']}
-          assert actual.keys() == expected.keys(), 'Incomplete release assets'
-          for name, digest in expected.items():
-              assert actual[name] == 'sha256:' + digest, f'Uploaded checksum mismatch: {name}'
-          subprocess.check_call(base + ['edit', tag, '--repo', repo, '--notes-file', str(notes), '--draft=false', '--latest'])
+          assets = {a['name']: a.get('digest') for a in drafts[0]['assets']}
+          assert name in assets and assets.keys() <= allowed, 'Unexpected release attachments'
+          assert assets[name] == 'sha256:' + expected, 'Uploaded checksum mismatch'
+          print('Verified Windows ZIP uploaded. Release remains a draft until both apps are ready.')

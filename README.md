@@ -10,9 +10,11 @@ Register your own lunar photographs, place editable terrain labels, and export a
 **1.9.1 · 2026-10-23:** 完善中世纪风与旷野主题、晨昏线和自动等高距；修复艺术标注缩放与交互卡顿，统一月盘外直排文字及拖动辅助线。导出沿用原照片文件名，PNG 转换并嵌入 sRGB。新增蔡明翰（Evan Tsai）的繁体中文与 Windows 修复贡献致谢。详见[本次更新](UPDATE_HISTORY.md#191)。
 Refines medieval and wilderness styling, terminators and automatic contour spacing; fixes art-canvas interaction and text scaling, straightens off-disc captions and keeps drag guides temporary. Exports use the photo's filename, and PNG output is converted to and tagged with sRGB. Credits Evan Tsai for Traditional Chinese support and Windows fixes. See the [release notes](UPDATE_HISTORY.md#191).
 
-**1.9.1 availability:** Source code is available; installer builds are deferred. The downloadable apps remain at 0.8.0 and do not include subsequent source updates.
+**1.9.1 downloads:** The [release](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.1) provides macOS Apple Silicon and Windows x64 app ZIPs. macOS is built locally; Windows is built with GitHub Actions. Only the two app packages are attached; intermediate wheels, logs and verification reports remain in Actions or local build output.
 
-**macOS App (0.8.0):** [Download v0.8.0](https://github.com/Fluorine7/MoonLabeler/releases/tag/v0.8.0), choose `MoonLabeler-0.8.0-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
+**macOS App (1.9.1):** [Download v1.9.1](https://github.com/Fluorine7/MoonLabeler/releases/tag/v1.9.1), choose `MoonLabeler-1.9.1-macos-arm64.zip`, extract and open `MoonLabeler.app` (or drag it into Applications). Supports **Apple Silicon, macOS 14.4+ / 15 and newer**; includes Python, Qt, FITS and offline ephemeris data. No Python/compiler installation is required. The app is ad-hoc signed, without Apple notarization; first launch may require approval in System Settings → Privacy & Security. See [macOS packaging and compatibility](docs/macos-app.md).
+
+**Windows x64 (1.9.1):** Download `MoonLabeler-1.9.1-windows-x64.zip` from the same release, extract the entire archive and run `MoonLabeler.exe`. Keep the `_internal` folder alongside it; no Python or compiler installation is required.
 
 ![MoonLabeler — explicitly synthetic editing example / 合成编辑示例](docs/moonlabeler.png)
 
