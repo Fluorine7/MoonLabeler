@@ -18,13 +18,16 @@ from PIL import Image, ImageColor
 
 from .geometry import Geometry, MOON_RADIUS_KM, surface_vectors
 from .sources import write_json, COMMON_FEATURES
+from .color_management import display_srgb, srgb_profile_bytes
 from .registration import transform_points
 from .eyepiece import distort_points, distortion_jacobian
 from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR, landing_marker_radius
 from .annotation_relief import catalogue_rim, contour_center, MIN_OUTLINE_DIAMETER_KM, MAX_HEIGHT_KM
 from .zh_variant import to_traditional
-from .annotation_style import ART_STYLES, appearance, manuscript_fonts, caption_ornament, diamond, svg_segments, svg_caption
-from .map_layers import GRID_SPACINGS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg
+from .annotation_style import (ART_STYLES, appearance, manuscript_fonts,
+                               svg_caption, caption_typography, placed_caption_typography,
+                               caption_text, caption_span, svg_serif_family, photo_for_style)
+from .map_layers import GRID_SPACINGS, CONTOUR_INTERVALS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg
 
 # Label name language choices shown in the UI and accepted in project files.
 LANGUAGE_CHOICES = ("双语", "英文", "中文", "繁体中文", "双语（繁体）")
@@ -47,6 +50,12 @@ def label_font_families(language="双语", platform=None, *, art_style="standard
     traditional = language in TRADITIONAL_LANGUAGES
     if art_style == "manuscript":
         return manuscript_fonts(traditional, platform)
+    if art_style == "topographic":
+        if platform == "darwin":
+            return ["Avenir Next", "Helvetica Neue", "PingFang TC" if traditional else "PingFang SC"]
+        if platform == "win32":
+            return ["Segoe UI", "Microsoft JhengHei" if traditional else "Microsoft YaHei"]
+        return ["DejaVu Sans", "Noto Sans CJK TC" if traditional else "Noto Sans CJK SC"]
     if platform == "darwin":
         return ["PingFang TC" if traditional else "PingFang SC", "PingFang SC", "Hiragino Sans"]
     if platform == "win32":
@@ -156,20 +165,26 @@ def _validate_project_data(data):
     if 'font_step_percent' in style:
         _number(style['font_step_percent'], 'style.font_step_percent', 0, 100)
     for key in ('illuminated_only', 'optimize_layout', 'crater_outlines', 'show_landing_sites',
-                'elevation_enabled', 'map_lit_only'):
+                'elevation_enabled', 'contour_enabled', 'terminator_enabled'):
         if key in style and type(style[key]) is not bool:
             _invalid_field(f'style.{key}')
     for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color', 'font_weight',
-                'art_style', 'elevation_palette'):
+                'art_style', 'elevation_palette', 'terminator_source'):
         if key in style and not isinstance(style[key], str):
             _invalid_field(f'style.{key}')
     if 'grid_spacing' in style:
         _number(style['grid_spacing'], 'style.grid_spacing', 0, 30, integer=True)
         if style['grid_spacing'] not in GRID_SPACINGS:
             _invalid_field('style.grid_spacing')
-    for key in ('grid_opacity', 'elevation_opacity'):
+    if 'contour_interval' in style and style['contour_interval'] != 'auto':
+        _number(style['contour_interval'], 'style.contour_interval', .25, 2)
+        if style['contour_interval'] not in CONTOUR_INTERVALS:
+            _invalid_field('style.contour_interval')
+    for key in ('grid_opacity', 'elevation_opacity', 'contour_opacity', 'terminator_opacity'):
         if key in style:
             _number(style[key], f'style.{key}', 0, 1)
+    if style.get('terminator_source', 'photo') not in ('photo', 'ephemeris'):
+        _invalid_field('style.terminator_source')
     if 'language' in style and style['language'] not in LANGUAGE_CHOICES:
         _invalid_field('style.language')
     if 'color' in style:
@@ -347,7 +362,12 @@ class Project:
     elevation_enabled: bool = False
     elevation_opacity: float = .35
     elevation_palette: str = "terrain"
-    map_lit_only: bool = True
+    contour_enabled: bool = False
+    contour_interval: float | str = "auto"
+    contour_opacity: float = .65
+    terminator_enabled: bool = False
+    terminator_opacity: float = 1.
+    terminator_source: str = "photo"
 
     def photo_points(self, points):
         """Map projected lunar coordinates into untouched photograph pixels."""
@@ -376,6 +396,23 @@ class Project:
         needed when changing typography. Long formations use catalogue extent.
         """
         sizes = self.font_sizes(shape)
+        if self.art_style == "manuscript":
+            result = {}
+            for f in features:
+                typography = caption_typography(self, f)
+                extent = min(shape[:2])*.68
+                if typography.region and self.matrix is not None and self.geometry is not None and all(key in f for key in ('lat', 'lon', 'diameter')):
+                    depth = float(surface_vectors([f['lat']], [f['lon']])[0] @ self.geometry.observer)
+                    scale = np.sqrt(abs(np.linalg.det(self.matrix[:, :2])))
+                    apparent = f['diameter']*scale/MOON_RADIUS_KM*np.sqrt(max(.05, depth))
+                    extent = min(extent, max(self.font_size*5, apparent*.95))
+                maximum = extent/max(1., caption_span(caption_text(self, f), typography))
+                result[f['id']] = max(8, round(min(self.font_size*typography.scale, maximum)))
+            return result
+        if self.art_style == "topographic":
+            return {f['id']: max(10, round(self.font_size*(.68 if f.get('kind') == 'Satellite Feature'
+                        or re.search(r'\s[A-Z]$', f['name']) else .8 if is_landing_site(f)
+                        else 1.25 if f.get('diameter', 0) >= 80 else 1.))) for f in features}
         result = {feature['id']: sizes[-1] if is_landing_site(feature) else self.font_size for feature in features}
         if self.font_step_percent == 0 or self.geometry is None or self.matrix is None:
             return result
@@ -405,6 +442,8 @@ class Project:
         return result
 
     def label_color(self, feature):
+        if self.art_style == "topographic" and (feature.get('kind') == 'Satellite Feature' or re.search(r'\s[A-Z]$', feature['name'])):
+            return "#d5c798"
         return appearance(self, landing=is_landing_site(feature)).text
 
     def save(self, path):
@@ -424,7 +463,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": _portable_path(self.terrain_path, base) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "map_lit_only")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source")}}
         write_json(path, data)
 
     @classmethod
@@ -457,7 +496,7 @@ class Project:
         project.font_percent = None  # Older projects only store a pixel size.
         project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "map_lit_only"):
+            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
@@ -681,7 +720,7 @@ class Project:
         Catalogue diameter describes a reference outline, not a detected rim.
         Hidden hemisphere arcs are separated so limb contours cannot connect.
         """
-        if not self.crater_outlines or self.geometry is None or self.matrix is None:
+        if self.art_style in ("topographic", "manuscript") or not self.crater_outlines or self.geometry is None or self.matrix is None:
             return []
         if feature["kind"] not in ("Crater, craters", "Satellite Feature"):
             return []
@@ -707,25 +746,29 @@ class Project:
         return segments
 
 
-def export_svg(path, image, entries, project, leaders=None, *, layers=None):
+def export_svg(path, image, entries, project, leaders=None, *, layers=None, display_image=None):
     entries = list(entries)
     font_sizes = project.label_font_sizes([feature for feature, _, _ in entries], image.shape)
     buffer = io.BytesIO()
-    Image.fromarray(image).save(buffer, format="PNG")
+    display_image = display_srgb(image, project.image_path) if display_image is None else display_image
+    Image.fromarray(photo_for_style(display_image, project.art_style)).save(buffer, format="PNG", icc_profile=srgb_profile_bytes())
     embedded = base64.b64encode(buffer.getvalue()).decode("ascii")
     h, w = image.shape[:2]
     lines = [f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{w}" height="{h}" viewBox="0 0 {w} {h}">',
              '<title>MoonLabeler annotated photograph</title>',
              f'<image id="photograph" width="{w}" height="{h}" xlink:href="data:image/png;base64,{embedded}"/>']
-    if project.grid_spacing or project.elevation_enabled:
+    if project.grid_spacing or project.elevation_enabled or project.contour_enabled or project.terminator_enabled:
         layers = build_map_layers(project, image.shape, image=image) if layers is None else layers
         lines.extend(layers_svg(project, image.shape, layers))
-        if project.elevation_enabled:
-            lines.extend(legend_svg(project, image.shape))
+        if project.elevation_enabled or project.contour_enabled:
+            lines.extend(legend_svg(project, image.shape, contour_interval=layers.contour_interval))
     generic = "serif" if project.art_style == "manuscript" else "sans-serif"
-    lines.append('<g id="annotations" font-family="{}, {}" font-weight="{}">'.format(
-        escape(", ".join(label_font_families(project.language, art_style=project.art_style)), {'"': '&quot;'}),
-        generic, appearance(project).weight))
+    families = label_font_families(project.language, art_style=project.art_style)
+    # Qt SVG treats a comma-separated font-family attribute as one literal
+    # family. A single serif family keeps its glyphs aligned with native arcs.
+    family = svg_serif_family(families) if project.art_style == "manuscript" else ", ".join(families)+", "+generic
+    lines.append('<g id="annotations" font-family="{}" font-weight="{}">'.format(
+        escape(family, {'"': '&quot;'}), appearance(project).weight))
     for index, (feature, anchor, position) in enumerate(entries):
         fid = escape(feature["id"], {'"': '&quot;'})
         color = escape(project.label_color(feature), {'"': '&quot;'})
@@ -734,6 +777,8 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None):
         ax, ay = anchor
         x, y = position
         font_size = font_sizes[feature['id']]
+        text = caption_text(project, feature)
+        typography = placed_caption_typography(project, feature, text, font_size, position)
         line = (leaders or {}).get(feature["id"], (ax, ay, x, y+font_size/2))
         lines.append(f'<g id="feature-{fid}">')
         outline = project.crater_outline(feature, image.shape)
@@ -743,18 +788,18 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None):
         if is_landing_site(feature):
             radius = landing_marker_radius(font_size)
             marker = f'<path class="landing-marker" d="M {ax-radius:.3f},{ay:.3f} H {ax+radius:.3f} M {ax:.3f},{ay-radius:.3f} V {ay+radius:.3f}" stroke="{line_color}" stroke-width="{max(1.2, font_size*.045):.3f}" fill="none"/>'
-        elif style.ornament:
-            marker = '' if outline else f'<path class="manuscript-marker" d="{svg_segments([diamond(ax, ay, max(3., font_size*.14))])} Z" fill="{line_color}"/>'
         else:
             marker = '' if outline else f'<circle cx="{ax:.3f}" cy="{ay:.3f}" r="{max(2.5, font_size*.06):.3f}" fill="{color}"/>'
+        leader = f'<path d="M {line[0]:.3f},{line[1]:.3f} L {line[2]:.3f},{line[3]:.3f}" stroke="{line_color}" stroke-width="{max(1.2, font_size*.035):.3f}" fill="none"/>'
+        if style.map_style and not is_landing_site(feature):
+            marker = ''
+            leader = ''
         lines.extend([
-                      f'<path d="M {line[0]:.3f},{line[1]:.3f} L {line[2]:.3f},{line[3]:.3f}" stroke="{line_color}" stroke-width="{max(1.2, font_size*.035):.3f}" fill="none"/>',
+                      leader,
                       marker,
-                      svg_caption(project.label_text(feature), x, y+font_size, font_size,
+                      svg_caption(text, x, y+font_size, font_size,
                                   color, style.halo, style.halo_width(font_size), f'label-text-{index}',
-                                  face_width=style.face_width(font_size))])
-        if style.ornament:
-            lines.append(f'<path class="caption-ornament" transform="translate({x:.3f} {y:.3f})" d="{svg_segments(caption_ornament(font_size))}" fill="none" stroke="{line_color}" stroke-width="{max(.7, font_size*.025):.3f}"/>')
+                                  face_width=style.face_width(font_size), typography=typography)])
         lines.append('</g>')
     lines.append('</g>')
     lines.append('</svg>')

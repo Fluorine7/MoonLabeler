@@ -4,7 +4,7 @@ import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 import pytest
 from PySide6.QtCore import Qt, QPoint, QPointF, QEvent
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtGui import QFocusEvent, QMouseEvent
 from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 from moonlabeler.app import Canvas, Annotation
@@ -97,3 +97,65 @@ def test_wheel_over_label_zooms_without_moving_it(view):
     QApplication.sendEvent(canvas.viewport(), event)
     assert canvas.transform().m11() > scale
     assert label.pos() == original and not moves
+
+
+@pytest.mark.parametrize('style', ['manuscript', 'topographic'])
+def test_art_drag_keeps_leader_visibility_when_the_position_is_saved(style):
+    from moonlabeler.app import MainWindow
+    app = QApplication.instance() or QApplication([])
+    win = MainWindow()
+    try:
+        win.resize(1200, 700)
+        win.project = Project(art_style=style)
+        canvas = win.canvas
+        canvas.setSceneRect(0, 0, 2000, 1600)
+        win.rebuilding = True
+        label = Annotation({'id': 'test', 'name': 'Tycho'}, (850, 700), 'Tycho', win.project,
+                           win.move_label, win.edit_label)
+        canvas.scene().addItem(label)
+        canvas.scene().addItem(label.line)
+        label.setPos(950, 780)
+        win.annotation_items = [label]
+        win.rebuilding = False
+        win.show()
+        canvas.centerOn(1000, 800)
+        app.processEvents()
+        visible = label.line.isVisible()
+        original = label.pos()
+        start = point(canvas, label)
+        mouse(canvas, QEvent.Type.MouseButtonPress, start)
+        mouse(canvas, QEvent.Type.MouseMove, start+QPoint(40, 20))
+        mouse(canvas, QEvent.Type.MouseButtonRelease, start+QPoint(40, 20))
+        assert label.pos() == original and not win.project.labels
+        assert label.line.isVisible() == visible
+        start = point(canvas, label)
+        mouse(canvas, QEvent.Type.MouseButtonPress, start, CTRL)
+        assert label.line.isVisible(), 'Dragging should temporarily identify the formation'
+        mouse(canvas, QEvent.Type.MouseMove, start+QPoint(40, 20), CTRL)
+        assert label.line.isVisible()
+        label.set_export_mode(True)
+        assert label.line.isVisible() == visible, 'The locator must not leak into an export mid-drag'
+        label.set_export_mode(False)
+        assert label.line.isVisible()
+        mouse(canvas, QEvent.Type.MouseButtonRelease, start+QPoint(40, 20), CTRL)
+        assert label.pos() == original+QPointF(40, 20)
+        assert win.project.labels['test']['position'] == [label.pos().x(), label.pos().y()]
+        assert label.line.isVisible() == visible
+        start = point(canvas, label)
+        mouse(canvas, QEvent.Type.MouseButtonPress, start, CTRL)
+        mouse(canvas, QEvent.Type.MouseMove, start+QPoint(10, 0), NONE)
+        assert label.line.isVisible() == visible, 'Releasing Cmd while moving ends the locator'
+        mouse(canvas, QEvent.Type.MouseButtonRelease, start+QPoint(10, 0), NONE)
+        mouse(canvas, QEvent.Type.MouseButtonPress, start, CTRL)
+        assert label.line.isVisible()
+        QTest.keyRelease(canvas, Qt.Key.Key_Control)
+        assert label.line.isVisible() == visible, 'Releasing Cmd without moving also ends the locator'
+        mouse(canvas, QEvent.Type.MouseButtonRelease, start, NONE)
+        mouse(canvas, QEvent.Type.MouseButtonPress, start, CTRL)
+        assert label.line.isVisible()
+        app.sendEvent(canvas, QFocusEvent(QEvent.Type.FocusOut))
+        assert label.line.isVisible() == visible
+        mouse(canvas, QEvent.Type.MouseButtonRelease, start, NONE)
+    finally:
+        win.dirty = False
+        win.close()

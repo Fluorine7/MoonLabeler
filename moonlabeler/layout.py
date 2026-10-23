@@ -20,6 +20,7 @@ class LabelBox:
     force: bool = False
     outline: list | None = None
     important: bool = False  # Reserve space before ordinary automatic labels.
+    region: bool = False  # Cartographic place names may sit on their own formation.
 
 
 def rect_intersects(first, second, padding=0.):
@@ -99,6 +100,8 @@ def segments_cross(first, second):
 def candidate_boxes(label, gap, *, extended=False):
     """Sixteen directions at each of three local distances."""
     ax, ay = label.anchor
+    if label.region and not extended:
+        yield (ax-label.width/2, ay-label.height/2, label.width, label.height)
     # Begin with diagonals for compact captions, then cardinal directions.
     angles = [45, -45, 135, -135, 0, 180, 90, -90,
               22.5, -22.5, 157.5, -157.5, 67.5, -67.5, 112.5, -112.5]
@@ -211,7 +214,8 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None, obstacles=
             x, y, w, h = rect
             if x < gap or y < gap or x+w > width-gap or y+h > height-gap:
                 continue
-            line = leader_segment(label.anchor, rect, outline=label.outline)
+            line = ((*label.anchor, *label.anchor) if label.region and x <= label.anchor[0] <= x+w and y <= label.anchor[1] <= y+h
+                    else leader_segment(label.anchor, rect, outline=label.outline))
             lx, ly, lw, lh = _line_bounds(line)
             # All intersections and the capped clearance reward lie inside
             # this neighborhood. Distant captions cannot affect the decision.
@@ -222,7 +226,7 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None, obstacles=
             # querying marker/leader grids or constructing those lists.
             if not label.force and any(rect_intersects(rect, old, gap*.65) for old in other_rects):
                 continue
-            nearby_markers = marker_index.near(neighborhood, 3*gap)
+            nearby_markers = marker_index.near(neighborhood, 3*gap, label.key if label.region else None)
             own_marker = markers.get(label.key)
             other_markers = [marker for marker in nearby_markers if marker is not own_marker]
             # Captions cannot hide their own center, or other selected centers.

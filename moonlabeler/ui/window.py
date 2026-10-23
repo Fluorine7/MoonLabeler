@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 )
 from .capture import CaptureField
 from ..project import LANGUAGE_CHOICES
+from ..map_layers import CONTOUR_INTERVALS
 from ..i18n import tr, trf
 
 # Qt's ControlModifier is Command on macOS.
@@ -366,6 +367,11 @@ class WindowUiMixin:
         self.canvas.addAction(escape)
 
     # ------------------------------------------------------------------ sidebar
+    def set_map_layer_status(self, message="", *, terminator=False):
+        label = self.terminator_status if terminator else self.map_layer_status
+        label.setText(message)
+        label.setVisible(bool(message))
+
     def update_map_controls(self, *args):
         original = self.art_style.currentData() == "standard"
         self.font_weight.setEnabled(original)
@@ -374,6 +380,27 @@ class WindowUiMixin:
         self.grid_opacity.setEnabled(bool(self.grid_spacing.currentData()))
         self.elevation_opacity.setEnabled(self.elevation_toggle.isChecked())
         self.elevation_palette.setEnabled(self.elevation_toggle.isChecked())
+        self.contour_interval.setEnabled(self.contour_toggle.isChecked())
+        self.contour_opacity.setEnabled(self.contour_toggle.isChecked())
+        self.terminator_opacity.setEnabled(self.terminator_toggle.isChecked())
+        self.terminator_source.setEnabled(self.terminator_toggle.isChecked())
+
+    def select_art_style(self, *args):
+        if self.rebuilding:
+            return
+        style = self.art_style.currentData()
+        if style in ("topographic", "manuscript"):
+            self.rebuilding = True
+            try:
+                self.elevation_palette.setCurrentIndex(self.elevation_palette.findData("wilderness" if style == "topographic" else "antique"))
+                self.elevation_toggle.setChecked(True)
+                self.contour_toggle.setChecked(True)
+                self.elevation_opacity.setValue(100 if style == "topographic" else 72)
+                self.contour_opacity.setValue(75 if style == "topographic" else 48)
+            finally:
+                self.rebuilding = False
+        self.update_map_controls()
+        self.style_changed()
 
     def build_sidebar(self):
         self.sidebar = QWidget()
@@ -755,9 +782,9 @@ class WindowUiMixin:
         map_styles_box.addLayout(form)
         self.art_style = self.ui_combo()
         self.art_style.addItem(tr("原始标注"), "standard")
-        self.art_style.addItem(tr("中世纪手抄本"), "manuscript")
+        self.art_style.addItem(tr("中世纪风"), "manuscript")
+        self.art_style.addItem(tr("旷野地形图"), "topographic")
         form.addRow(tr("艺术样式"), self.art_style)
-        form.addRow(self.ui_note(tr("手抄本使用衬线字体、羊皮纸色文字与暖金纹饰；原始配色和字重保留，切回即可恢复。")))
         self.grid_spacing = self.ui_combo()
         self.grid_spacing.addItem(tr("关闭"), 0)
         for degrees in (10, 15, 30):
@@ -765,19 +792,37 @@ class WindowUiMixin:
         form.addRow(tr("月面经纬网"), self.grid_spacing)
         self.grid_opacity, opacity_row = self.ui_percent_slider(round(self.project.grid_opacity*100), tr("网格不透明度"))
         form.addRow(tr("网格不透明度"), opacity_row)
+        self.terminator_toggle = QCheckBox(tr("叠加晨昏线"))
+        form.addRow(self.terminator_toggle)
+        self.terminator_source = self.ui_combo()
+        self.terminator_source.addItem(tr("照片估计"), "photo")
+        self.terminator_source.addItem(tr("工程时间（理论）"), "ephemeris")
+        form.addRow(tr("晨昏线依据"), self.terminator_source)
+        self.terminator_opacity, opacity_row = self.ui_percent_slider(round(self.project.terminator_opacity*100), tr("晨昏线不透明度"))
+        form.addRow(tr("晨昏线不透明度"), opacity_row)
+        self.terminator_status = self.ui_note("")
+        self.terminator_status.hide()
+        form.addRow(self.terminator_status)
         self.elevation_toggle = QCheckBox(tr("叠加高程着色"))
         form.addRow(self.elevation_toggle)
         self.elevation_palette = self.ui_combo()
         self.elevation_palette.addItem(tr("地形色"), "terrain")
         self.elevation_palette.addItem(tr("靛蓝与古金"), "antique")
+        self.elevation_palette.addItem(tr("旷野橄榄棕"), "wilderness")
         form.addRow(tr("高程配色"), self.elevation_palette)
         self.elevation_opacity, opacity_row = self.ui_percent_slider(round(self.project.elevation_opacity*100), tr("高程不透明度"))
         form.addRow(tr("高程不透明度"), opacity_row)
-        self.map_lit_only = QCheckBox(tr("地图图层仅覆盖受光面"))
-        self.map_lit_only.setToolTip(tr("优先依据照片中的亮地形，保留亮坑缘内的暗坑底；无照片时使用工程的太阳方向。"))
-        self.map_lit_only.setChecked(True)
-        form.addRow(self.map_lit_only)
-        form.addRow(self.ui_note(tr("颜色表示相对 1737.4 km 参考球面的高度，不是温度；细节受 DEM 分辨率限制。图层随 PNG / SVG 导出。")))
+        self.contour_toggle = QCheckBox(tr("叠加等高线"))
+        form.addRow(self.contour_toggle)
+        self.contour_interval = self.ui_combo()
+        self.contour_interval.addItem(tr("自动"), "auto")
+        for interval in CONTOUR_INTERVALS:
+            self.contour_interval.addItem(f"{interval:g} km", interval)
+        self.contour_interval.setCurrentIndex(self.contour_interval.findData(self.project.contour_interval))
+        self.contour_interval.setToolTip(tr("按真实月面高程生成，每五条加粗；细节受 DEM 分辨率限制。"))
+        form.addRow(tr("等高距"), self.contour_interval)
+        self.contour_opacity, opacity_row = self.ui_percent_slider(round(self.project.contour_opacity*100), tr("等高线不透明度"))
+        form.addRow(tr("等高线不透明度"), opacity_row)
         dem_row = QHBoxLayout()
         download = QPushButton(tr("下载基础高程"))
         download.clicked.connect(self.download_dem)
@@ -787,7 +832,8 @@ class WindowUiMixin:
         dem_row.addWidget(download)
         dem_row.addWidget(load_dem)
         form.addRow(dem_row)
-        self.map_layer_status = self.ui_note(tr("图层默认关闭；调整后点击“重新生成标注”。"))
+        self.map_layer_status = self.ui_note("")
+        self.map_layer_status.hide()
         form.addRow(self.map_layer_status)
         self.apply_map_styles_button = QPushButton(tr("应用样式与图层"))
         self.apply_map_styles_button.setProperty("primary", True)
@@ -874,12 +920,15 @@ class WindowUiMixin:
         self.color_button.clicked.connect(self.choose_color)
         form.addRow(self.color_button)
         labels_layout.addWidget(group)
-        for control in (self.art_style, self.grid_spacing, self.elevation_palette):
+        self.art_style.currentIndexChanged.connect(self.select_art_style)
+        for control in (self.grid_spacing, self.elevation_palette, self.contour_interval, self.terminator_source):
             control.currentIndexChanged.connect(self.update_map_controls)
             control.currentIndexChanged.connect(self.style_changed)
         self.grid_opacity.valueChanged.connect(lambda value: self.map_opacity_changed("grid_opacity", value))
         self.elevation_opacity.valueChanged.connect(lambda value: self.map_opacity_changed("elevation_opacity", value))
-        for control in (self.elevation_toggle, self.map_lit_only):
+        self.contour_opacity.valueChanged.connect(lambda value: self.map_opacity_changed("contour_opacity", value))
+        self.terminator_opacity.valueChanged.connect(lambda value: self.map_opacity_changed("terminator_opacity", value))
+        for control in (self.elevation_toggle, self.contour_toggle, self.terminator_toggle):
             control.toggled.connect(self.update_map_controls)
             control.toggled.connect(self.style_changed)
         self.update_map_controls()

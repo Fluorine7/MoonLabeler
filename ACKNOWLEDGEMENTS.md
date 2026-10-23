@@ -2,9 +2,13 @@
 
 MoonLabeler 作者：**Fluorine Zhu**。本项目代码采用 **GPL-3.0-or-later**，完整许可见 [LICENSE](LICENSE)；第三方代码与数据的原有条款见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
+感谢 **蔡明翰（[Evan Tsai](https://www.facebook.com/mjrt.mj)）** 贡献繁体中文支持及 Windows 部分问题修复。
+
 感谢 **樊仕达（10deg）** 提供 **moonlib** 代码，作为本项目月面几何研究与实现的参考，并持续提供 **LPND 中文地名与综合月面地貌资料**，包括 2026-10-16 的 `lunar_nomenclature(1).json` 更新。
 
 同时感谢他指出标注的地形高程问题。[Tsukikage 1.4.0 的边缘标注修正](https://github.com/10deg/tsukikage/commit/88c0353883864d6d3556e85625852f57415908c7)启发了 0.7.11 的高程快照和坑缘视觉中心修正。MoonLabeler 复用自身已有的 LOLA 采样、投影、连续坑缘及椭圆拟合代码，独立实现最终标注修正；未复制其标注源码。目录圆周加高程仍是参考轮廓，不等同于识别到真实坑壁。
+
+感谢樊仕达提出旷野之息等高线风格的建议。“旷野地形图”主题参考 [Zelda Dungeon 的 Breath of the Wild 交互地图](https://www.zeldadungeon.net/breath-of-the-wild-interactive-map/)的橄榄棕底色、深色等高线和浅色地名层次。月面曲线由 MoonLabeler 根据 LOLA DEM 独立生成，未使用游戏地图、图标、字体或纹理资源。
 
 向 **Jim Mosher 与 Henrik Bondo** 致敬。他们创建的 **Lunar Terminator Visualization Tool（LTVT）** 将月面几何、已知地形校准和高程光照模拟带给了业余观测者。
 
@@ -51,6 +55,7 @@ Lommel–Seeliger 使用 `cos(i) / (cos(i) + cos(e))`；Lambert 使用 `max(cos(
 
 MoonLabeler is authored by **Fluorine Zhu** and released under **GNU GPL version 3 or later**. We gratefully acknowledge the researchers, amateur astronomers, software developers, and data teams whose open work made this project possible.
 
+- **蔡明翰 ([Evan Tsai](https://www.facebook.com/mjrt.mj)):** Contributed Traditional Chinese support and fixes for several Windows issues.
 - **Jim Mosher and Henrik Bondo — LTVT:** Their work inspired the known-terrain calibration and DEM lighting workflows. MoonLabeler independently implements these ideas in Python / Qt; it does not include LTVT Delphi source. See the [LTVT archive](https://github.com/pavolgaj/ltvt) and the calibration and DEM references above.
 - **Ram Maruboina — Lunar Crater Detector:** Parts of the OpenCV preprocessing, ellipse-fitting, and Hough-circle approach were adapted from the fixed MIT-licensed version linked above. The original copyright and full MIT permission notice are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - **C. Akinlar, C. Topal, and OpenCV contributors:** EdgeDrawing / EDCircles provides partial-edge grouping and ellipse detection. This is image geometry detection, not lunar place-name identification.

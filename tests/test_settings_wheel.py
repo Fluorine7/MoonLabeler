@@ -23,6 +23,8 @@ def window():
     win.map_styles_toggle.setChecked(True)
     win.grid_spacing.setCurrentIndex(win.grid_spacing.findData(15))
     win.elevation_toggle.setChecked(True)
+    win.contour_toggle.setChecked(True)
+    win.terminator_toggle.setChecked(True)
     win.show()
     application.processEvents()
     yield win
@@ -42,7 +44,7 @@ def wheel(widget, delta=120, *, touchpad=False):
 
 @pytest.mark.parametrize("field", ["font_size", "ui_font_step", "grid_opacity", "elevation_opacity",
                                    "diameter", "maximum", "art_style", "grid_spacing",
-                                   "elevation_palette", "language", "font_weight"])
+                                   "elevation_palette", "contour_interval", "contour_opacity", "terminator_opacity", "terminator_source", "language", "font_weight"])
 @pytest.mark.parametrize("focused", [False, True])
 def test_wheel_over_setting_never_changes_value(window, field, focused):
     control = getattr(window, field)

@@ -1,11 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2026 Fluorine Zhu
 """Qt presentation of the same geographic overlays exported to SVG."""
+import math
+from dataclasses import dataclass
 from PySide6.QtCore import Qt, QRectF, QPointF
-from PySide6.QtGui import QColor, QFont, QFontMetricsF, QImage, QPainterPath, QPen, QPixmap, QTransform
+from PySide6.QtGui import QColor, QFont, QFontMetricsF, QImage, QPainter, QPainterPath, QPen, QPixmap, QTransform
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsPixmapItem, QGraphicsPathItem
 
-from ..map_layers import grid_color, legend_rect, legend_image
+from ..map_layers import (grid_color, grid_appearance, grid_dashes, legend_rect, legend_image,
+                          legend_title, contour_appearance, terminator_appearance, terminator_dashes, line_strokes)
 
 
 def path_from_segments(segments):
@@ -18,10 +21,12 @@ def path_from_segments(segments):
 
 
 class ElevationLegend(QGraphicsItem):
-    def __init__(self, shape, palette):
+    def __init__(self, shape, project, contour_interval=None):
         super().__init__()
         self.rect = QRectF(*legend_rect(shape))
-        self.ramp = array_image(legend_image(shape, palette))
+        self.project = project
+        self.contour_interval = project.contour_interval if contour_interval is None else contour_interval
+        self.ramp = array_image(legend_image(shape, project.elevation_palette))
         self.setZValue(6)
         self.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
 
@@ -32,14 +37,24 @@ class ElevationLegend(QGraphicsItem):
         x, y, w, h = self.rect.getRect()
         u = h/6
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(16, 21, 29, 235))
+        painter.setBrush(QColor(55, 47, 27, 225) if self.project.art_style == "topographic" else QColor(16, 21, 29, 235))
+        if self.project.art_style == "topographic":
+            painter.setPen(QPen(QColor("#968454"), max(.5, u*.045)))
         painter.drawRoundedRect(self.rect, u*.4, u*.4)
-        painter.drawImage(QRectF(x+u, y+u*2.2, w-2*u, u), self.ramp)
-        font = QFont("serif")
+        if self.project.elevation_enabled:
+            painter.drawImage(QRectF(x+u, y+u*2.2, w-2*u, u), self.ramp)
+        font = QFont("sans-serif" if self.project.art_style == "topographic" else "serif")
         font.setPixelSize(max(1, round(u)))
         painter.setFont(font)
         painter.setPen(QColor("#f0ece1"))
-        painter.drawText(QPointF(x+u, y+u*1.5), "LOLA · km (R = 1737.4 km)")
+        painter.drawText(QPointF(x+u, y+u*1.5), legend_title(self.project, self.contour_interval))
+        if not self.project.elevation_enabled:
+            painter.setPen(QPen(QColor("#c5bb82"), max(1., u*.12)))
+            painter.drawLine(QPointF(x+u, y+u*2.7), QPointF(x+w-u, y+u*2.7))
+            painter.setPen(QColor("#f0ece1"))
+            index = f"Index: {self.contour_interval*5:g} km · " if self.contour_interval != "auto" else ""
+            painter.drawText(QPointF(x+u, y+u*4.8), f"{index}R = 1737.4 km")
+            return
         metrics = QFontMetricsF(font)
         for start, text in ((x+u, "≤ −9"), (x+w/2-metrics.horizontalAdvance("0")/2, "0"),
                             (x+w-u-metrics.horizontalAdvance("≥ +9"), "≥ +9")):
@@ -54,6 +69,121 @@ class GridCaption(QGraphicsPathItem):
         painter.fillPath(self.path(), self.brush())
 
 
+@dataclass
+class MapPreview:
+    source_size: tuple
+    size: tuple
+    paths: list
+    image: QImage
+
+
+def rasterize_map_paths(paths, source_size, size):
+    """QImage painting is thread-safe; no scene items or QPixmaps in this work."""
+    image = QImage(*size, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(image)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.scale(size[0]/source_size[0], size[1]/source_size[1])
+    for path, style in paths:
+        dashes = style[3] if len(style) > 3 else ()
+        for ink, width, alpha in line_strokes(*style[:3]):
+            color = QColor(ink)
+            color.setAlphaF(alpha)
+            pen = QPen(color, width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+            if dashes:
+                pen.setDashPattern([distance/width for distance in dashes])
+            painter.strokePath(path, pen)
+    painter.end()
+    return image
+
+
+def prepare_contour_preview(project, shape, contours):
+    h, w = shape[:2]
+    # Separate disconnected isolines: stroking thousands of islands in one
+    # compound path makes the rasterizer spend seconds resolving overlaps.
+    paths = [(path_from_segments([segment]), contour_appearance(shape, line.major, project.art_style))
+             for line in contours for segment in line.segments]
+    scale = min(1., (ContourLayer.MAX_PREVIEW_PIXELS/(w*h))**.5)
+    size = (max(1, round(w*scale)), max(1, round(h*scale)))
+    return MapPreview((w, h), size, paths, rasterize_map_paths(paths, (w, h), size))
+
+
+class ContourLayer(QGraphicsItem):
+    """Retain vector geometry but composite a bounded preview during interaction.
+
+    Complex round joins are expensive to rasterize for every mouse movement.
+    Opacity and view transforms reuse this image; PNG export temporarily draws
+    the same geometry at the photograph's original resolution. SVG continues to
+    use MapLayers.contours directly.
+    """
+    MAX_PREVIEW_PIXELS = 16_000_000
+
+    def __init__(self, project, shape, contours, *, prepared=None):
+        super().__init__()
+        h, w = shape[:2]
+        self.rect = QRectF(0, 0, w, h)
+        prepared = prepared if prepared is not None else prepare_contour_preview(project, shape, contours)
+        self.source_size, self.preview_size = prepared.source_size, prepared.size
+        self.paths, self.preview = prepared.paths, prepared.image
+        self.prepared = prepared
+        self.mipmaps = {0: self.preview}
+        self.export_image = None
+        self.map_layer = "contour"
+        self.setOpacity(project.contour_opacity)
+        self.setZValue(3)
+        self.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+
+    def boundingRect(self):
+        return self.rect
+
+    def rasterize(self, size):
+        return rasterize_map_paths(self.paths, self.source_size, size)
+
+    def set_export_mode(self, enabled):
+        if enabled and self.preview_size != self.source_size:
+            self.export_image = self.rasterize(self.source_size)
+        elif not enabled:
+            self.export_image = None
+
+    def paint(self, painter, option, widget=None):
+        image = self.export_image
+        if image is None:
+            transform = painter.deviceTransform()
+            scale = max(math.hypot(transform.m11(), transform.m12()),
+                        math.hypot(transform.m21(), transform.m22()), 1e-8)
+            ratio = min(self.preview_size[0]/self.source_size[0], self.preview_size[1]/self.source_size[1])
+            level = max(0, int(math.floor(math.log2(max(ratio/scale, 1.)))))
+            if level not in self.mipmaps:
+                width, height = (max(1, dimension//(2**level)) for dimension in self.preview_size)
+                # Area filtering retains subpixel contours when the whole photo
+                # is fitted to the window; direct bilinear minification can miss them.
+                self.mipmaps[level] = self.preview.scaled(width, height, Qt.AspectRatioMode.IgnoreAspectRatio,
+                                                         Qt.TransformationMode.SmoothTransformation)
+            image = self.mipmaps[level]
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        painter.drawImage(self.rect, image)
+        painter.restore()
+
+
+class GridLayer(ContourLayer):
+    """Share the bounded raster preview and full-resolution export of contours."""
+    def __init__(self, project, shape, lines, *, prepared=None):
+        if prepared is None:
+            h, w = shape[:2]
+            paths = []
+            for line in lines:
+                style = grid_appearance(project, shape, line.major)
+                paths.append((path_from_segments(line.segments), (*style, grid_dashes(style[2], line.major))))
+            scale = min(1., (self.MAX_PREVIEW_PIXELS/(w*h))**.5)
+            size = (max(1, round(w*scale)), max(1, round(h*scale)))
+            prepared = MapPreview((w, h), size, paths, rasterize_map_paths(paths, (w, h), size))
+        super().__init__(project, shape, (), prepared=prepared)
+        self.map_layer = "grid"
+        self.setOpacity(project.grid_opacity)
+        self.setZValue(4)
+
+
 def array_image(array):
     h, w = array.shape[:2]
     fmt = QImage.Format.Format_RGBA8888 if array.shape[2] == 4 else QImage.Format.Format_RGB888
@@ -65,11 +195,34 @@ def update_map_opacity(items, layers, project, field):
     for item in items:
         if field == "grid_opacity" and getattr(item, "map_layer", None) == "grid":
             item.setOpacity(project.grid_opacity)
+        elif field == "contour_opacity" and getattr(item, "map_layer", None) == "contour":
+            item.setOpacity(project.contour_opacity)
+        elif field == "terminator_opacity" and getattr(item, "map_layer", None) == "terminator":
+            item.setOpacity(project.terminator_opacity)
         elif field == "elevation_opacity" and getattr(item, "map_layer", None) == "elevation":
             item.setPixmap(QPixmap.fromImage(array_image(layers.elevation)))
 
 
-def add_map_layers(scene, project, shape, layers):
+def _line_items(scene, segments, appearance, opacity, layer, z, dashes=()):
+    path, items = path_from_segments(segments), []
+    for ink, thickness, alpha in line_strokes(*appearance):
+        shade = QColor(ink)
+        shade.setAlphaF(alpha)
+        pen = QPen(shade, thickness)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        if dashes:
+            pen.setDashPattern([distance/thickness for distance in dashes])
+        item = scene.addPath(path, pen)
+        item.map_layer = layer
+        item.setOpacity(opacity)
+        item.setZValue(z)
+        item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        items.append(item)
+    return items
+
+
+def add_map_layers(scene, project, shape, layers, *, contour_preview=None, grid_preview=None):
     items = []
     h, w = shape[:2]
     if layers.elevation is not None:
@@ -81,20 +234,19 @@ def add_map_layers(scene, project, shape, layers):
         item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         scene.addItem(item)
         items.append(item)
-    width, size = max(.7, min(h, w)*.00065), max(6, round(min(h, w)*.009))
+    if layers.contours:
+        contours = ContourLayer(project, shape, layers.contours, prepared=contour_preview)
+        scene.addItem(contours)
+        items.append(contours)
+    size = max(6, round(min(h, w)*.009))
     color = QColor(grid_color(project))
     font = QFont("serif")
     font.setPixelSize(size)
+    if layers.grid:
+        grid = GridLayer(project, shape, layers.grid, prepared=grid_preview)
+        scene.addItem(grid)
+        items.append(grid)
     for line in layers.grid:
-        pen = QPen(color, width)
-        if not line.major:
-            pen.setDashPattern([4., 5.])
-        item = scene.addPath(path_from_segments(line.segments), pen)
-        item.map_layer = "grid"
-        item.setOpacity(project.grid_opacity)
-        item.setZValue(4)
-        item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
-        items.append(item)
         if not line.label:
             continue
         path = QPainterPath()
@@ -109,8 +261,12 @@ def add_map_layers(scene, project, shape, layers):
         caption.setZValue(5)
         caption.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         items.append(caption)
-    if layers.elevation is not None:
-        legend = ElevationLegend(shape, project.elevation_palette)
+    if layers.terminator:
+        style = terminator_appearance(project, shape)
+        items.extend(_line_items(scene, layers.terminator, style, project.terminator_opacity,
+                                 "terminator", 5.5, terminator_dashes(project, style[2])))
+    if layers.elevation is not None or layers.contours is not None:
+        legend = ElevationLegend(shape, project, layers.contour_interval)
         scene.addItem(legend)
         items.append(legend)
     return items

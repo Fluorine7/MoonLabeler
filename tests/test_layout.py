@@ -56,3 +56,11 @@ def test_large_crater_leader_starts_on_rim_not_at_center():
     assert line == (120., 100., 150, 100)
     interior = leader_segment((100, 100), (105, 95, 5, 5), outline=contour)
     assert interior[:2] == interior[2:]
+
+
+def test_region_name_can_cover_its_own_formation_but_preserves_fixed_names():
+    labels = [LabelBox('map-name', (150, 150), 100, 24, region=True),
+              LabelBox('pinned', (350, 250), 80, 24, fixed=(300, 100), region=True)]
+    placements, _ = arrange_labels(labels, 600, 400)
+    assert placements['map-name'][:2] == (100, 138)
+    assert placements['pinned'][:2] == (300, 100)

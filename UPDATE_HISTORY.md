@@ -6,6 +6,34 @@
 
 Entries are listed newest first. Versions from 0.4.4 onward are reconstructed from saved Git versions, their changes and development notes. Earlier prototypes are summarized at the end. No separate 0.5.0 version is preserved in Git; reference-guided automatic registration first appears in the verifiable 0.5.1 version.
 
+## 1.9.1
+
+2026-10-23 · 艺术地图排版、图层性能与导出修复。
+
+本次仅更新源码，安装包继续暂缓构建；现有独立 App 下载仍为 0.8.0。已有工程、原始标注与手工编辑继续保留。
+
+新增 **蔡明翰（[Evan Tsai](https://www.facebook.com/mjrt.mj)）** 的贡献致谢：繁体中文支持及 Windows 部分问题修复。软件内致谢和中英文文档同步更新。
+
+地图图层移除“仅覆盖受光面”，经纬网、高程和等高线统一覆盖全部有效月面，忽略旧工程的对应开关；原有受光地形名称筛选保留。“中世纪风”以古航海地图为审美参考，采用蓝灰古金配色、分类衬线地名、疏排弧形大地名和斜体地形名称，收起菱形、下划线及大坑圈，SVG 保留可编辑的逐字旋转文本组。另增旷野平面地形图主题与可独立调节的 DEM 等高线。
+
+修复艺术地名一经 Cmd / Ctrl 拖动就永久增加引线的问题：保存位置不再改变显示风格；普通地名仅在拖动时显示定位辅助线，松开鼠标或修饰键、切离画布即隐藏，PNG / SVG 不导出辅助线。原始标注的引线、着陆点符号及旧工程的手动位置保留。
+
+艺术地名按最终文字位置切换排版：完整位于已配准月盘内时保留弧形，越过月缘或排到月盘外时使用直线基线；自动布局和手动拖动共用判断，保留字号、疏排字距与固定位置。布局为两种形状预留空间，过期文字预览不会覆盖切换后的形状，PNG / 可编辑 SVG 使用相同规则。
+
+艺术样式的照片底图先去色，再叠加主题配色，避免彩月原色与地图色混合；预览、PNG 和 SVG 一致，低不透明度或关闭着色时也使用灰度底图。切回原始样式恢复彩色，原图文件及识别、配准输入保持不变。
+
+修复艺术图层开启后平移、缩放及不透明度滑块卡顿：复杂等高线复用有界预览和缩小层级，文字复用绘制缓存，PNG 按原图尺寸重绘等高线，SVG 保留原始矢量路径。各类导出默认沿用照片目录和文件名主干。带 ICC 的照片先将显示副本转换到 sRGB，再合成艺术配色与文字；PNG 嵌入 sRGB 配置，SVG 使用同一转换后的底图。原始 RGB、识别与配准输入保持不变。
+
+艺术图层面板移除常驻说明与重复的成功状态，仅在处理进行中或需要处理问题时显示提示。修复打开照片或工程时 ICC 转换失败造成工程信息与旧画面错配的问题：色彩转换成功后才切换当前文档，失败时保留当前工程及未保存的编辑。
+
+修复大照片缩放时文字缓存额外缩放、导致字号忽大忽小的问题；文字始终保持原图坐标下的比例，连续缩放复用现有画面，在后台补齐文字清晰度。等高距默认改为自动，按当前视野内高程梯度选择，手动间距及旧工程数值保留；实际间距同步显示于下拉框、图例及导出。等高线按独立曲线分开绘制，提取和预览生成移至后台；完成时不再重建标签，等待期间仍可缩放、平移。经纬网同样复用有界预览，PNG 按原图尺寸绘制，SVG 保留矢量网格。
+
+新增默认关闭的晨昏线图层，提供“照片估计”虚线及“工程时间（理论）”实线；独立开关与实时不透明度滑块，不依赖 DEM，不裁切其他图层。默认从照片的大范围明暗交界估计，避免未核实的工程时间把理论边界画进亮区；缺少可靠交界时提示并留空，不把暗坑或局部阴影当成晨昏线。估计不修改时间、太阳方向和配准，也不模拟精确地形阴影。工程保存与 PNG / SVG 导出包含该设置和线条，SVG 标记来源，仅理论线附带工程计算时间。同步加粗经纬网与等高线、增加对比衬边并区分主线，改善 100% 不透明度在适合窗口显示时仍不明显的问题。
+
+### English
+
+Source update only; installer builds remain deferred. Refines medieval and wilderness map styling, adds optional photo-estimated or theoretical terminators, and chooses contour spacing automatically. Improves canvas responsiveness and text-cache scaling; regional captions outside the lunar disc use a straight baseline, and ordinary art captions show locator guides only while dragging. Exports retain the source filename, with an sRGB-converted photo base and an embedded sRGB profile in PNG. Credits 蔡明翰 (Evan Tsai) for Traditional Chinese support and fixes for several Windows issues.
+
 ## 0.9.0
 
 2026-10-23 · 可选艺术主题、月面地图图层与交互完善。

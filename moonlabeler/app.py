@@ -8,6 +8,7 @@ from pathlib import Path
 import os
 import csv
 import json
+import math
 import shutil
 import unicodedata
 import sys
@@ -15,7 +16,7 @@ import traceback
 
 import numpy as np
 from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QObject, Signal, QRunnable, QThreadPool, QTimer, QSettings, QProcess
-from PySide6.QtGui import QColor, QFont, QImage, QPixmap, QPainter, QPen, QPainterPath, QPainterPathStroker
+from PySide6.QtGui import QColor, QFont, QImage, QPixmap, QPixmapCache, QPainter, QPen, QPainterPath, QPainterPathStroker, QTransform
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
     QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsLineItem, QGraphicsEllipseItem, QGraphicsPathItem,
@@ -32,9 +33,13 @@ from .capture_time import winjupos_capture_time
 from .ui.theme import STYLE
 from .ui.window import WindowUiMixin, label_drag_hint
 from .ui.wheel import protect_settings_from_wheel
-from .ui.map_layers import add_map_layers, path_from_segments, GridCaption, update_map_opacity
-from .annotation_style import appearance, caption_ornament, diamond
-from .map_layers import MapLayers, grid_lines, sample_elevation, colorize_elevation, elevation_alpha, legend_rect
+from .ui.map_layers import (add_map_layers, path_from_segments, GridCaption, ContourLayer, GridLayer,
+                            update_map_opacity, prepare_contour_preview)
+from .annotation_style import (appearance, caption_typography, placed_caption_typography,
+                               caption_text, caption_glyphs, photo_for_style)
+from .color_management import display_srgb, srgb_color_space, srgb_profile_bytes
+from .map_layers import (MapLayers, grid_lines, sample_elevation, colorize_elevation,
+                         elevation_alpha, contour_lines, resolved_contour_interval, build_terminator, legend_rect)
 from .ui.compute import ComputeDialog
 from . import compute
 from .craters import DetectionOptions, detect_craters, detect_crater_rims
@@ -84,7 +89,9 @@ def prepare_cache():
 def qimage(array):
     array = np.ascontiguousarray(array, dtype=np.uint8)
     h, w = array.shape[:2]
-    return QImage(array.data, w, h, array.strides[0], QImage.Format.Format_RGB888).copy()
+    result = QImage(array.data, w, h, array.strides[0], QImage.Format.Format_RGB888).copy()
+    result.setColorSpace(srgb_color_space())
+    return result
 
 
 class WorkerSignals(QObject):
@@ -122,6 +129,58 @@ class Canvas(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setAcceptDrops(True)
         self.picking = False
+        QPixmapCache.setCacheLimit(max(QPixmapCache.cacheLimit(), 64*1024))
+        self._text_worker = None
+        self._text_timer = QTimer(self)
+        self._text_timer.setSingleShot(True)
+        self._text_timer.setInterval(80)
+        self._text_timer.timeout.connect(self.refine_text_caches)
+
+    def update_text_caches(self):
+        transform = self.transform()
+        scale = max(math.hypot(transform.m11(), transform.m12()),
+                    math.hypot(transform.m21(), transform.m22()))*self.viewport().devicePixelRatioF()
+        for item in self.scene().items():
+            if isinstance(item, Annotation):
+                item.cache_for_view(scale)
+        self._text_timer.start()
+
+    def refine_text_caches(self):
+        if self._text_worker is not None:
+            return
+        visible = self.mapToScene(self.viewport().rect()).boundingRect()
+        requests = []
+        for item in self.scene().items(visible):
+            if isinstance(item, Annotation) and item._cache_size is not None and item._preview_size != item._cache_size:
+                requests.append((item, item._cache_size, item._text_revision, item.text_raster_request(item._cache_size)))
+        if not requests:
+            return
+        # Only QImages and immutable path/style snapshots cross threads. Keep
+        # the previous pixels at the same scene bounds throughout navigation.
+        self._text_worker = Worker(lambda: [(item, size, revision, rasterize_caption(*request))
+                                           for item, size, revision, request in requests])
+        self._text_worker.signals.result.connect(self.text_caches_ready)
+        self._text_worker.signals.finished.connect(self.text_caches_finished)
+        QThreadPool.globalInstance().start(self._text_worker)
+
+    def text_caches_ready(self, results):
+        current = set(self.scene().items())
+        for item, size, revision, image in results:
+            if item in current and item._cache_size == size and item._text_revision == revision:
+                item.install_text_preview(image, size)
+                item.update()
+
+    def text_caches_finished(self):
+        self._text_worker = None
+        self._text_timer.start()  # Coalesce any zooms that arrived during painting.
+
+    def scale(self, sx, sy):
+        super().scale(sx, sy)
+        self.update_text_caches()
+
+    def fitInView(self, *args):
+        super().fitInView(*args)
+        self.update_text_caches()
 
     def wheelEvent(self, event):
         factor = 1.2 if event.angleDelta().y() > 0 else 1 / 1.2
@@ -137,6 +196,21 @@ class Canvas(QGraphicsView):
             event.accept()
         else:
             super().mousePressEvent(event)
+
+    def cancel_label_drag(self):
+        scene = self.scene()
+        item = scene.mouseGrabberItem() if scene is not None else None
+        if isinstance(item, Annotation):
+            item.end_drag()
+
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key.Key_Control:
+            self.cancel_label_drag()
+        super().keyReleaseEvent(event)
+
+    def focusOutEvent(self, event):
+        self.cancel_label_drag()
+        super().focusOutEvent(event)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls() and event.mimeData().urls()[0].isLocalFile():
@@ -165,14 +239,52 @@ def default_name_language():
     return "双语（繁体）" if i18n.is_traditional() else "双语"
 
 
-def label_font(pixel_size, project=None):
+def label_font(pixel_size, project=None, feature=None):
     """CJK-capable label font; bold unless the project asks for normal weight."""
     font = QFont()
     font.setFamilies(label_font_families(project.language if project else "双语",
                                        art_style=project.art_style if project else "standard"))
     font.setPixelSize(pixel_size)
     font.setWeight(QFont.Weight.Normal if project is not None and appearance(project).weight == "normal" else QFont.Weight.Bold)
+    if project is not None and feature is not None:
+        typography = caption_typography(project, feature)
+        font.setItalic(typography.italic)
+        font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, typography.tracking*pixel_size)
     return font
+
+
+def paint_caption(painter, path, halo, halo_width, color, face_width):
+    painter.strokePath(path, QPen(QColor(halo), halo_width, Qt.PenStyle.SolidLine,
+                                  Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+    if face_width:
+        painter.strokePath(path, QPen(QColor(color), face_width, Qt.PenStyle.SolidLine,
+                                      Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+    painter.fillPath(path, QColor(color))
+
+
+def rasterize_caption(size, bounds, path, halo, halo_width, color, face_width):
+    image = QImage(*size, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(image)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.scale(size[0]/bounds.width(), size[1]/bounds.height())
+    painter.translate(-bounds.x(), -bounds.y())
+    paint_caption(painter, path, halo, halo_width, color, face_width)
+    painter.end()
+    return image
+
+
+def caption_path(text, size, font, typography):
+    path = QPainterPath()
+    glyphs = caption_glyphs(text, size, typography)
+    if glyphs:
+        for character, x, y, angle in glyphs:
+            glyph = QPainterPath()
+            glyph.addText(0, 0, font, character)
+            path.addPath(QTransform().translate(x, y).rotate(angle).map(glyph))
+    else:
+        path.addText(0, size, font, text)
+    return path
 
 
 class Annotation(QGraphicsItem):
@@ -184,10 +296,25 @@ class Annotation(QGraphicsItem):
         self.color = project.label_color(feature)
         self.appearance = appearance(project, landing=is_landing_site(feature))
         self.outline_segments = []
-        self.font = label_font(self.font_size, project)
-        self.path = QPainterPath()
-        self.path.addText(0, self.font_size, self.font, text)
-        self.ornament = path_from_segments(caption_ornament(self.font_size)) if self.appearance.ornament else QPainterPath()
+        self.font = label_font(self.font_size, project, feature)
+        self.typography = caption_typography(project, feature)
+        self.path = caption_path(text, self.font_size, self.font, self.typography)
+        if project.art_style in ("topographic", "manuscript"):
+            self.path.setFillRule(Qt.FillRule.WindingFill)
+        self._curved_path = self._flat_path = self.path
+        if self.typography.arc:
+            self._flat_path = caption_path(text, self.font_size, self.font,
+                                           replace(self.typography, arc=0., positioned=True))
+            self._flat_path.setFillRule(self.path.fillRule())
+        # Reserve both shapes before collision layout. Flattening at the limb
+        # must not expand into a neighboring caption or move a user pin.
+        self._layout_bounds = self.padded_bounds(self.path.boundingRect().united(self._flat_path.boundingRect()))
+        self._text_revision = 0
+        self._view_scale = None
+        self._cache_size = self._cache_density = None
+        self._preview_size = None
+        self._preview_key = QPixmapCache.Key()
+        self._export_mode = False
         self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                       QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
         self._drag_offset = None
@@ -204,12 +331,6 @@ class Annotation(QGraphicsItem):
             for segment in ((x-radius, y, x+radius, y), (x, y-radius, x, y+radius)):
                 marker = QGraphicsLineItem(*segment, self.line)
                 marker.setPen(QPen(QColor(self.appearance.line), max(1.2, self.font_size*.045)))
-        elif self.appearance.ornament:
-            marker = QGraphicsPathItem(path_from_segments([diamond(self.anchor.x(), self.anchor.y(),
-                                                                    max(3., self.font_size*.14))]), self.line)
-            marker.setBrush(QColor(self.appearance.line))
-            marker.setPen(QPen(Qt.PenStyle.NoPen))
-            self.marker = marker
         else:
             marker_radius = max(2.5, self.font_size*.06)
             marker = QGraphicsEllipseItem(self.anchor.x()-marker_radius, self.anchor.y()-marker_radius,
@@ -217,35 +338,111 @@ class Annotation(QGraphicsItem):
             marker.setBrush(QColor(self.color))
             marker.setPen(QPen(Qt.PenStyle.NoPen))
             self.marker = marker
+        self.update_map_leader()
+        self.update_caption_placement()
 
-    def boundingRect(self):
+    def update_map_leader(self):
+        # A saved position is an edit, not a change of cartographic style.
+        # Art captions only expose their ordinary locator during a drag.
+        permanent = not self.appearance.map_style or is_landing_site(self.feature)
+        dragging = self._drag_offset is not None and not self._export_mode
+        self.line.setVisible(permanent or dragging)
+
+    def padded_bounds(self, bounds):
         padding = max(5., self.font_size*.04, self.appearance.halo_width(self.font_size)/2+1)
-        bounds = self.path.boundingRect()
-        if not self.ornament.isEmpty():
-            bounds = bounds.united(self.ornament.boundingRect())
         return bounds.adjusted(-padding, -padding, padding, padding)
 
+    def boundingRect(self):
+        return self.padded_bounds(self.path.boundingRect())
+
+    def layout_bounds(self):
+        return self._layout_bounds
+
+    def update_caption_placement(self):
+        typography = placed_caption_typography(self.project, self.feature, self.text, self.font_size,
+                                                (self.pos().x(), self.pos().y()))
+        if typography == self.typography:
+            return
+        self.prepareGeometryChange()
+        self.typography = typography
+        self.path = self._curved_path if typography.arc else self._flat_path
+        self._text_revision += 1
+        QPixmapCache.remove(self._preview_key)
+        self._preview_size = None
+        if self._view_scale is not None:
+            self.cache_for_view(self._view_scale)
+        self.update()
+
+    def cache_for_view(self, scale):
+        self._view_scale = scale
+        # Reuse oversampled text while zooming within a scale bucket. Repainting
+        # every outlined glyph at every wheel step dominates the frame time.
+        density = self._cache_density
+        # Hysteresis prevents opposite wheel steps near a bucket boundary from
+        # discarding the same cache repeatedly. Keep at least 1.5x screen detail.
+        if density is None or not 1.5*scale <= density <= 6*scale:
+            density = 2**math.ceil(math.log2(max(scale, 1e-6)*2))
+        bounds = self.boundingRect()
+        size = (max(1, math.ceil(bounds.width()*density)),
+                max(1, math.ceil(bounds.height()*density)))
+        if size[0]*size[1] > 1_000_000:
+            # Keep reusing bounded pixels at extreme zoom. Falling back to
+            # complex vector strokes here causes a fresh stall on every frame.
+            limit = math.sqrt(1_000_000/(bounds.width()*bounds.height()))
+            size = (max(1, int(bounds.width()*limit)), max(1, int(bounds.height()*limit)))
+        if self._cache_size != size:
+            self._cache_size = size
+            self.update()
+        self._cache_density = density
+
+    def set_export_mode(self, enabled):
+        self._export_mode = enabled
+        self.update_map_leader()
+        self.update()
+
+    def text_raster_request(self, size):
+        return (size, self.boundingRect(), QPainterPath(self.path), self.appearance.halo,
+                self.appearance.halo_width(self.font_size), self.color, self.appearance.face_width(self.font_size))
+
+    def install_text_preview(self, image, size):
+        QPixmapCache.remove(self._preview_key)
+        self._preview_key = QPixmapCache.insert(QPixmap.fromImage(image))
+        self._preview_size = size
+
     def paint(self, painter, option, widget=None):
-        painter.strokePath(self.path, QPen(QColor(self.appearance.halo), self.appearance.halo_width(self.font_size),
-                                           Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-        if self.appearance.face_width(self.font_size):
-            painter.strokePath(self.path, QPen(QColor(self.color), self.appearance.face_width(self.font_size),
-                                               Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-        painter.fillPath(self.path, QColor(self.color))
-        if not self.ornament.isEmpty():
-            painter.strokePath(self.ornament, QPen(QColor(self.appearance.line), max(.7, self.font_size*.025)))
+        if self._export_mode or self._cache_size is None:
+            self.paint_text(painter)
+        else:
+            preview = QPixmap()
+            if not QPixmapCache.find(self._preview_key, preview):
+                image = rasterize_caption(*self.text_raster_request(self._cache_size))
+                self.install_text_preview(image, self._cache_size)
+                preview = QPixmap.fromImage(image)
+            # Explicit source/target rectangles keep cache density independent
+            # of scene geometry. Qt's custom ItemCoordinateCache size can scale
+            # outlined glyphs a second time on some raster paint engines.
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+            painter.drawPixmap(self.boundingRect(), preview, QRectF(preview.rect()))
+            painter.restore()
         if self.isSelected():
             painter.setPen(QPen(QColor("#88baf3"), 1.))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRoundedRect(self.boundingRect(), 3., 3.)
 
+    def paint_text(self, painter):
+        paint_caption(painter, self.path, self.appearance.halo, self.appearance.halo_width(self.font_size),
+                      self.color, self.appearance.face_width(self.font_size))
+
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
+            self.update_caption_placement()
             rect = self.boundingRect().translated(self.pos())
             segment = leader_segment((self.anchor.x(), self.anchor.y()), (rect.x(), rect.y(), rect.width(), rect.height()),
                                      outline=self.outline_segments)
             self.line.setLine(*segment)
             self.moved(self.feature["id"], [self.pos().x(), self.pos().y()])
+            self.update_map_leader()
         return super().itemChange(change, value)
 
     def mouseDoubleClickEvent(self, event):
@@ -261,8 +458,10 @@ class Annotation(QGraphicsItem):
             self.scene().clearSelection()
             self.setSelected(True)
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            self.update_map_leader()
             event.accept()
         else:
+            self.end_drag()
             event.ignore()  # Let ScrollHandDrag pan, even over a label.
 
     def mouseMoveEvent(self, event):
@@ -271,13 +470,16 @@ class Annotation(QGraphicsItem):
             self.setPos(event.scenePos()-self._drag_offset)
         else:
             # Releasing the modifier ends this drag; don't jump if re-pressed.
-            self._drag_offset = None
-            self.setCursor(Qt.CursorShape.OpenHandCursor)
+            self.end_drag()
         event.accept()
 
-    def mouseReleaseEvent(self, event):
+    def end_drag(self):
         self._drag_offset = None
         self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.update_map_leader()
+
+    def mouseReleaseEvent(self, event):
+        self.end_drag()
         event.accept()
 
 
@@ -417,6 +619,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.setStyleSheet(STYLE)
         self.project = Project(language=default_name_language())
         self.image = None
+        self.display_image = None
+        self.photo_item = None
+        self._photo_display_key = None
         self.catalog = load_catalog(CACHE)
         self.compute_preferences = QSettings(str(CACHE/'preferences.ini'), QSettings.Format.IniFormat)
         compute_mode = self.compute_preferences.value('compute/mode', 'auto')
@@ -427,9 +632,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.map_items = []
         self.map_layers = MapLayers()
         self._map_display_key = None
+        self._terminator_key = self._terminator_result = None
         self._elevation_key = None
         self._elevation_raster = None
         self._elevation_failed_key = None
+        self._contour_key = self._contour_render = None
+        self._grid_preview_key = self._grid_preview = None
         self._map_layers_pending = False
         self._dem_revision = 0
         self.reference_items = []
@@ -829,7 +1037,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def export_crater_candidates(self):
         if not self.crater_candidates:
             return
-        path, _ = QFileDialog.getSaveFileName(self, tr("导出疑似坑候选"), "crater-candidates.csv", tr("CSV (*.csv)"))
+        path, _ = QFileDialog.getSaveFileName(self, tr("导出疑似坑候选"), self.suggest_export_path("crater-candidates", "csv"), tr("CSV (*.csv)"))
         if path:
             try:
                 with open(path if path.lower().endswith(".csv") else path+".csv", "w", newline="", encoding="utf-8-sig") as stream:
@@ -841,13 +1049,13 @@ class MainWindow(WindowUiMixin, QMainWindow):
             except OSError as exc:
                 self.error(exc)
 
-    def run_background(self, title, function, success, failure=None):
+    def run_background(self, title, function, success, failure=None, *, allow_canvas=False):
         if self.busy:
             return
         self.busy = True
         self.sidebar.setEnabled(False)
         self.toolbar.setEnabled(False)
-        self.canvas.setEnabled(False)
+        self.canvas.setEnabled(allow_canvas)
         self.statusBar().showMessage(title)
         worker = Worker(function)
         self.workers.add(worker)
@@ -995,11 +1203,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
             return
         try:
             image = read_image(path)
+            display_image = display_srgb(image, path)
             filename_utc = winjupos_capture_time(path)
             self.project = Project(image_path=str(Path(path).resolve()), utc=(filename_utc or self.utc()).isoformat(),
                                    language=default_name_language())
             self.project_path = None
-            self.set_image(image)
+            self.set_image(image, display_image=display_image)
             self.sync_controls()
             self.ui_reset_for_new_photo()
             self.dirty = False
@@ -1014,20 +1223,28 @@ class MainWindow(WindowUiMixin, QMainWindow):
         except Exception as exc:
             self.error(exc)
 
-    def set_image(self, image):
+    def set_image(self, image, *, display_image=None):
+        if display_image is None:
+            display_image = display_srgb(image, self.project.image_path)
         self.clear_terrain_preview()
         self.clear_crater_candidates()
         self.image = image
+        self.display_image = display_image
         self.project.update_font_size(image.shape)
         self.update_font_hint()
         self.annotation_items = []
         self.map_items = []
         self.map_layers = MapLayers()
         self._map_display_key = self._elevation_key = self._elevation_failed_key = None
+        self._terminator_key = self._terminator_result = None
         self._elevation_raster = None
+        self._contour_key = self._contour_render = None
+        self._grid_preview_key = self._grid_preview = None
         self.reference_items = []
         self.canvas.scene().clear()
-        self.canvas.scene().addPixmap(QPixmap.fromImage(qimage(image))).setZValue(0)
+        self.photo_item = self.canvas.scene().addPixmap(QPixmap.fromImage(qimage(photo_for_style(display_image, self.project.art_style))))
+        self.photo_item.setZValue(0)
+        self._photo_display_key = (id(image), self.project.art_style != "standard")
         h, w = image.shape[:2]
         self.canvas_title.setText(Path(self.project.image_path).name or tr("月面照片"))
         self.canvas_details.setText(trf("{w:,} × {h:,} px   ·   滚轮缩放 · {hint} · 双击编辑文字", w=w, h=h, hint=label_drag_hint()))
@@ -1057,11 +1274,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
                     return
                 project.image_path = str(Path(replacement).resolve())
             image = read_image(project.image_path)
+            display_image = display_srgb(image, project.image_path)
             self.project = project
             self.project.update_font_size(image.shape)
             self.project_path = Path(path)
             self.sync_controls()
-            self.set_image(image)
+            self.set_image(image, display_image=display_image)
             self.show_geometry()
             self.identification_status.setToolTip("")
             self.registration_status.setText(tr("已配准") if project.matrix is not None else tr("未配准"))
@@ -1136,9 +1354,15 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.elevation_toggle.setChecked(self.project.elevation_enabled)
         self.elevation_opacity.setValue(round(self.project.elevation_opacity*100))
         self.elevation_palette.setCurrentIndex(self.elevation_palette.findData(self.project.elevation_palette))
-        self.map_lit_only.setChecked(self.project.map_lit_only)
+        self.contour_toggle.setChecked(self.project.contour_enabled)
+        self.contour_interval.setCurrentIndex(self.contour_interval.findData(self.project.contour_interval))
+        self.contour_opacity.setValue(round(self.project.contour_opacity*100))
+        self.terminator_toggle.setChecked(self.project.terminator_enabled)
+        self.terminator_opacity.setValue(round(self.project.terminator_opacity*100))
+        self.terminator_source.setCurrentIndex(self.terminator_source.findData(self.project.terminator_source))
         self.map_styles_toggle.setChecked(self.project.art_style != "standard" or bool(self.project.grid_spacing)
-                                         or self.project.elevation_enabled)
+                                         or self.project.elevation_enabled or self.project.contour_enabled
+                                         or self.project.terminator_enabled)
         self.update_map_controls()
         self.pending_color = self.project.color
         self.color_button.setText(trf("文字与引线颜色：{color}", color=self.pending_color))
@@ -1676,13 +1900,13 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def save_terrain_reference(self):
         if self.terrain_reference is None:
             return
-        path, _ = QFileDialog.getSaveFileName(self, tr("保存 DEM 模拟与参考工程"), "moon-dem-reference.png", tr("PNG (*.png)"))
+        path, _ = QFileDialog.getSaveFileName(self, tr("保存 DEM 模拟与参考工程"), self.suggest_export_path("dem-reference", "png"), tr("PNG (*.png)"))
         if not path:
             return
         try:
             from PIL import Image
             path = Path(path if path.lower().endswith(".png") else path+".png")
-            Image.fromarray(self.terrain_reference.image).save(path)
+            Image.fromarray(self.terrain_reference.image).save(path, icc_profile=srgb_profile_bytes())
             project = Project(image_path=str(path.resolve()), utc=self.terrain_geometry.utc,
                               geometry=self.terrain_geometry, matrix=self.terrain_reference.matrix,
                               latitude=self.project.latitude, longitude=self.project.longitude,
@@ -1735,15 +1959,18 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.dirty = True
 
     def about_dialog(self):
-        QMessageBox.about(self, tr("关于 MoonLabeler"), trf("MoonLabeler {version}\n\n"
+        text = trf("MoonLabeler {version}\n\n"
                           "作者：Fluorine Zhu\n开源许可：GNU GPL v3.0 或更新版本\n\n"
                           "致敬 Jim Mosher 与 Henrik Bondo 创建的 Lunar Terminator Visualization Tool。"
                           "本程序参考其地形点校准与 DEM 光照思路，使用 Python / Qt 独立实现。\n\n"
                           "感谢樊仕达（10deg）提供 moonlib 代码参考及 LPND 中文地名资料。\n\n"
+                          "感谢蔡明翰（{evan_tsai}）贡献繁体中文支持及 Windows 部分问题修复。\n\n"
                           "地名：USGS / IAU；中文译名优先采用 LPND，补录来源单独保留。\n"
                           "月面高程：LRO / LOLA；星历：JPL DE421；着陆点：NASA NSSDCA / LROC。\n"
                           "疑似坑检测改编自 Ram Maruboina 的 Lunar Crater Detector（MIT）。\n"
-                          "来源和模型限制见项目目录的 ACKNOWLEDGEMENTS.md 与 README.md。", version=__version__))
+                          "来源和模型限制见项目目录的 ACKNOWLEDGEMENTS.md 与 README.md。", version=__version__,
+                          evan_tsai='<a href="https://www.facebook.com/mjrt.mj">Evan Tsai</a>')
+        QMessageBox.about(self, tr("关于 MoonLabeler"), text.replace("\n", "<br>"))
 
     def style_changed(self, *args):
         if self.rebuilding:
@@ -1755,7 +1982,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def map_opacity_changed(self, field, value):
         if self.rebuilding:
             return
-        applied = self.project.grid_spacing if field == "grid_opacity" else self.project.elevation_enabled
+        applied = {"grid_opacity": bool(self.project.grid_spacing),
+                   "elevation_opacity": self.project.elevation_enabled,
+                   "contour_opacity": self.project.contour_enabled,
+                   "terminator_opacity": self.project.terminator_enabled}[field]
         if not applied:
             self.style_changed()
             return
@@ -1799,7 +2029,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
                            ("elevation_enabled", self.elevation_toggle.isChecked()),
                            ("elevation_opacity", self.elevation_opacity.value()/100),
                            ("elevation_palette", self.elevation_palette.currentData()),
-                           ("map_lit_only", self.map_lit_only.isChecked()),
+                           ("contour_enabled", self.contour_toggle.isChecked()),
+                           ("contour_interval", self.contour_interval.currentData()),
+                           ("contour_opacity", self.contour_opacity.value()/100),
+                           ("terminator_enabled", self.terminator_toggle.isChecked()),
+                           ("terminator_opacity", self.terminator_opacity.value()/100),
+                           ("terminator_source", self.terminator_source.currentData()),
                            ("illuminated_only", self.lit.isChecked()),
                            ("show_landing_sites", self.landing_sites_toggle.isChecked()),
                            ("landing_color", self.pending_landing_color),
@@ -1807,7 +2042,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                            ("crater_outlines", self.crater_outlines.isChecked()),
                            ("crater_outline_shape", self.crater_outline_shape.currentData()), ("color", self.pending_color)):
             setattr(self.project, key, value)
-        if self.project.elevation_enabled and self.dem_path:
+        if (self.project.elevation_enabled or self.project.contour_enabled) and self.dem_path:
             self.project.terrain_path = self.dem_path
         if self._elevation_failed_key is not None:
             self._map_display_key = None
@@ -1846,7 +2081,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         # Feature names have priority over coordinate captions. Keep the same
         # visibility in the SVG, including after the user drags a name.
         bounds = [item.sceneBoundingRect() for item in self.annotation_items]
-        if self.map_layers.elevation is not None:
+        if self.map_layers.elevation is not None or self.map_layers.contours is not None:
             bounds.append(QRectF(*legend_rect(self.image.shape)))
         for item in self.map_items:
             if isinstance(item, GridCaption):
@@ -1866,9 +2101,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def refresh_map_layers(self):
         p = self.project
-        key = self.map_sampling_key() if p.grid_spacing or p.elevation_enabled else None
+        key = self.map_sampling_key() if p.grid_spacing or p.elevation_enabled or p.contour_enabled or p.terminator_enabled else None
         display_key = (key, p.art_style, p.grid_spacing, p.grid_opacity, p.elevation_enabled,
-                       p.elevation_palette, p.elevation_opacity, p.map_lit_only)
+                       p.elevation_palette, p.elevation_opacity,
+                       p.contour_enabled, p.contour_interval, p.contour_opacity,
+                       p.terminator_enabled, p.terminator_opacity, p.terminator_source)
         if display_key == self._map_display_key:
             return
         for item in self.map_items:
@@ -1876,50 +2113,90 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.map_items = []
         self.map_layers = MapLayers()
         self._map_display_key = display_key
+        self.set_map_layer_status()
+        self.set_map_layer_status(terminator=True)
+        auto_index = self.contour_interval.findData("auto")
+        self.contour_interval.setItemText(auto_index, tr("自动"))
         if key is None:
-            self.map_layer_status.setText(tr("配准后可叠加经纬网与高程图。") if p.grid_spacing or p.elevation_enabled
-                                          else tr("图层默认关闭；调整后点击“重新生成标注”。"))
+            if p.grid_spacing or p.elevation_enabled or p.contour_enabled or p.terminator_enabled:
+                self.set_map_layer_status(tr("配准后可叠加经纬网、高程图与晨昏线。"))
             return
-        self.map_layers.grid = grid_lines(p, self.image.shape, image=self.image)
-        if p.elevation_enabled:
-            if key == self._elevation_key and self._elevation_raster is not None:
-                raster = self._elevation_raster
-                self.map_layers.elevation = colorize_elevation(raster, p, image=self.image)
-                self.map_layer_status.setText(trf("{source} · 赤道采样约 {resolution:.3f} km\n高度色标：≤ −9 至 ≥ +9 km。",
-                                                  source=raster.source, resolution=raster.resolution_km))
-            elif key != self._elevation_failed_key:
+        self.map_layers.grid = grid_lines(p, self.image.shape)
+        if p.terminator_enabled:
+            terminator_key = (key, p.terminator_source)
+            if self._terminator_key != terminator_key:
+                self._terminator_result = build_terminator(p, self.image.shape, image=self.image)
+                self._terminator_key = terminator_key
+            self.map_layers.terminator, self.map_layers.terminator_unreliable = self._terminator_result
+            if self.map_layers.terminator_unreliable:
+                self.set_map_layer_status(tr("照片内未找到可靠的晨昏交界，未绘制。可选择工程时间的理论线，或关闭晨昏线。"), terminator=True)
+        preview = None
+        if p.elevation_enabled or p.contour_enabled:
+            raster = self._elevation_raster if key == self._elevation_key else None
+            contour_key = (key, p.art_style, p.contour_interval)
+            if raster is not None:
+                if p.elevation_enabled:
+                    self.map_layers.elevation = colorize_elevation(raster, p, image=self.image)
+                if p.contour_enabled:
+                    interval = resolved_contour_interval(raster, p)
+                    self.map_layers.contour_interval = interval
+                    if p.contour_interval == "auto":
+                        self.contour_interval.setItemText(auto_index, trf("自动（{interval:g} km）", interval=interval))
+                    if contour_key == self._contour_key:
+                        self.map_layers.contours, preview = self._contour_render
+            needs_work = raster is None or (p.contour_enabled and self.map_layers.contours is None)
+            if needs_work and key != self._elevation_failed_key:
                 source = p.terrain_path or self.dem_path
                 if not source:
-                    self.map_layer_status.setText(tr("高程图需要 DEM：请导入或下载基础 LOLA 高程数据。"))
+                    self.set_map_layer_status(tr("高程图需要 DEM：请导入或下载基础 LOLA 高程数据。"))
                 elif self.busy:
                     self._map_layers_pending = True
                     self._map_display_key = None
                 else:
-                    snapshot, shape, photograph = replace(p, matrix=p.matrix.copy()), self.image.shape, self.image
+                    snapshot, shape = replace(p, matrix=p.matrix.copy()), self.image.shape
                     def work():
-                        dem = ElevationMap.load(source)
-                        try:
-                            return sample_elevation(snapshot, shape, dem, image=photograph)
-                        finally:
-                            dem.close()
-                    def ready(raster):
+                        sampled = raster
+                        if sampled is None:
+                            dem = ElevationMap.load(source)
+                            try:
+                                sampled = sample_elevation(snapshot, shape, dem)
+                            finally:
+                                dem.close()
+                        lines = contour_lines(sampled, snapshot, shape) if snapshot.contour_enabled else None
+                        prepared = prepare_contour_preview(snapshot, shape, lines) if lines else None
+                        return sampled, lines, prepared
+                    def ready(result):
                         if self.map_sampling_key() != key:
                             return
+                        raster, lines, prepared = result
                         self._elevation_key, self._elevation_raster = key, raster
+                        if snapshot.contour_enabled:
+                            self._contour_key, self._contour_render = contour_key, (lines, prepared)
                         self._map_display_key = None
-                        self.refresh_annotations()
+                        self.refresh_map_layers()
+                        self.update_grid_captions()
                         self.statusBar().showMessage(tr("高程图已更新"))
                     def failed(exc):
                         self._elevation_failed_key = key
-                        self.map_layer_status.setText(tr("高程图未生成，请检查 DEM 后重新生成；已有标注保留。"))
+                        self.set_map_layer_status(tr("高程图未生成，请检查 DEM 后重新生成；已有标注保留。"))
                         self.error(exc)
-                    self.map_layer_status.setText(tr("正在生成高程图…"))
-                    self.run_background(tr("正在生成高程图…"), work, ready, failed)
-        else:
-            self.map_layer_status.setText(tr("经纬网按当前配准投影；不参与识别或校准。"))
-        self.map_items = add_map_layers(self.canvas.scene(), p, self.image.shape, self.map_layers)
+                    self.set_map_layer_status(tr("正在生成高程图…"))
+                    self.run_background(tr("正在生成高程图…"), work, ready, failed, allow_canvas=True)
+            elif needs_work:
+                self.set_map_layer_status(tr("高程图未生成，请检查 DEM 后重新生成；已有标注保留。"))
+        grid_key = (key, p.art_style, p.grid_spacing)
+        grid_preview = self._grid_preview if grid_key == self._grid_preview_key else None
+        self.map_items = add_map_layers(self.canvas.scene(), p, self.image.shape, self.map_layers,
+                                        contour_preview=preview, grid_preview=grid_preview)
+        self._grid_preview = next((item.prepared for item in self.map_items if isinstance(item, GridLayer)), None)
+        self._grid_preview_key = grid_key
 
     def check_map_export(self):
+        if self.project.terminator_enabled and self.map_layers.terminator_unreliable:
+            raise ValueError(tr("照片内未找到可靠的晨昏交界；请选择工程时间的理论线，或关闭晨昏线再导出。"))
+        if self.project.contour_enabled and (self.map_layers.contours is None or
+                self._contour_key != (self.map_sampling_key(), self.project.art_style, self.project.contour_interval)):
+            raise ValueError(tr("等高线尚未生成；请先生成或关闭等高线再导出。"))
         if self.project.elevation_enabled and (self.map_layers.elevation is None or
                                                self._elevation_key != self.map_sampling_key()):
             raise ValueError(tr("高程图尚未生成；请先生成或关闭高程着色再导出。"))
@@ -1927,6 +2204,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def refresh_annotations(self):
         self.rebuilding = True
         scene = self.canvas.scene()
+        if self.image is not None and self.photo_item is not None:
+            photo_key = (id(self.image), self.project.art_style != "standard")
+            if photo_key != self._photo_display_key:
+                self.photo_item.setPixmap(QPixmap.fromImage(qimage(photo_for_style(self.display_image, self.project.art_style))))
+                self._photo_display_key = photo_key
         self.refresh_map_layers()
         for item in self.annotation_items:
             scene.removeItem(item.line)
@@ -1962,7 +2244,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 data = self.project.labels.get(fid, {})
                 if data.get("hidden", False):
                     continue
-                item = Annotation(feature, xy, self.project.label_text(feature), self.project, self.move_label, self.edit_label,
+                item = Annotation(feature, xy, caption_text(self.project, feature), self.project, self.move_label, self.edit_label,
                                   font_size=font_sizes[fid])
                 outline = self.project.crater_outline(feature, self.image.shape)
                 if outline:
@@ -1980,21 +2262,26 @@ class MainWindow(WindowUiMixin, QMainWindow):
                     ring.setZValue(-1)
                     if item.marker is not None:
                         item.marker.hide()
-                bounds = item.boundingRect()
+                bounds = item.layout_bounds()
                 fixed = (data["position"][0]+bounds.x(), data["position"][1]+bounds.y()) if "position" in data else None
                 if feature["kind"] in ("Crater, craters", "Satellite Feature"):
                     radius = min(min(self.image.shape[:2])*.12, max(4., feature["diameter"]*scale/(2*MOON_RADIUS_KM)))
                 else:
                     radius = min(item.font_size*1.3, max(4., feature["diameter"]*scale/(4*MOON_RADIUS_KM)))
+                if self.project.art_style == "topographic":
+                    radius = max(4., item.font_size*.25)
+                elif self.project.art_style == "manuscript":
+                    radius = min(radius, max(item.font_size*.6, min(self.image.shape[:2])*.025))
                 objects[fid] = item
                 yield LabelBox(fid, tuple(xy), bounds.width(), bounds.height(), radius, fixed,
                                data.get("force", False), item.outline_segments,
-                               important=feature['name'] in COMMON_FEATURES or is_landing_site(feature))
+                               important=feature['name'] in COMMON_FEATURES or is_landing_site(feature),
+                               region=self.project.art_style == "topographic" or caption_typography(self.project, feature).region)
         h, w = self.image.shape[:2]
         if self.project.optimize_layout:
-            placements, self.auto_omitted = arrange_labels(requests(), w, h, gap=max(5., reference_font*.4),
+            placements, self.auto_omitted = arrange_labels(requests(), w, h, gap=max(5., reference_font*(.8 if self.project.art_style == "topographic" else .4)),
                                                           max_labels=self.project.max_labels,
-                                                          obstacles=[legend_rect(self.image.shape)] if self.map_layers.elevation is not None else [])
+                                                          obstacles=[legend_rect(self.image.shape)] if (self.project.elevation_enabled or self.project.contour_enabled) and (self.project.terrain_path or self.dem_path) else [])
         else:
             placements = {request.key: (*(request.fixed or (request.anchor[0]+request.radius+8, request.anchor[1]-request.height/2)),
                                         request.width, request.height) for request in islice(requests(), self.project.max_labels)}
@@ -2016,13 +2303,14 @@ class MainWindow(WindowUiMixin, QMainWindow):
             if hidden or fid not in placements:
                 continue
             item = objects[fid]
-            bounds = item.boundingRect()
+            bounds = item.layout_bounds()
             x, y, _, _ = placements[fid]
             position = QPointF(x-bounds.x(), y-bounds.y())
             scene.addItem(item.line)
             scene.addItem(item)
             item.setPos(position)
             self.annotation_items.append(item)
+        self.canvas.update_text_caches()
         self.update_grid_captions()
         self.layout_status.setText(trf("{count} 个标签", count=len(self.annotation_items)) +
                                   (trf(" · 避让隐藏 {count} 个", count=len(self.auto_omitted)) if self.auto_omitted else ""))
@@ -2078,13 +2366,19 @@ class MainWindow(WindowUiMixin, QMainWindow):
         # markers and selection rectangles belong to the editor only.
         hidden = [(item, item.isVisible()) for item in (*self.reference_items, *self.crater_items)]
         selected = [item for item in self.annotation_items if item.isSelected()]
+        contour_layers = [item for item in self.map_items if isinstance(item, ContourLayer)]
         for item, _ in hidden:
             item.setVisible(False)
         for item in selected:
             item.setSelected(False)
         try:
+            for item in self.annotation_items:
+                item.set_export_mode(True)
+            for item in contour_layers:
+                item.set_export_mode(True)
             h, w = self.image.shape[:2]
             result = QImage(w, h, QImage.Format.Format_RGB32)
+            result.setColorSpace(srgb_color_space())
             result.fill(QColor("#000"))
             painter = QPainter(result)
             painter.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
@@ -2093,13 +2387,22 @@ class MainWindow(WindowUiMixin, QMainWindow):
             if not result.save(str(path), "PNG"):
                 raise ValueError(tr("PNG 保存失败，请检查目标路径。"))
         finally:
+            for item in self.annotation_items:
+                item.set_export_mode(False)
+            for item in contour_layers:
+                item.set_export_mode(False)
             for item, visible in hidden:
                 item.setVisible(visible)
             for item in selected:
                 item.setSelected(True)
+            self.canvas.update_text_caches()
+
+    def suggest_export_path(self, suffix, extension):
+        source = Path(self.project.image_path) if self.project.image_path else Path("moon")
+        return str(source.with_name(f"{source.stem}-{suffix}.{extension}"))
 
     def export_png(self):
-        path, _ = QFileDialog.getSaveFileName(self, tr("导出标注照片"), "moon-annotated.png", tr("PNG (*.png)"))
+        path, _ = QFileDialog.getSaveFileName(self, tr("导出标注照片"), self.suggest_export_path("annotated", "png"), tr("PNG (*.png)"))
         if path:
             try:
                 self.render_png(path if path.lower().endswith(".png") else path+".png")
@@ -2111,11 +2414,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if self.image is None or self.project.matrix is None:
             self.error(tr("请先打开照片并配准。"))
             return
-        path, _ = QFileDialog.getSaveFileName(self, tr("导出可编辑标注"), "moon-annotated.svg", tr("SVG (*.svg)"))
+        path, _ = QFileDialog.getSaveFileName(self, tr("导出可编辑标注"), self.suggest_export_path("annotated", "svg"), tr("SVG (*.svg)"))
         if path:
             try:
                 self.check_map_export()
-                export_svg(path if path.lower().endswith(".svg") else path+".svg", self.image, self.annotation_entries(), self.project, self.annotation_leaders(), layers=self.map_layers)
+                export_svg(path if path.lower().endswith(".svg") else path+".svg", self.image, self.annotation_entries(), self.project, self.annotation_leaders(), layers=self.map_layers, display_image=self.display_image)
                 self.statusBar().showMessage(tr("SVG 已导出"))
             except Exception as exc:
                 self.error(exc)
