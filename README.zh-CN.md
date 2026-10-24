@@ -1,12 +1,12 @@
 # MoonLabeler 使用说明
 
-**0.9.4** · Fluorine Zhu · [English](README.md) · [更新记录](UPDATE_HISTORY.md)
+**0.9.5** · Fluorine Zhu · [English](README.md) · [更新记录](UPDATE_HISTORY.md)
 
 为整月或局部月面照片配准、编辑地名，并导出 PNG / SVG。界面支持简体中文、繁体中文和英文。
 
 ## 下载与打开
 
-0.9.4 暂仅更新源码，安装包仍为 0.9.3。
+0.9.5 暂仅更新源码，安装包仍为 0.9.3。
 
 | 系统 | 下载 | 打开方式 |
 | --- | --- | --- |

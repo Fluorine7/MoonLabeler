@@ -5,6 +5,12 @@
 开发阶段误写的 1.9.x 已统一更正为 0.9.x。详细实现与验证记录可查 Git 历史。
 Development versions labelled 1.9.x are corrected to 0.9.x; implementation details remain in Git history.
 
+## 0.9.5
+
+- 合并 [sothic 的 PR #15](https://github.com/Fluorine7/MoonLabeler/pull/15)：工具栏增加原始大小、放大、缩小按钮及快捷键，缩放时保持视图中心。 / Merged sothic's toolbar zoom controls and shortcuts, preserving the viewport centre.
+
+本次仅更新源码，暂不打包。 / Source update only; no new application packages.
+
 ## 0.9.4
 
 2026-10-24

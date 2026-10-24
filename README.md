@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**0.9.4** · Fluorine Zhu · GPL-3.0-or-later
+**0.9.5** · Fluorine Zhu · GPL-3.0-or-later
 
 Register lunar photographs, edit terrain labels, and export annotated PNG or SVG images.
 为月面照片配准、标注地名并导出图片。
@@ -13,7 +13,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### 下载
 
-0.9.4 暂仅更新源码，安装包仍为 0.9.3。
+0.9.5 暂仅更新源码，安装包仍为 0.9.3。
 
 | 系统 | 安装包 | 打开方式 |
 | --- | --- | --- |
@@ -56,7 +56,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### Download
 
-0.9.4 is a source update only; the downloadable apps remain at 0.9.3.
+0.9.5 is a source update only; the downloadable apps remain at 0.9.3.
 
 | Platform | Package | Open after extracting |
 | --- | --- | --- |
