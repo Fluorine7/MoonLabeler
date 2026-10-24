@@ -52,6 +52,12 @@ def test_widgets_show_traditional_text(traditional_window):
     assert "開啟照片" in titles
     assert "儲存專案" in titles
     assert "介面語言" in titles
+    zoom_actions = {action.text(): action for action in window.actions
+                    if action.text() in {"原始大小", "適合視窗", "+", "−"}}
+    assert list(zoom_actions) == ["原始大小", "適合視窗", "+", "−"]
+    assert zoom_actions["+"].toolTip() == "放大"
+    assert zoom_actions["−"].toolTip() == "縮小"
+    assert zoom_actions["原始大小"].toolTip() == "以原始大小顯示"
 
 
 def test_combo_boxes_keep_simplified_project_values(traditional_window):

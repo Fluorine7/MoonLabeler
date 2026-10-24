@@ -219,6 +219,26 @@ class Canvas(QGraphicsView):
         super().fitInView(*args)
         self.update_text_caches()
 
+    def zoom_by(self, factor):
+        """Zoom around the viewport center, shared by toolbar and shortcuts."""
+        if self.scene() is None or self.sceneRect().isEmpty():
+            return
+        current = self.transform().m11()
+        if not 0.01 < current*factor < 30:
+            return
+        center = self.mapToScene(self.viewport().rect().center())
+        self.scale(factor, factor)
+        self.centerOn(center)
+
+    def reset_zoom(self):
+        """Show one scene pixel per view pixel while keeping the view centered."""
+        if self.scene() is None or self.sceneRect().isEmpty():
+            return
+        center = self.mapToScene(self.viewport().rect().center())
+        self.resetTransform()
+        self.centerOn(center)
+        self.update_text_caches()
+
     def wheelEvent(self, event):
         factor = 1.2 if event.angleDelta().y() > 0 else 1 / 1.2
         current = self.transform().m11()
@@ -1325,6 +1345,18 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def fit_canvas(self):
         if self.image is not None:
             self.canvas.fitInView(self.canvas.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
+
+    def zoom_in(self):
+        if self.image is not None:
+            self.canvas.zoom_by(1.2)
+
+    def zoom_out(self):
+        if self.image is not None:
+            self.canvas.zoom_by(1/1.2)
+
+    def zoom_actual(self):
+        if self.image is not None:
+            self.canvas.reset_zoom()
 
     def open_project(self, path=None):
         if self.busy or not self.confirm_discard():

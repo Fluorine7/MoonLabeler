@@ -2,6 +2,7 @@
 # Copyright (c) 2026 Fluorine Zhu
 """Layout-contract tests for the rebuilt inspector (moonlabeler/ui only)."""
 import os
+from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt, QTime
@@ -89,6 +90,43 @@ def test_primary_actions_are_marked_for_the_theme():
         assert shortcuts["打开照片"] == "Ctrl+O"
         assert shortcuts["保存工程"] == "Ctrl+S"
         assert shortcuts["适合窗口"] == "Ctrl+0"
+    finally:
+        window.dirty = False
+        window.close()
+
+
+def test_zoom_actions_share_the_fit_group_and_change_canvas_scale():
+    window, application = make_window()
+    try:
+        window.open_project(str(Path(__file__).parents[1]/"examples/demo.moonlabel"))
+        application.processEvents()
+        actions = {action.text(): action for action in window.actions}
+        for text, shortcut in (("+", "Ctrl++"), ("−", "Ctrl+-"),
+                               ("原始大小", "Ctrl+1"), ("适合窗口", "Ctrl+0")):
+            assert text in actions
+            assert actions[text].shortcut().toString() == shortcut
+        assert [key.toString() for key in actions["+"].shortcuts()] == ["Ctrl++", "Ctrl+="]
+        zoom_group = [action.text() for action in window.toolbar.actions()
+                      if action.text() in {"+", "−", "原始大小", "适合窗口"}]
+        assert zoom_group == ["原始大小", "适合窗口", "+", "−"]
+        fitted = window.canvas.transform().m11()
+        actions["+"].trigger()
+        application.processEvents()
+        zoomed = window.canvas.transform().m11()
+        assert zoomed > fitted * 1.1
+        actions["−"].trigger()
+        application.processEvents()
+        assert abs(window.canvas.transform().m11() - fitted) < 1e-9
+        actions["原始大小"].trigger()
+        application.processEvents()
+        assert abs(window.canvas.transform().m11() - 1) < 1e-9
+        actions["适合窗口"].trigger()
+        application.processEvents()
+        fitted_again = window.canvas.transform().m11()
+        scene = window.canvas.sceneRect()
+        viewport = window.canvas.viewport()
+        assert fitted_again*scene.width() <= viewport.width() + 1
+        assert fitted_again*scene.height() <= viewport.height() + 1
     finally:
         window.dirty = False
         window.close()
