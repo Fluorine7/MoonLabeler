@@ -108,7 +108,7 @@ def test_zoom_actions_share_the_fit_group_and_change_canvas_scale():
         assert [key.toString() for key in actions["+"].shortcuts()] == ["Ctrl++", "Ctrl+="]
         zoom_group = [action.text() for action in window.toolbar.actions()
                       if action.text() in {"+", "−", "原始大小", "适合窗口"}]
-        assert zoom_group == ["+", "−", "原始大小", "适合窗口"]
+        assert zoom_group == ["原始大小", "适合窗口", "+", "−"]
         fitted = window.canvas.transform().m11()
         actions["+"].trigger()
         application.processEvents()
