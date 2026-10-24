@@ -34,7 +34,7 @@ fi
 echo RUN_MOONLABELER
 ''' % ('echo opencv-contrib-python-headless' if legacy else 'true', 0 if native_ready else 1), encoding='utf-8')
     python.chmod(0o755)
-    outcome = subprocess.run([zsh, str(launcher)], capture_output=True, text=True, timeout=5)
+    outcome = subprocess.run([zsh, str(launcher)], capture_output=True, text=True, encoding='utf-8', timeout=5)
     assert outcome.returncode == 0 and 'RUN_MOONLABELER' in outcome.stdout
     assert ('REMOVE_OLD_OPENCV' in outcome.stdout) == legacy
     assert ('BUILD_PRIVATE_OPENCV' in outcome.stdout) == (not native_ready)
