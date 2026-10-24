@@ -5,6 +5,7 @@ MoonLabeler 作者 / Author：**Fluorine Zhu**。代码采用 [GPL-3.0-or-later]
 | 贡献者 / Contributors | 贡献与来源 / Contribution |
 | --- | --- |
 | **蔡明翰（[Evan Tsai](https://www.facebook.com/mjrt.mj)）** | 繁体中文支持及 Windows 部分问题修复。Traditional Chinese support and Windows fixes. |
+| **[sothic](https://github.com/sothic)** | [PR #15](https://github.com/Fluorine7/MoonLabeler/pull/15)：工具栏缩放、原始大小按钮及快捷键。Toolbar zoom controls, actual-size view and keyboard shortcuts. |
 | **樊仕达（10deg）** | 提供 moonlib 几何代码参考、LPND 中文地名与综合地貌资料，以及旷野风主题建议。[Tsukikage 高程标注修正](https://github.com/10deg/tsukikage/commit/88c0353883864d6d3556e85625852f57415908c7)启发了本项目独立实现的高程落点修正。Geometry references, name data and map-style suggestions. |
 | **Jim Mosher、Henrik Bondo — LTVT** | 已知地形校准与 DEM 光照方法参考：[照片校准](https://github.com/pavolgaj/ltvt/wiki/User-Photo-Calibration-Window)、[DEM 选项](https://github.com/pavolgaj/ltvt/wiki/DEM-Options)、[研究所用版本](https://github.com/fermigas/ltvt/tree/ae048c7b8b0e8d2945b8f67e660d105d8a8e1dcb)。Calibration and terrain-lighting references; independently implemented in Python/Qt. |
 | **Ram Maruboina — Lunar Crater Detector** | [固定 MIT 版本](https://github.com/rammaruboina-rgb/lunar-crater-detector/tree/0babc2a6fb3d02cfbf58aa9bafe9f44edf8dc3dd)的预处理、椭圆拟合和 Hough 圆检测思路用于疑似坑检测；版权与完整许可保留在第三方声明中。Adapted crater-candidate detection. |
