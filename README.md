@@ -113,7 +113,7 @@ Source installs download about 20 MB of ephemerides on first use; terrain matchi
 
 ### Development and licence
 
-Tests: install `".[dev]"`, then run `QT_QPA_PLATFORM=offscreen python -m pytest -q`.
+Tests: install `".[dev]"`, then run `QT_QPA_PLATFORM=offscreen python -X warn_default_encoding -m pytest -q`. The flag turns any text file opened without an explicit encoding into a test error, which is what the Windows code-page failures look like.
 Packaging: [macOS guide](docs/macos-app.md) · [Windows script](build-windows.ps1).
 
 Copyright © 2026 Fluorine Zhu. Application code is [GPL-3.0-or-later](LICENSE). Data sources and third-party terms are recorded in [acknowledgements](ACKNOWLEDGEMENTS.md) and [third-party notices](THIRD_PARTY_NOTICES.md).

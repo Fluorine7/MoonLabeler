@@ -195,10 +195,10 @@ def test_optional_settings_roundtrip_and_legacy_defaults(tmp_path):
               "terminator_enabled", "terminator_opacity", "terminator_source")
     assert all(getattr(p, f) == getattr(loaded, f) for f in fields)
     assert loaded.labels == p.labels and loaded.color == p.color and loaded.font_weight == "bold"
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     for f in fields:
         del data["style"][f]
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     legacy = Project.load(path)
     assert legacy.art_style == "standard" and legacy.grid_spacing == 0 and not legacy.elevation_enabled
     assert not legacy.contour_enabled and legacy.contour_interval == 'auto'
@@ -236,8 +236,8 @@ def test_auto_contour_interval_matches_manual_geometry_and_svg_legend(tmp_path):
     assert layers.contours and layers.contour_interval in (.25, .5, 1., 2.)
     output = tmp_path/'auto.svg'
     export_svg(output, image, [], p, layers=layers)
-    assert f'Δh = {layers.contour_interval:g} km' in output.read_text()
-    assert f'Index: {layers.contour_interval*5:g} km' in output.read_text()
+    assert f'Δh = {layers.contour_interval:g} km' in output.read_text(encoding="utf-8")
+    assert f'Index: {layers.contour_interval*5:g} km' in output.read_text(encoding="utf-8")
     assert p.contour_interval == 'auto'
     p.contour_interval = layers.contour_interval
     manual = build_map_layers(p, image.shape, image=image)
@@ -255,9 +255,9 @@ def test_auto_contour_interval_matches_manual_geometry_and_svg_legend(tmp_path):
 def test_invalid_layer_settings_rejected_before_open(tmp_path, key, value):
     path = tmp_path/"invalid.moonlabel"
     Project(image_path=str(tmp_path/"image.png")).save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data["style"][key] = value
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match="style"):
         Project.load(path)
 
@@ -556,9 +556,9 @@ def test_legend_position_roundtrip_and_legacy_default(tmp_path):
     loaded = Project.load(path)
     assert loaded.legend_position == p.legend_position
     assert legend_rect((600, 800, 3), loaded.legend_position)[:2] == (60.5, 80.25)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     del data['style']['legend_position']
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     legacy = Project.load(path)
     assert legacy.legend_position is None
     assert legend_rect((600, 800, 3), legacy.legend_position) == legend_rect((600, 800, 3))
@@ -733,7 +733,7 @@ def test_wilderness_preset_and_contour_only_live_export_preserve_originals(windo
     assert group is not None and group.get("opacity") == "1.000"
     assert group.findall('.//s:path', ns)
     assert root.find('.//s:image[@id="elevation-overlay"]', ns) is None
-    assert f"Δh = {win.map_layers.contour_interval:g} km" in path.read_text()
+    assert f"Δh = {win.map_layers.contour_interval:g} km" in path.read_text(encoding="utf-8")
     win.render_png(tmp_path/"contours.png")
     saved = tmp_path/"contours.moonlabel"
     win.project.save(saved)
@@ -794,14 +794,14 @@ def test_wilderness_names_have_hierarchy_and_preserve_explicit_pins(window):
 def test_legacy_lighting_flag_is_ignored_and_not_saved(window, tmp_path, legacy_value):
     path = tmp_path/"legacy-lighting.moonlabel"
     window.project.save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data['style']['map_lit_only'] = legacy_value
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     p = Project.load(path)
     assert not hasattr(p, 'map_lit_only') and not hasattr(window, 'map_lit_only')
     assert p.illuminated_only == window.project.illuminated_only
     p.save(path)
-    assert 'map_lit_only' not in json.loads(path.read_text())['style']
+    assert 'map_lit_only' not in json.loads(path.read_text(encoding="utf-8"))['style']
 
 
 def test_classical_caption_hierarchy_and_curved_svg_remain_editable(tmp_path):
