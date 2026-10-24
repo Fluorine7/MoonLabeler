@@ -94,11 +94,11 @@ def test_mask_settings_roundtrip_and_old_projects_keep_full_coverage(tmp_path, t
     p.save(path)
     loaded = Project.load(path)
     assert loaded.map_light_mask and loaded.map_light_threshold == threshold
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     del data["style"]["map_light_mask"]
     del data["style"]["map_light_threshold"]
     data["style"]["map_lit_only"] = True
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     loaded = Project.load(path)
     assert not loaded.map_light_mask and loaded.map_light_threshold == "auto"
 
@@ -110,9 +110,9 @@ def test_mask_settings_roundtrip_and_old_projects_keep_full_coverage(tmp_path, t
 def test_invalid_mask_settings_rejected(tmp_path, key, value):
     path = tmp_path/"invalid.moonlabel"
     Project(image_path=str(tmp_path/"moon.png")).save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data["style"][key] = value
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match=key):
         Project.load(path)
 
@@ -248,7 +248,7 @@ def test_feathered_boundary_renders_with_partial_alpha_in_native_and_svg(applica
         return  # Native feathering above remains covered on all test platforms.
     svg = tmp_path/"soft.svg"
     svg.write_text('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
-                   f'width="{size}" height="{size}">'+''.join(layers_svg(p, (size, size), layers))+'</svg>')
+                   f'width="{size}" height="{size}">'+''.join(layers_svg(p, (size, size), layers))+'</svg>', encoding="utf-8")
     png = tmp_path/"soft.png"
     subprocess.run([renderer, str(svg), '-w', str(pixels), '-h', str(pixels), '-o', str(png)], check=True)
     exported = np.asarray(Image.open(png))[:, :, 3]

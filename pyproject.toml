@@ -38,3 +38,8 @@ moonlabeler = ["data/*.json", "data/*.jpg", "data/*.wgsl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "error::EncodingWarning:moonlabeler.*",
+    "error::EncodingWarning:test_.*",
+    "error::EncodingWarning:conftest",
+]
