@@ -24,10 +24,11 @@ from .eyepiece import distort_points, distortion_jacobian
 from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR, landing_marker_radius
 from .annotation_relief import catalogue_rim, contour_center, MIN_OUTLINE_DIAMETER_KM, MAX_HEIGHT_KM
 from .zh_variant import to_traditional
-from .annotation_style import (ART_STYLES, appearance, manuscript_fonts,
+from .annotation_style import (ART_STYLES, ART_PRESETS, SERIF_STYLES, HIERARCHICAL_STYLES, appearance, manuscript_fonts,
                                svg_caption, caption_typography, placed_caption_typography,
                                caption_text, caption_span, svg_serif_family, photo_for_style)
 from .map_layers import GRID_SPACINGS, CONTOUR_INTERVALS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg
+from .photo_overview import overview_svg
 
 # Stable project-file values, in the order shown by the name-language picker.
 LANGUAGE_CHOICES = ("双语", "双语（繁体）", "中文", "繁体中文", "英文")
@@ -48,9 +49,10 @@ def label_font_families(language="双语", platform=None, *, art_style="standard
     """
     platform = sys.platform if platform is None else platform
     traditional = language in TRADITIONAL_LANGUAGES
-    if art_style == "manuscript":
-        return manuscript_fonts(traditional, platform)
-    if art_style == "topographic":
+    if art_style in SERIF_STYLES:
+        families = manuscript_fonts(traditional, platform)
+        return families[2:]+families[:2] if art_style == "inkwash" else families
+    if art_style in ("topographic", "cyanotype", "redalert"):
         if platform == "darwin":
             return ["Avenir Next", "Helvetica Neue", "PingFang TC" if traditional else "PingFang SC"]
         if platform == "win32":
@@ -156,6 +158,8 @@ def _validate_project_data(data):
     style = _mapping(data['style'], 'style')
     if style.get('legend_position') is not None:
         _point(style['legend_position'], 'style.legend_position')
+    if style.get('overview_position') is not None:
+        _point(style['overview_position'], 'style.overview_position')
     for key, bounds, integer in (('font_size', (1, 2147483647), True),
                                  ('max_labels', (1, 1000), True),
                                  ('min_diameter', (0, 3000), False)):
@@ -167,7 +171,7 @@ def _validate_project_data(data):
     if 'font_step_percent' in style:
         _number(style['font_step_percent'], 'style.font_step_percent', 0, 100)
     for key in ('illuminated_only', 'optimize_layout', 'crater_outlines', 'show_landing_sites',
-                'elevation_enabled', 'contour_enabled', 'terminator_enabled', 'map_light_mask'):
+                'elevation_enabled', 'contour_enabled', 'terminator_enabled', 'map_light_mask', 'overview_enabled'):
         if key in style and type(style[key]) is not bool:
             _invalid_field(f'style.{key}')
     for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color', 'font_weight',
@@ -375,6 +379,8 @@ class Project:
     map_light_mask: bool = False
     map_light_threshold: int | str = "auto"
     legend_position: list[float] | None = None  # Top-left in original-photo pixels.
+    overview_enabled: bool = False
+    overview_position: list[float] | None = None  # None uses the photo's upper-left corner.
 
     def photo_points(self, points):
         """Map projected lunar coordinates into untouched photograph pixels."""
@@ -403,7 +409,7 @@ class Project:
         needed when changing typography. Long formations use catalogue extent.
         """
         sizes = self.font_sizes(shape)
-        if self.art_style == "manuscript":
+        if self.art_style in HIERARCHICAL_STYLES:
             result = {}
             for f in features:
                 typography = caption_typography(self, f)
@@ -449,6 +455,9 @@ class Project:
         return result
 
     def label_color(self, feature):
+        if self.art_style == "inkwash" and (feature.get('kind', '').split(',')[0] in ('Mare', 'Oceanus', 'Lacus', 'Palus', 'Sinus')
+                or (feature.get('diameter') or 0) >= 80):
+            return "#a63f32"
         if self.art_style == "topographic" and (feature.get('kind') == 'Satellite Feature' or re.search(r'\s[A-Z]$', feature['name'])):
             return "#d5c798"
         return appearance(self, landing=is_landing_site(feature)).text
@@ -470,7 +479,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": _portable_path(self.terrain_path, base) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position")}}
         write_json(path, data)
 
     @classmethod
@@ -503,7 +512,7 @@ class Project:
         project.font_percent = None  # Older projects only store a pixel size.
         project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position"):
+            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
@@ -727,7 +736,7 @@ class Project:
         Catalogue diameter describes a reference outline, not a detected rim.
         Hidden hemisphere arcs are separated so limb contours cannot connect.
         """
-        if self.art_style in ("topographic", "manuscript") or not self.crater_outlines or self.geometry is None or self.matrix is None:
+        if self.art_style in ART_PRESETS or not self.crater_outlines or self.geometry is None or self.matrix is None:
             return []
         if feature["kind"] not in ("Crater, craters", "Satellite Feature"):
             return []
@@ -753,7 +762,7 @@ class Project:
         return segments
 
 
-def export_svg(path, image, entries, project, leaders=None, *, layers=None, display_image=None):
+def export_svg(path, image, entries, project, leaders=None, *, layers=None, display_image=None, overview=None):
     entries = list(entries)
     font_sizes = project.label_font_sizes([feature for feature, _, _ in entries], image.shape)
     buffer = io.BytesIO()
@@ -769,11 +778,11 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None, disp
         lines.extend(layers_svg(project, image.shape, layers))
         if project.elevation_enabled or project.contour_enabled:
             lines.extend(legend_svg(project, image.shape, contour_interval=layers.contour_interval))
-    generic = "serif" if project.art_style == "manuscript" else "sans-serif"
+    generic = "serif" if project.art_style in SERIF_STYLES else "sans-serif"
     families = label_font_families(project.language, art_style=project.art_style)
     # Qt SVG treats a comma-separated font-family attribute as one literal
     # family. A single serif family keeps its glyphs aligned with native arcs.
-    family = svg_serif_family(families) if project.art_style == "manuscript" else ", ".join(families)+", "+generic
+    family = svg_serif_family(families) if project.art_style in SERIF_STYLES else ", ".join(families)+", "+generic
     lines.append('<g id="annotations" font-family="{}" font-weight="{}">'.format(
         escape(family, {'"': '&quot;'}), appearance(project).weight))
     for index, (feature, anchor, position) in enumerate(entries):
@@ -809,5 +818,6 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None, disp
                                   face_width=style.face_width(font_size), typography=typography)])
         lines.append('</g>')
     lines.append('</g>')
+    lines.append(overview_svg(project, image.shape, overview))
     lines.append('</svg>')
     Path(path).write_text('\n'.join(lines), encoding="utf-8")

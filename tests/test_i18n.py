@@ -405,6 +405,8 @@ def english_source_keys():
                     isinstance(target, ast.Name) and target.id == "LANGUAGE_CHOICES" for target in node.targets):
                 for element in node.value.elts:
                     add(strings, element.value, path, element, "LANGUAGE_CHOICES")
+            if path.name == "annotation_style.py" and isinstance(node, ast.Call) and _call_name(node) == "ArtPreset":
+                add(strings, node.args[0].value, path, node, "ART_PRESETS")
             # (c) constant messages raised, (d) formatted ones as templates.
             if isinstance(node, ast.Raise) and node.exc is not None:
                 for constant in literals(node.exc):
@@ -521,6 +523,7 @@ DYNAMIC_ARGUMENTS = {
     "ui/compute.py:__init__:compute.status()": "compute.status() literals are scanned (MESSAGE_FUNCTIONS)",
     "ui/compute.py:__init__:compute.status(self.mode.currentData())": "same",
     "ui/window.py:ui_refresh_crater_review:item.text()": "crater feature list: catalogue feature names",
+    "ui/window.py:build_sidebar:preset.title": "ART_PRESETS titles are scanned from their definitions",
 }
 
 

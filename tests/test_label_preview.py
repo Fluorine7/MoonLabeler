@@ -10,11 +10,12 @@ import pytest
 from PySide6.QtGui import QColor, QImage
 from PySide6.QtWidgets import QApplication
 
+from moonlabeler.annotation_style import ART_STYLES
 from moonlabeler.app import Annotation, Canvas
 from moonlabeler.project import Project
 
 
-@pytest.mark.parametrize('style', ['standard', 'manuscript', 'topographic'])
+@pytest.mark.parametrize('style', ART_STYLES)
 def test_cached_text_matches_vector_size_across_wheel_zoom_buckets(style):
     app = QApplication.instance() or QApplication([])
     canvas = Canvas()

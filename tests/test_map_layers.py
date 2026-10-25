@@ -21,6 +21,7 @@ from PySide6.QtGui import QImage, QPainter, QPixmap
 from PySide6.QtTest import QTest
 from PySide6.QtSvg import QSvgRenderer
 
+from moonlabeler.annotation_style import ART_STYLES, ART_PRESETS
 from moonlabeler.app import MainWindow
 from moonlabeler.geometry import Geometry, surface_vectors, unit
 from moonlabeler.map_layers import (photo_coordinates, grid_lines, sample_elevation, colorize_elevation,
@@ -195,10 +196,10 @@ def test_optional_settings_roundtrip_and_legacy_defaults(tmp_path):
               "terminator_enabled", "terminator_opacity", "terminator_source")
     assert all(getattr(p, f) == getattr(loaded, f) for f in fields)
     assert loaded.labels == p.labels and loaded.color == p.color and loaded.font_weight == "bold"
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     for f in fields:
         del data["style"][f]
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     legacy = Project.load(path)
     assert legacy.art_style == "standard" and legacy.grid_spacing == 0 and not legacy.elevation_enabled
     assert not legacy.contour_enabled and legacy.contour_interval == 'auto'
@@ -236,8 +237,8 @@ def test_auto_contour_interval_matches_manual_geometry_and_svg_legend(tmp_path):
     assert layers.contours and layers.contour_interval in (.25, .5, 1., 2.)
     output = tmp_path/'auto.svg'
     export_svg(output, image, [], p, layers=layers)
-    assert f'Δh = {layers.contour_interval:g} km' in output.read_text()
-    assert f'Index: {layers.contour_interval*5:g} km' in output.read_text()
+    assert f'Δh = {layers.contour_interval:g} km' in output.read_text(encoding="utf-8")
+    assert f'Index: {layers.contour_interval*5:g} km' in output.read_text(encoding="utf-8")
     assert p.contour_interval == 'auto'
     p.contour_interval = layers.contour_interval
     manual = build_map_layers(p, image.shape, image=image)
@@ -255,9 +256,9 @@ def test_auto_contour_interval_matches_manual_geometry_and_svg_legend(tmp_path):
 def test_invalid_layer_settings_rejected_before_open(tmp_path, key, value):
     path = tmp_path/"invalid.moonlabel"
     Project(image_path=str(tmp_path/"image.png")).save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data["style"][key] = value
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match="style"):
         Project.load(path)
 
@@ -277,7 +278,7 @@ def window():
     win.close()
 
 
-@pytest.mark.parametrize("style", ["manuscript", "topographic"])
+@pytest.mark.parametrize("style", ART_STYLES[1:])
 def test_original_preset_clears_art_layers_and_keeps_project_edits(window, style, monkeypatch):
     win = window
     item = win.annotation_items[0]
@@ -348,7 +349,8 @@ def test_art_toggle_preserves_edits_calibration_and_original_pixels(window, tmp_
     assert win.project.labels == edits and win.project.anchors == anchors and np.array_equal(win.project.matrix, matrix)
 
 
-def test_async_elevation_cache_and_png_svg_layer_contract(window, tmp_path, monkeypatch):
+@pytest.mark.parametrize('style', ('manuscript', 'cyanotype', 'copperplate', 'inkwash', 'redalert'))
+def test_async_elevation_cache_and_png_svg_layer_contract(window, tmp_path, monkeypatch, style):
     from moonlabeler import app as app_module
     win = window
     data = dem()
@@ -360,7 +362,7 @@ def test_async_elevation_cache_and_png_svg_layer_contract(window, tmp_path, monk
         calls.append(True)
         return sample_elevation(p, shape, data, max_edge=128)
     monkeypatch.setattr(app_module, "sample_elevation", sample)
-    win.art_style.setCurrentIndex(1)
+    win.art_style.setCurrentIndex(win.art_style.findData(style))
     win.grid_spacing.setCurrentIndex(win.grid_spacing.findData(30))
     win.elevation_toggle.setChecked(True)
     win.apply_label_settings()
@@ -556,9 +558,9 @@ def test_legend_position_roundtrip_and_legacy_default(tmp_path):
     loaded = Project.load(path)
     assert loaded.legend_position == p.legend_position
     assert legend_rect((600, 800, 3), loaded.legend_position)[:2] == (60.5, 80.25)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     del data['style']['legend_position']
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     legacy = Project.load(path)
     assert legacy.legend_position is None
     assert legend_rect((600, 800, 3), legacy.legend_position) == legend_rect((600, 800, 3))
@@ -733,7 +735,7 @@ def test_wilderness_preset_and_contour_only_live_export_preserve_originals(windo
     assert group is not None and group.get("opacity") == "1.000"
     assert group.findall('.//s:path', ns)
     assert root.find('.//s:image[@id="elevation-overlay"]', ns) is None
-    assert f"Δh = {win.map_layers.contour_interval:g} km" in path.read_text()
+    assert f"Δh = {win.map_layers.contour_interval:g} km" in path.read_text(encoding="utf-8")
     win.render_png(tmp_path/"contours.png")
     saved = tmp_path/"contours.moonlabel"
     win.project.save(saved)
@@ -794,14 +796,14 @@ def test_wilderness_names_have_hierarchy_and_preserve_explicit_pins(window):
 def test_legacy_lighting_flag_is_ignored_and_not_saved(window, tmp_path, legacy_value):
     path = tmp_path/"legacy-lighting.moonlabel"
     window.project.save(path)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data['style']['map_lit_only'] = legacy_value
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     p = Project.load(path)
     assert not hasattr(p, 'map_lit_only') and not hasattr(window, 'map_lit_only')
     assert p.illuminated_only == window.project.illuminated_only
     p.save(path)
-    assert 'map_lit_only' not in json.loads(path.read_text())['style']
+    assert 'map_lit_only' not in json.loads(path.read_text(encoding="utf-8"))['style']
 
 
 def test_classical_caption_hierarchy_and_curved_svg_remain_editable(tmp_path):
@@ -892,7 +894,7 @@ def test_art_styles_desaturate_display_png_svg_and_restore_colour_source(window,
         return np.asarray(image.constBits()).reshape(image.height(), image.bytesPerLine())[:, :image.width()*3].reshape(image.height(), image.width(), 3).copy()
     assert np.array_equal(scene_photo(), original)
     art_path = tmp_path/'art.moonlabel'
-    for style in ('manuscript', 'topographic'):
+    for style in ART_STYLES[1:]:
         win.art_style.setCurrentIndex(win.art_style.findData(style))
         win.elevation_toggle.setChecked(False)
         win.contour_toggle.setChecked(False)
@@ -907,7 +909,7 @@ def test_art_styles_desaturate_display_png_svg_and_restore_colour_source(window,
         assert np.array_equal(np.asarray(Image.open(io.BytesIO(base64.b64decode(data)))), gray)
         if style == 'manuscript':
             win.project.save(art_path)
-    assert changes == ['manuscript'], "Both art styles and repeated redraws reuse the grayscale base"
+    assert changes == ['manuscript'], "All art styles and repeated redraws reuse the grayscale base"
     win.art_style.setCurrentIndex(win.art_style.findData('standard'))
     win.apply_label_settings()
     assert np.array_equal(scene_photo(), original)
@@ -1260,7 +1262,7 @@ def test_contour_preparation_runs_off_ui_thread_and_keeps_canvas_interactive(win
     assert threads and all(thread != threading.get_ident() for thread in threads)
 
 
-@pytest.mark.parametrize('style', ['standard', 'manuscript', 'topographic'])
+@pytest.mark.parametrize('style', ART_STYLES)
 def test_exported_text_is_independent_of_preview_zoom_and_selection(window, tmp_path, style):
     win = window
     win.art_style.setCurrentIndex(win.art_style.findData(style))

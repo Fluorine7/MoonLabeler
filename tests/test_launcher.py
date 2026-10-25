@@ -25,9 +25,9 @@ if [ "$1" = "-c" ]; then
     esac
 fi
 echo RUN_MOONLABELER
-''' % (0 if compatible else 1))
+''' % (0 if compatible else 1), encoding='utf-8')
     python.chmod(0o755)
-    outcome = subprocess.run([zsh, str(launcher)], capture_output=True, text=True,
+    outcome = subprocess.run([zsh, str(launcher)], capture_output=True, text=True, encoding='utf-8',
                              input='\n', timeout=5)
     if compatible:
         assert outcome.returncode == 0 and 'RUN_MOONLABELER' in outcome.stdout
@@ -61,7 +61,7 @@ fi
 echo RUN_MOONLABELER
 """ % (0 if requirements_met else 1), encoding='utf-8')
     python.chmod(0o755)
-    outcome = subprocess.run([zsh, str(launcher)], capture_output=True, text=True,
+    outcome = subprocess.run([zsh, str(launcher)], capture_output=True, text=True, encoding='utf-8',
                              input='\n', timeout=5)
     assert outcome.returncode == 0 and 'RUN_MOONLABELER' in outcome.stdout
     assert ('REFRESH_REQUIREMENTS' in outcome.stdout) == (not requirements_met)

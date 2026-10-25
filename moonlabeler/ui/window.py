@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 from .capture import CaptureField
 from ..project import LANGUAGE_CHOICES
 from ..map_layers import CONTOUR_INTERVALS
+from ..annotation_style import ART_PRESETS
 from ..i18n import tr, trf
 
 from .drag import DRAG_KEY as LABEL_DRAG_KEY
@@ -390,21 +391,31 @@ class WindowUiMixin:
 
     def update_map_controls(self, *args):
         original = self.art_style.currentData() == "standard"
+        available = self.image is not None and self.project.geometry is not None and self.project.matrix is not None
+        self.overview_toggle.setEnabled(available)
+        self.generate_labels_button.setEnabled(available)
         self.font_weight.setEnabled(original)
+        self.ui_font_step.setEnabled(original)
+        self.font_pixels_hint.setVisible(original)
         self.color_button.setEnabled(original)
         self.landing_color_button.setEnabled(original and self.landing_sites_toggle.isChecked())
+        self.crater_outlines.setEnabled(original)
+        self.crater_outline_shape.setEnabled(original and self.crater_outlines.isChecked())
+        has_map = bool(self.grid_spacing.currentData()) or self.elevation_toggle.isChecked() or self.contour_toggle.isChecked()
+        self.map_light_toggle.setEnabled(has_map)
+        light_controls = has_map and self.map_light_toggle.isChecked()
         for slider, readout, enabled in (
                 (self.grid_opacity, self.grid_opacity_value, bool(self.grid_spacing.currentData())),
                 (self.elevation_opacity, self.elevation_opacity_value, self.elevation_toggle.isChecked()),
                 (self.contour_opacity, self.contour_opacity_value, self.contour_toggle.isChecked()),
                 (self.terminator_opacity, self.terminator_opacity_value, self.terminator_toggle.isChecked()),
-                (self.map_light_threshold, self.map_light_readout, self.map_light_toggle.isChecked())):
+                (self.map_light_threshold, self.map_light_readout, light_controls)):
             slider.setEnabled(enabled)
             readout.setEnabled(enabled)
         self.elevation_palette.setEnabled(self.elevation_toggle.isChecked())
         self.contour_interval.setEnabled(self.contour_toggle.isChecked())
         self.terminator_source.setEnabled(self.terminator_toggle.isChecked())
-        self.map_light_auto.setEnabled(self.map_light_toggle.isChecked() and self.image is not None)
+        self.map_light_auto.setEnabled(light_controls and self.image is not None)
 
     def select_art_style(self, *args):
         if self.rebuilding:
@@ -419,12 +430,13 @@ class WindowUiMixin:
                 for toggle in (self.elevation_toggle, self.contour_toggle,
                                self.terminator_toggle, self.map_light_toggle):
                     toggle.setChecked(False)
-            elif style in ("topographic", "manuscript"):
-                self.elevation_palette.setCurrentIndex(self.elevation_palette.findData("wilderness" if style == "topographic" else "antique"))
+            elif style in ART_PRESETS:
+                preset = ART_PRESETS[style]
+                self.elevation_palette.setCurrentIndex(self.elevation_palette.findData(preset.palette))
                 self.elevation_toggle.setChecked(True)
                 self.contour_toggle.setChecked(True)
-                self.elevation_opacity.setValue(100 if style == "topographic" else 72)
-                self.contour_opacity.setValue(75 if style == "topographic" else 48)
+                self.elevation_opacity.setValue(preset.elevation_opacity)
+                self.contour_opacity.setValue(preset.contour_opacity)
                 self.map_light_toggle.setChecked(True)
         finally:
             self.rebuilding = False
@@ -432,6 +444,7 @@ class WindowUiMixin:
         self.style_changed()
 
     def build_sidebar(self):
+        self._annotation_ui_ready = False
         self.sidebar = QWidget()
         self.sidebar.setObjectName("inspectorPanel")
         self.sidebar.setMinimumWidth(340)
@@ -449,9 +462,8 @@ class WindowUiMixin:
         self.workspace_tabs.tabBar().setDrawBase(False)
         outer.addWidget(self.workspace_tabs, 1)
 
-        def workspace_page(caption):
-            """Each workspace page: scrolling content plus a fixed footer that
-            stays visible while the content above scrolls."""
+        def workspace_page(caption, *, actions_at_top=False):
+            """Scroll settings independently of the page's fixed action area."""
             container = QWidget()
             container_box = QVBoxLayout(container)
             container_box.setContentsMargins(10, 8, 10, 10)
@@ -469,12 +481,17 @@ class WindowUiMixin:
             footer_box = QVBoxLayout(footer)
             footer_box.setContentsMargins(0, 4, 0, 0)
             footer_box.setSpacing(8)
-            container_box.addWidget(footer)
+            if actions_at_top:
+                footer_box.setContentsMargins(0, 0, 0, 4)
+                container_box.insertWidget(0, footer)
+            else:
+                container_box.addWidget(footer)
             self.workspace_tabs.addTab(container, caption)
             return page, footer_box, scroll
 
         layout, calibration_footer, calibration_scroll = workspace_page(tr("校准"))
-        labels_layout, _, _ = workspace_page(tr("标注"))
+        labels_layout, annotation_actions, self.annotation_scroll = workspace_page(tr("标注"), actions_at_top=True)
+        self.annotation_action_panel = annotation_actions.parentWidget()
         reference_layout, _, _ = workspace_page(tr("参考"))
         self.scroll = calibration_scroll
 
@@ -804,15 +821,32 @@ class WindowUiMixin:
         self.terrain_shadows.toggled.connect(self.terrain_settings_changed)
 
         # -------------------------------------------------- 标注
+        self.generate_labels_button = QPushButton(tr("重新生成标注"))
+        self.generate_labels_button.setProperty("primary", True)
+        self.generate_labels_button.setToolTip(tr("应用本页的标注与地图设置，保留手工修改的名称和位置。"))
+        self.generate_labels_button.clicked.connect(self.apply_label_settings)
+        annotation_actions.addWidget(self.generate_labels_button)
+        # Keep one application action for both annotations and optional maps.
+        self.apply_map_styles_button = self.generate_labels_button
+        self.settings_status = QLabel("")
+        self.settings_status.setWordWrap(True)
+        self.settings_status.setObjectName("statusLabel")
+        self.settings_status.hide()
+        annotation_actions.addWidget(self.settings_status)
+        self.overview_group = QGroupBox(tr("辅助图示"))
+        overview_form = self.ui_form(self.overview_group)
+        self.overview_toggle = QCheckBox(tr("照片区域示意图"))
+        self.overview_toggle.setToolTip(tr("勾选立即显示；按住 Cmd / Ctrl 拖动图示，位置随工程保存。"))
+        overview_form.addRow(self.overview_toggle)
+        labels_layout.addWidget(self.overview_group)
+
         self.map_styles_toggle, self.map_styles_block, map_styles_box = self.ui_collapsible(tr("艺术与地图图层（可选）"))
-        labels_layout.addWidget(self.map_styles_toggle)
-        labels_layout.addWidget(self.map_styles_block)
         form = self.ui_form()
         map_styles_box.addLayout(form)
         self.art_style = self.ui_combo()
         self.art_style.addItem(tr("原始标注"), "standard")
-        self.art_style.addItem(tr("中世纪风"), "manuscript")
-        self.art_style.addItem(tr("旷野地形图"), "topographic")
+        for key, preset in ART_PRESETS.items():
+            self.art_style.addItem(tr(preset.title), key)
         form.addRow(tr("艺术样式"), self.art_style)
         self.grid_spacing = self.ui_combo()
         self.grid_spacing.addItem(tr("关闭"), 0)
@@ -838,6 +872,10 @@ class WindowUiMixin:
         self.elevation_palette.addItem(tr("地形色"), "terrain")
         self.elevation_palette.addItem(tr("靛蓝与古金"), "antique")
         self.elevation_palette.addItem(tr("旷野橄榄棕"), "wilderness")
+        self.elevation_palette.addItem(tr("普鲁士蓝"), "cyanotype")
+        self.elevation_palette.addItem(tr("铜橙与青绿"), "copperplate")
+        self.elevation_palette.addItem(tr("墨灰与暖白"), "inkwash")
+        self.elevation_palette.addItem(tr("草绿与沙土"), "redalert")
         form.addRow(tr("高程配色"), self.elevation_palette)
         self.elevation_opacity, self.elevation_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.elevation_opacity*100), tr("高程不透明度"))
         form.addRow(tr("高程不透明度"), opacity_row)
@@ -879,17 +917,32 @@ class WindowUiMixin:
         self.map_layer_status = self.ui_note("")
         self.map_layer_status.hide()
         form.addRow(self.map_layer_status)
-        self.apply_map_styles_button = QPushButton(tr("应用样式与图层"))
-        self.apply_map_styles_button.setProperty("primary", True)
-        self.apply_map_styles_button.clicked.connect(self.apply_label_settings)
-        form.addRow(self.apply_map_styles_button)
-
-        group = QGroupBox(tr("筛选与数量"))
+        group = QGroupBox(tr("标注内容"))
         form = self.ui_form(group)
         self.kind = self.ui_combo()
         self.kind.addItem(tr("全部"), "全部")
+        kind_labels = {
+            "Albedo Feature": tr("反照率特征"),
+            "Astronaut-named features": tr("宇航员命名地形"),
+            "Catena": tr("坑链"),
+            "Crater": tr("环形山"),
+            "Dorsum": tr("月脊"),
+            "Lacus": tr("月湖"),
+            "Mare": tr("月海"),
+            "Mons": tr("山与山脉"),
+            "Oceanus": tr("月洋"),
+            "Palus": tr("月沼"),
+            "Planitia": tr("平原"),
+            "Promontorium": tr("月岬"),
+            "Rima": tr("月溪"),
+            "Rupes": tr("月崖"),
+            "Satellite Feature": tr("附属地形"),
+            "Sinus": tr("月湾"),
+            "Statio": tr("着陆基地"),
+            "Vallis": tr("月谷"),
+        }
         for kind in sorted(set(f["kind"] for f in self.catalog)):
-            self.kind.addItem(kind, kind)
+            self.kind.addItem(kind_labels.get(kind.split(",")[0], kind), kind)
         self.kind.currentTextChanged.connect(self.style_changed)
         form.addRow(tr("地形类别"), self.kind)
         self.diameter = QDoubleSpinBox()
@@ -921,6 +974,8 @@ class WindowUiMixin:
         landing_row.addWidget(self.landing_color_button)
         form.addRow(landing_row)
         labels_layout.addWidget(group)
+        labels_layout.addWidget(self.map_styles_toggle)
+        labels_layout.addWidget(self.map_styles_block)
 
         group = QGroupBox(tr("名称与文字"))
         form = self.ui_form(group)
@@ -972,6 +1027,7 @@ class WindowUiMixin:
         form.addRow(self.color_button)
         labels_layout.addWidget(group)
         self.art_style.currentIndexChanged.connect(self.select_art_style)
+        self.overview_toggle.toggled.connect(self.toggle_photo_overview)
         for control in (self.grid_spacing, self.elevation_palette, self.contour_interval, self.terminator_source):
             control.currentIndexChanged.connect(self.update_map_controls)
             control.currentIndexChanged.connect(self.style_changed)
@@ -986,8 +1042,6 @@ class WindowUiMixin:
         for control in (self.elevation_toggle, self.contour_toggle, self.terminator_toggle):
             control.toggled.connect(self.update_map_controls)
             control.toggled.connect(self.style_changed)
-        self.update_map_controls()
-
         group = QGroupBox(tr("排版选项"))
         option_box = QVBoxLayout(group)
         option_box.setContentsMargins(0, 4, 0, 0)
@@ -1000,6 +1054,7 @@ class WindowUiMixin:
         self.crater_outlines = QCheckBox(tr("大坑显示坑缘圈"))
         self.crater_outlines.setChecked(True)
         self.crater_outlines.toggled.connect(self.style_changed)
+        self.crater_outlines.toggled.connect(self.update_map_controls)
         self.crater_outlines.setToolTip(tr("直径至少 35 km 且在照片中足够大的环形山显示轮廓，小坑保留短引线。"))
         option_box.addWidget(self.crater_outlines)
         outline_form = QFormLayout()
@@ -1012,23 +1067,16 @@ class WindowUiMixin:
         option_box.addLayout(outline_form)
         labels_layout.addWidget(group)
 
-        group = QGroupBox(tr("应用与标签列表"))
+        group = QGroupBox(tr("标签管理"))
         apply_box = QVBoxLayout(group)
         apply_box.setContentsMargins(0, 4, 0, 0)
         apply_box.setSpacing(8)
-        self.generate_labels_button = QPushButton(tr("重新生成标注"))
-        self.generate_labels_button.setProperty("primary", True)
-        self.generate_labels_button.clicked.connect(self.apply_label_settings)
-        apply_box.addWidget(self.generate_labels_button)
-        self.settings_status = QLabel("")
-        self.settings_status.setWordWrap(True)
-        self.settings_status.setObjectName("statusLabel")
-        apply_box.addWidget(self.settings_status)
         self.layout_status = QLabel("")
         self.layout_status.setWordWrap(True)
         self.layout_status.setObjectName("statusLabel")
         apply_box.addWidget(self.layout_status)
         reflow = QPushButton(tr("重新自动排布标签"))
+        reflow.setToolTip(tr("重排当前标注的位置，保留改名和隐藏状态；其他待修改设置不生效。"))
         reflow.clicked.connect(self.reflow_labels)
         apply_box.addWidget(reflow)
         self.names = QListWidget()
@@ -1036,7 +1084,8 @@ class WindowUiMixin:
         self.names.itemDoubleClicked.connect(lambda item: self.edit_label(self.catalog_by_id[item.data(Qt.ItemDataRole.UserRole)]))
         self.names.setMinimumHeight(170)
         apply_box.addWidget(self.names, 1)
-        restore = QPushButton(tr("恢复名称与默认位置"))
+        restore = QPushButton(tr("重置手工编辑"))
+        restore.setToolTip(tr("恢复地名、默认位置和可见性，清除手工编辑。"))
         restore.clicked.connect(self.reset_labels)
         apply_box.addWidget(restore)
         self.language.setToolTip(tr("中文译名未收录时显示官方原名。繁体选项由简体译名经 OpenCC 转换。"))
@@ -1046,6 +1095,8 @@ class WindowUiMixin:
         self.catalog_button.clicked.connect(self.update_catalog)
         labels_layout.addWidget(self.catalog_button)
         labels_layout.addStretch()
+        self._annotation_ui_ready = True
+        self.update_map_controls()
 
         # -------------------------------------------------- 疑似坑确认操作条
         # Only the current candidate/name pair and confirmation stay pinned.

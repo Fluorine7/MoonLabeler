@@ -35,6 +35,8 @@ from .ui.theme import STYLE
 from .ui.window import WindowUiMixin, label_drag_hint
 from .ui.wheel import protect_settings_from_wheel
 from .ui.drag import ModifierDragItem
+from .ui.photo_overview import PhotoOverview
+from .photo_overview import build_overview, overview_key, overview_rect
 from .ui.map_layers import (add_map_layers, path_from_segments, GridCaption, ContourLayer, GridLayer,
                             MapCoverage, update_map_coverage, update_map_opacity, prepare_contour_preview)
 from .annotation_style import (appearance, caption_typography, placed_caption_typography,
@@ -715,6 +717,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.catalog_by_id = {f["id"]: f for f in self.catalog}
         self.annotation_items = []
         self.map_items = []
+        self.overview_item = None
+        self._overview_key = self._overview_model = None
         self.map_layers = MapLayers()
         self._map_display_key = None
         self._terminator_key = self._terminator_result = None
@@ -1320,6 +1324,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.update_font_hint()
         self.annotation_items = []
         self.map_items = []
+        self.overview_item = None
+        self._overview_key = self._overview_model = None
         self.map_layers = MapLayers()
         self._map_display_key = self._elevation_key = self._elevation_failed_key = None
         self._terminator_key = self._terminator_result = None
@@ -1448,6 +1454,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.crater_outline_shape.setCurrentIndex(self.crater_outline_shape.findData(self.project.crater_outline_shape))
         self.font_weight.setCurrentIndex(max(0, self.font_weight.findData(self.project.font_weight)))
         self.art_style.setCurrentIndex(max(0, self.art_style.findData(self.project.art_style)))
+        self.overview_toggle.setChecked(self.project.overview_enabled)
         self.grid_spacing.setCurrentIndex(self.grid_spacing.findData(self.project.grid_spacing))
         self.grid_opacity.setValue(round(self.project.grid_opacity*100))
         self.elevation_toggle.setChecked(self.project.elevation_enabled)
@@ -1470,6 +1477,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.color_button.setText(trf("文字与引线颜色：{color}", color=self.pending_color))
         self.style_pending = False
         self.settings_status.setText("")
+        self.settings_status.hide()
         self.update_font_hint()
         if self.project.terrain_path:
             self.dem_path = self.project.terrain_path
@@ -2076,12 +2084,53 @@ class MainWindow(WindowUiMixin, QMainWindow):
                           sothic='<a href="https://github.com/sothic">sothic</a>')
         QMessageBox.about(self, tr("关于 MoonLabeler"), text.replace("\n", "<br>"))
 
+    def annotation_settings(self):
+        """Read staged controls without rounding untouched project values."""
+        p = self.project
+        settings = {
+            "min_diameter": self.diameter.value(), "kind": self.kind.currentData(),
+            "max_labels": self.maximum.value(), "language": self.language.currentData(),
+            "font_weight": self.font_weight.currentData(), "art_style": self.art_style.currentData(),
+            "grid_spacing": self.grid_spacing.currentData(),
+            "elevation_enabled": self.elevation_toggle.isChecked(),
+            "elevation_palette": self.elevation_palette.currentData(),
+            "contour_enabled": self.contour_toggle.isChecked(),
+            "contour_interval": self.contour_interval.currentData(),
+            "terminator_enabled": self.terminator_toggle.isChecked(),
+            "terminator_source": self.terminator_source.currentData(),
+            "map_light_mask": self.map_light_toggle.isChecked(),
+            "map_light_threshold": self.pending_map_light_threshold,
+            "illuminated_only": self.lit.isChecked(),
+            "show_landing_sites": self.landing_sites_toggle.isChecked(),
+            "landing_color": self.pending_landing_color,
+            "optimize_layout": self.optimize_layout.isChecked(),
+            "crater_outlines": self.crater_outlines.isChecked(),
+            "crater_outline_shape": self.crater_outline_shape.currentData(), "color": self.pending_color,
+        }
+        for field, control, baseline in (
+                ("font_percent", self.font_size, self.displayed_font_percent),
+                ("font_step_percent", self.ui_font_step, self.displayed_font_step_percent)):
+            settings[field] = getattr(p, field) if control.value() == baseline else control.value()
+        for field, control in (("grid_opacity", self.grid_opacity),
+                               ("elevation_opacity", self.elevation_opacity),
+                               ("contour_opacity", self.contour_opacity),
+                               ("terminator_opacity", self.terminator_opacity)):
+            stored = getattr(p, field)
+            settings[field] = stored if control.value() == round(stored*100) else control.value()/100
+        return settings
+
+    def map_controls_match(self, *fields):
+        settings = self.annotation_settings()
+        return (self.art_style.currentData() == self.project.art_style and
+                all(settings[field] == getattr(self.project, field) for field in fields))
+
     def style_changed(self, *args):
-        if self.rebuilding:
+        if self.rebuilding or not self._annotation_ui_ready:
             return
-        self.style_pending = True
+        self.style_pending = any(value != getattr(self.project, key) for key, value in self.annotation_settings().items())
         self.update_font_hint()
-        self.settings_status.setText(tr("设置已改，需重新生成"))
+        self.settings_status.setText(tr("设置已改，需重新生成") if self.style_pending else tr("已更新"))
+        self.settings_status.setVisible(self.style_pending)
 
     def map_opacity_changed(self, field, value):
         if self.rebuilding:
@@ -2090,7 +2139,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
                    "elevation_opacity": self.project.elevation_enabled,
                    "contour_opacity": self.project.contour_enabled,
                    "terminator_opacity": self.project.terminator_enabled}[field]
-        if not applied:
+        fields = {"grid_opacity": ("grid_spacing",),
+                  "elevation_opacity": ("elevation_enabled", "elevation_palette"),
+                  "contour_opacity": ("contour_enabled", "contour_interval"),
+                  "terminator_opacity": ("terminator_enabled", "terminator_source")}[field]
+        if not applied or not self.map_controls_match(*fields):
             self.style_changed()
             return
         setattr(self.project, field, value/100)
@@ -2101,8 +2154,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self._map_display_key = None
         if self.image is not None:
             self.dirty = True
-        if not self.style_pending:
-            self.settings_status.setText(tr("已更新"))
+        self.style_changed()
 
     def current_photo_lightness(self):
         if self.image is None:
@@ -2140,7 +2192,12 @@ class MainWindow(WindowUiMixin, QMainWindow):
             return
         self.update_map_light_hint()
         p = self.project
-        if not (p.grid_spacing or p.elevation_enabled or p.contour_enabled):
+        fields = ["grid_spacing", "elevation_enabled", "contour_enabled"]
+        if p.elevation_enabled:
+            fields.append("elevation_palette")
+        if p.contour_enabled:
+            fields.append("contour_interval")
+        if not (p.grid_spacing or p.elevation_enabled or p.contour_enabled) or not self.map_controls_match(*fields):
             self.style_changed()
             return
         p.map_light_mask = self.map_light_toggle.isChecked()
@@ -2151,8 +2208,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self._map_display_key = None
         if self.image is not None:
             self.dirty = True
-        if not self.style_pending:
-            self.settings_status.setText(tr("已更新"))
+        self.style_changed()
 
     def refresh_map_coverage(self):
         self.map_layers.coverage = self.map_layers.light_threshold = None
@@ -2178,33 +2234,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def apply_label_settings(self):
         if self.busy:
             return
-        if self.font_size.value() != self.displayed_font_percent:
-            self.project.font_percent = self.font_size.value()
-        if self.ui_font_step.value() != self.displayed_font_step_percent:
-            self.project.font_step_percent = self.ui_font_step.value()
-        for key, value in (("min_diameter", self.diameter.value()), ("kind", self.kind.currentData()),
-                           ("max_labels", self.maximum.value()), ("language", self.language.currentData()),
-                           ("font_weight", self.font_weight.currentData()),
-                           ("art_style", self.art_style.currentData()),
-                           ("grid_spacing", self.grid_spacing.currentData()),
-                           ("grid_opacity", self.grid_opacity.value()/100),
-                           ("elevation_enabled", self.elevation_toggle.isChecked()),
-                           ("elevation_opacity", self.elevation_opacity.value()/100),
-                           ("elevation_palette", self.elevation_palette.currentData()),
-                           ("contour_enabled", self.contour_toggle.isChecked()),
-                           ("contour_interval", self.contour_interval.currentData()),
-                           ("contour_opacity", self.contour_opacity.value()/100),
-                           ("terminator_enabled", self.terminator_toggle.isChecked()),
-                           ("terminator_opacity", self.terminator_opacity.value()/100),
-                           ("terminator_source", self.terminator_source.currentData()),
-                           ("map_light_mask", self.map_light_toggle.isChecked()),
-                           ("map_light_threshold", self.pending_map_light_threshold),
-                           ("illuminated_only", self.lit.isChecked()),
-                           ("show_landing_sites", self.landing_sites_toggle.isChecked()),
-                           ("landing_color", self.pending_landing_color),
-                           ("optimize_layout", self.optimize_layout.isChecked()),
-                           ("crater_outlines", self.crater_outlines.isChecked()),
-                           ("crater_outline_shape", self.crater_outline_shape.currentData()), ("color", self.pending_color)):
+        for key, value in self.annotation_settings().items():
             setattr(self.project, key, value)
         if (self.project.elevation_enabled or self.project.contour_enabled) and self.dem_path:
             self.project.terrain_path = self.dem_path
@@ -2218,6 +2248,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.displayed_font_step_percent = self.ui_font_step.value()
         self.style_pending = False
         self.settings_status.setText(tr("已更新"))
+        self.settings_status.hide()
         if self.image is not None:
             self.dirty = True
 
@@ -2247,12 +2278,50 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.dirty = True
             self.update_grid_captions()
 
+    def toggle_photo_overview(self, enabled):
+        if self.rebuilding:
+            return
+        self.project.overview_enabled = enabled
+        self.refresh_photo_overview()
+        self.update_grid_captions()
+        self.dirty = True
+
+    def refresh_photo_overview(self):
+        scene = self.canvas.scene()
+        available = self.image is not None and self.project.geometry is not None and self.project.matrix is not None
+        self.overview_toggle.setEnabled(available)
+        self.generate_labels_button.setEnabled(available)
+        if not self.project.overview_enabled or not available:
+            if self.overview_item is not None:
+                scene.removeItem(self.overview_item)
+                self.overview_item = None
+            return
+        key = overview_key(self.project, self.image.shape)
+        if key != self._overview_key:
+            self._overview_model = build_overview(self.project, self.image.shape)
+            self._overview_key = key
+        if self.overview_item is not None and self.overview_item.model is self._overview_model:
+            self.overview_item.set_style(self.project.art_style)
+            return
+        if self.overview_item is not None:
+            scene.removeItem(self.overview_item)
+        self.overview_item = PhotoOverview(self.image.shape, self.project, self._overview_model, moved=self.move_photo_overview)
+        scene.addItem(self.overview_item)
+
+    def move_photo_overview(self, position):
+        if not self.rebuilding:
+            self.project.overview_position = position
+            self.dirty = True
+            self.update_grid_captions()
+
     def update_grid_captions(self):
         # Feature names have priority over coordinate captions. Keep the same
         # visibility in the SVG, including after the user drags a name.
         bounds = [item.sceneBoundingRect() for item in self.annotation_items]
         if self.map_layers.elevation is not None or self.map_layers.contours is not None:
             bounds.append(QRectF(*legend_rect(self.image.shape, self.project.legend_position)))
+        if self.overview_item is not None:
+            bounds.append(self.overview_item.sceneBoundingRect())
         coverage = next((item.coverage_path for item in self.map_items if isinstance(item, MapCoverage)), None)
         for item in self.map_items:
             if isinstance(item, GridCaption):
@@ -2375,6 +2444,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if self.project.elevation_enabled and (self.map_layers.elevation is None or
                                                self._elevation_key != self.map_sampling_key()):
             raise ValueError(tr("高程图尚未生成；请先生成或关闭高程着色再导出。"))
+        self.refresh_photo_overview()
 
     def refresh_annotations(self):
         self.rebuilding = True
@@ -2385,6 +2455,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 self.photo_item.setPixmap(QPixmap.fromImage(qimage(photo_for_style(self.display_image, self.project.art_style))))
                 self._photo_display_key = photo_key
         self.refresh_map_layers()
+        self.refresh_photo_overview()
         for item in self.annotation_items:
             scene.removeItem(item.line)
             scene.removeItem(item)
@@ -2445,7 +2516,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                     radius = min(item.font_size*1.3, max(4., feature["diameter"]*scale/(4*MOON_RADIUS_KM)))
                 if self.project.art_style == "topographic":
                     radius = max(4., item.font_size*.25)
-                elif self.project.art_style == "manuscript":
+                elif item.appearance.map_style:
                     radius = min(radius, max(item.font_size*.6, min(self.image.shape[:2])*.025))
                 objects[fid] = item
                 yield LabelBox(fid, tuple(xy), bounds.width(), bounds.height(), radius, fixed,
@@ -2453,10 +2524,15 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                important=feature['name'] in COMMON_FEATURES or is_landing_site(feature),
                                region=self.project.art_style == "topographic" or caption_typography(self.project, feature).region)
         h, w = self.image.shape[:2]
+        obstacles = []
+        if (self.project.elevation_enabled or self.project.contour_enabled) and (self.project.terrain_path or self.dem_path):
+            obstacles.append(legend_rect(self.image.shape, self.project.legend_position))
+        if self.overview_item is not None:
+            obstacles.append(overview_rect(self.image.shape, self.project.overview_position))
         if self.project.optimize_layout:
             placements, self.auto_omitted = arrange_labels(requests(), w, h, gap=max(5., reference_font*(.8 if self.project.art_style == "topographic" else .4)),
                                                           max_labels=self.project.max_labels,
-                                                          obstacles=[legend_rect(self.image.shape, self.project.legend_position)] if (self.project.elevation_enabled or self.project.contour_enabled) and (self.project.terrain_path or self.dem_path) else [])
+                                                          obstacles=obstacles)
         else:
             placements = {request.key: (*(request.fixed or (request.anchor[0]+request.radius+8, request.anchor[1]-request.height/2)),
                                         request.width, request.height) for request in islice(requests(), self.project.max_labels)}
@@ -2523,7 +2599,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def reflow_labels(self):
         for data in self.project.labels.values():
             data.pop("position", None)
-        self.apply_label_settings()
+        self.refresh_annotations()
+        self.dirty = True
 
     def annotation_entries(self):
         return [(item.feature, [item.anchor.x(), item.anchor.y()], [item.pos().x(), item.pos().y()])
@@ -2547,6 +2624,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         for item in selected:
             item.setSelected(False)
         try:
+            if self.overview_item is not None:
+                self.overview_item.set_export_mode(True)
             for item in self.annotation_items:
                 item.set_export_mode(True)
             for item in contour_layers:
@@ -2563,6 +2642,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             if not result.save(str(path), "PNG"):
                 raise ValueError(tr("PNG 保存失败，请检查目标路径。"))
         finally:
+            if self.overview_item is not None:
+                self.overview_item.set_export_mode(False)
             for item in self.annotation_items:
                 item.set_export_mode(False)
             for item in contour_layers:
@@ -2594,7 +2675,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if path:
             try:
                 self.check_map_export()
-                export_svg(path if path.lower().endswith(".svg") else path+".svg", self.image, self.annotation_entries(), self.project, self.annotation_leaders(), layers=self.map_layers, display_image=self.display_image)
+                export_svg(path if path.lower().endswith(".svg") else path+".svg", self.image, self.annotation_entries(), self.project, self.annotation_leaders(), layers=self.map_layers, display_image=self.display_image, overview=self._overview_model)
                 self.statusBar().showMessage(tr("SVG 已导出"))
             except Exception as exc:
                 self.error(exc)

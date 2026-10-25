@@ -76,6 +76,38 @@ def test_combo_boxes_keep_simplified_project_values(traditional_window):
     assert window.project.kind == "全部"
 
 
+@pytest.mark.parametrize('language,crater,chain,valley', [
+    (i18n.SIMPLIFIED, '环形山', '坑链', '月谷'),
+    (i18n.TRADITIONAL, '環形山', '坑鏈', '月谷'),
+    (i18n.ENGLISH, 'Crater', 'Crater chain', 'Valley'),
+])
+def test_feature_types_follow_interface_language_without_changing_saved_filters(
+        app, language_state, tmp_path, language, crater, chain, valley):
+    import re
+    from moonlabeler.app import MainWindow
+    from moonlabeler.project import Project
+    i18n.set_language(language)
+    window = MainWindow()
+    try:
+        for kind, caption in [('Crater, craters', crater), ('Catena, catenae', chain), ('Vallis, valles', valley)]:
+            index = window.kind.findData(kind)
+            assert index >= 0 and window.kind.itemText(index) == caption
+        for index in range(1, window.kind.count()):
+            caption = window.kind.itemText(index)
+            assert bool(re.search(r'[一-鿿]', caption)) == (language != i18n.ENGLISH)
+        window.kind.setCurrentIndex(window.kind.findData('Crater, craters'))
+        window.apply_label_settings()
+        path = tmp_path/'地形类别.moonlabel'
+        window.project.save(path)
+        window.project = Project.load(path)
+        window.sync_controls()
+        assert window.project.kind == window.kind.currentData() == 'Crater, craters'
+        assert window.kind.currentText() == crater
+    finally:
+        window.dirty = False
+        window.close()
+
+
 def test_status_messages_keep_file_names_verbatim(traditional_window, monkeypatch, tmp_path):
     """Display points translate the template first and insert the file name afterwards."""
     from moonlabeler import app as app_module

@@ -6,7 +6,27 @@ import math
 import unicodedata
 from xml.sax.saxutils import escape
 
-ART_STYLES = ("standard", "manuscript", "topographic")
+
+@dataclass(frozen=True)
+class ArtPreset:
+    title: str
+    palette: str
+    elevation_opacity: int
+    contour_opacity: int
+
+
+# Stable IDs are saved in projects; titles pass through the interface translator.
+ART_PRESETS = {
+    "manuscript": ArtPreset("中世纪风", "antique", 72, 48),
+    "topographic": ArtPreset("旷野地形图", "wilderness", 100, 75),
+    "cyanotype": ArtPreset("蓝晒星图", "cyanotype", 90, 55),
+    "copperplate": ArtPreset("铜版图录", "copperplate", 90, 50),
+    "inkwash": ArtPreset("水墨朱砂", "inkwash", 78, 62),
+    "redalert": ArtPreset("红警地形图", "redalert", 100, 32),
+}
+ART_STYLES = ("standard", *ART_PRESETS)
+SERIF_STYLES = ("manuscript", "copperplate", "inkwash")
+HIERARCHICAL_STYLES = ("manuscript", "cyanotype", "copperplate", "inkwash", "redalert")
 
 
 def photo_for_style(image, art_style):
@@ -26,15 +46,17 @@ class Appearance:
     weight: str
     serif: bool = False
     map_style: bool = False
+    halo_ratio: float = .16
+    face_ratio: float = .012
 
     def halo_width(self, size):
         if self.map_style:
-            return max(2.4, size*.16)
+            return max(2.4, size*self.halo_ratio)
         return max(2., size*.06)
 
     def face_width(self, size):
         # Give fine serif strokes a little ink without replacing the typeface.
-        return max(.35, size*.012) if self.serif else 0.
+        return max(.35, size*self.face_ratio) if self.serif else 0.
 
 
 def appearance(project, *, landing=False):
@@ -44,6 +66,21 @@ def appearance(project, *, landing=False):
     if project.art_style == "manuscript":
         return Appearance("#f0c27f" if landing else "#f4e0a8",
                           "#d5a25c" if landing else "#d7af59", "#182029", "normal", serif=True, map_style=True)
+    if project.art_style == "cyanotype":
+        return Appearance("#f0d9a4" if landing else "#e3f2ee",
+                          "#d8c08c" if landing else "#a8d7e0", "#102d48", "normal", map_style=True)
+    if project.art_style == "copperplate":
+        return Appearance("#974b35" if landing else "#412a21",
+                          "#974b35" if landing else "#6e4836", "#f3e3bb", "normal", serif=True, map_style=True,
+                          halo_ratio=.10, face_ratio=.028)
+    if project.art_style == "inkwash":
+        return Appearance("#a84335" if landing else "#243c40",
+                          "#a84335" if landing else "#656c68", "#f2ead8", "normal", serif=True, map_style=True,
+                          halo_ratio=.10, face_ratio=.028)
+    if project.art_style == "redalert":
+        return Appearance("#efb963" if landing else "#f4eccb",
+                          "#d4a251" if landing else "#d7d39c", "#17251b", "bold", map_style=True,
+                          halo_ratio=.12)
     color = project.landing_color if landing else project.color
     return Appearance(color, color, "#141923", project.font_weight)
 
@@ -79,6 +116,29 @@ class CaptionTypography:
 
 
 def caption_typography(project, feature):
+    if project.art_style == "redalert":
+        kind = feature.get("kind", "").split(",")[0]
+        if kind in ("Mare", "Oceanus"):
+            return CaptionTypography(uppercase=True, tracking=.055, region=True, scale=1.4)
+        if kind in ("Lacus", "Palus", "Sinus"):
+            return CaptionTypography(uppercase=True, tracking=.025, region=True, scale=1.1)
+        if kind in ("Mons", "Rima", "Rupes", "Vallis", "Dorsum", "Promontorium", "Catena"):
+            return CaptionTypography(tracking=.015, scale=.85)
+        return CaptionTypography(uppercase=True, tracking=.02, scale=.72 if kind == "Satellite Feature" else 1.)
+    if project.art_style in ("cyanotype", "copperplate", "inkwash"):
+        kind = feature.get("kind", "").split(",")[0]
+        blueprint = project.art_style == "cyanotype"
+        copper = project.art_style == "copperplate"
+        if kind in ("Mare", "Oceanus"):
+            return CaptionTypography(uppercase=blueprint or copper, tracking=.14 if blueprint else .08,
+                                     arc=.045 if copper else 0., region=True, scale=1.6 if copper else 1.45)
+        if kind in ("Lacus", "Palus", "Sinus"):
+            return CaptionTypography(uppercase=blueprint or copper, tracking=.06, region=True, scale=1.1)
+        if kind in ("Mons", "Rima", "Rupes", "Vallis", "Dorsum", "Promontorium", "Catena"):
+            return CaptionTypography(italic=copper, tracking=.025 if blueprint else 0., scale=.85)
+        if kind == "Satellite Feature":
+            return CaptionTypography(uppercase=blueprint, tracking=.02, scale=.7)
+        return CaptionTypography(uppercase=blueprint, tracking=.045 if blueprint else .015)
     if project.art_style != "manuscript":
         return CaptionTypography()
     kind = feature.get("kind", "").split(",")[0]

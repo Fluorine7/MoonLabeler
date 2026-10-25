@@ -20,6 +20,7 @@ jobs:
     env:
       QT_QPA_PLATFORM: offscreen
       PYTHONUTF8: "0"
+      PYTHONWARNDEFAULTENCODING: "1"
       PYTHONIOENCODING: utf-8
       CMAKE_BUILD_PARALLEL_LEVEL: "2"
     steps:

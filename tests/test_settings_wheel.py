@@ -53,7 +53,7 @@ def test_wheel_over_setting_never_changes_value(window, field, focused):
     if focused:
         control.setFocus()
     else:
-        window.apply_map_styles_button.setFocus()
+        window.catalog_button.setFocus()
     QApplication.processEvents()
     assert control.hasFocus() == focused
     before = setting_value(control)
@@ -121,8 +121,9 @@ def test_slider_numbers_accept_precise_typing_and_stay_in_sync(window, field, re
         assert editor.fontMetrics().horizontalAdvance(editor.text()) <= editor.lineEdit().width()
     editor.selectAll()
     QTest.keyClicks(editor, "23")
-    window.apply_map_styles_button.setFocus()
+    window.catalog_button.setFocus()
     QApplication.processEvents()
+    assert not editor.hasFocus()
     assert slider.value() == editor.value() == 23
     before = slider.value()
     for touchpad in (False, True):

@@ -27,8 +27,53 @@ ELEVATION_PALETTES = {
     "terrain": ("#20385b", "#337d9e", "#7aafad", "#cbc89a", "#d9a365", "#b86548", "#f3dfce"),
     "antique": ("#142635", "#29475f", "#4e7892", "#c5b78a", "#d9b56e", "#e4c184", "#eddaad"),
     "wilderness": ("#302c19", "#494222", "#72642e", "#a28f46", "#c3ab68", "#d5c28b", "#e6d5a7"),
+    "cyanotype": ("#071b37", "#0b3669", "#1f5f98", "#ece2bd", "#f1d6a0", "#f3dda9", "#fff3d3"),
+    "copperplate": ("#062f39", "#0e4d55", "#236776", "#e8a064", "#cf7845", "#edac69", "#f7e4b9"),
+    "inkwash": ("#18252a", "#2f494d", "#48676b", "#d5d2b8", "#c8a393", "#eee0c6", "#f5f0dc"),
+    "redalert": ("#183c47", "#294e35", "#568432", "#c7ae62", "#a48b5c", "#bdb197", "#e6dcc5"),
 }
 HEIGHT_STOPS = np.array([-9., -4., -1.5, 0., 2., 5., 9.])
+
+
+@dataclass(frozen=True)
+class MapInks:
+    contour: str
+    index: str
+    grid: str
+    halo: str
+    terminator: str
+
+
+ART_MAP_INKS = {
+    "cyanotype": MapInks("#a7d2dd", "#e3efdf", "#c0e2e7", "#102d48", "#e5c389"),
+    "copperplate": MapInks("#8f704e", "#7d4e2c", "#875c3a", "#eedfbd", "#9a4d36"),
+    "inkwash": MapInks("#536663", "#b94d37", "#ac4c38", "#ede7d5", "#a84335"),
+    "redalert": MapInks("#536c36", "#d8c681", "#c8d5a0", "#17251b", "#e1a767"),
+}
+
+
+@dataclass(frozen=True)
+class LegendStyle:
+    family: str = "serif"
+    background: str = "#10151d"
+    foreground: str = "#f0ece1"
+    border: str = ""
+    sample: str = "#c5bb82"
+    alpha: int = 235
+
+
+LEGEND_STYLES = {
+    "topographic": LegendStyle("sans-serif", "#372f1b", border="#968454", alpha=225),
+    "cyanotype": LegendStyle("sans-serif", "#0b2943", "#e3f2ee", "#5b8ba1", "#c0e2e7"),
+    "copperplate": LegendStyle("serif", "#ead9b6", "#412a21", "#9a7857", "#7d4e2c"),
+    "inkwash": LegendStyle("serif", "#e8e5d3", "#303b3c", "#81877d", "#a84335"),
+    "redalert": LegendStyle("sans-serif", "#1e2d23", "#f4eccb", "#89946a", "#d8c681"),
+}
+DEFAULT_LEGEND_STYLE = LegendStyle()
+
+
+def legend_style(project):
+    return LEGEND_STYLES.get(project.art_style, DEFAULT_LEGEND_STYLE)
 
 
 @dataclass
@@ -225,7 +270,7 @@ def contour_lines(raster, project, shape):
                         coordinates[identity] = (point+[column+.5, row+.5])*scale
                 pairs.append((ids[a], ids[b]))
         segments = _join_contour_edges(pairs, coordinates)
-        if project.art_style == "topographic":
+        if project.art_style in ("topographic", "redalert"):
             # Generalize the map at its display scale without moving isolines.
             segments = [segment for segment in segments
                         if np.linalg.norm(np.diff(segment, axis=0), axis=1).sum() >= min(shape[:2])*.009]
@@ -238,6 +283,9 @@ def contour_lines(raster, project, shape):
 
 def contour_appearance(shape, major, style="standard"):
     width = max(1.8, min(shape[:2])*.0018) if major else max(1.1, min(shape[:2])*.0011)
+    if style in ART_MAP_INKS:
+        ink = ART_MAP_INKS[style]
+        return ink.index if major else ink.contour, ink.halo, width
     if style == "manuscript":
         return "#efcf82", "#17242f", width
     if style == "topographic":
@@ -252,7 +300,8 @@ def line_strokes(color, halo, width):
 
 def grid_appearance(project, shape, major):
     width = max(1.8, min(shape[:2])*.0022) if major else max(1.25, min(shape[:2])*.0016)
-    return grid_color(project), "#15212a", width
+    ink = ART_MAP_INKS.get(project.art_style)
+    return grid_color(project), ink.halo if ink else "#15212a", width
 
 
 def grid_dashes(width, major):
@@ -261,6 +310,9 @@ def grid_dashes(width, major):
 
 
 def terminator_appearance(project, shape):
+    if project.art_style in ART_MAP_INKS:
+        ink = ART_MAP_INKS[project.art_style]
+        return ink.terminator, ink.halo, max(2.8, min(shape[:2])*.0028)
     color = "#91d8e5" if project.art_style == "topographic" else "#f3a46e"
     return color, "#14212b", max(2.8, min(shape[:2])*.0028)
 
@@ -281,12 +333,21 @@ def cartographic_colors(raster, project):
     smooth = cv2.GaussianBlur(np.where(valid, raster.heights, 0), (0, 0), 1.1)/np.maximum(weights, 1e-6)
     interval = resolved_contour_interval(raster, project)
     terraced = (np.floor(smooth/interval)+.5)*interval
-    rgb = elevation_colors(terraced, "wilderness").astype(np.float32)
+    game_terrain = project.art_style == "redalert"
+    rgb = elevation_colors(terraced, project.elevation_palette if game_terrain else "wilderness").astype(np.float32)
     if min(smooth.shape) > 1:
         dy, dx = np.gradient(smooth)
         slope = np.hypot(dx, dy)
         scale = max(.01, float(np.percentile(slope[valid], 90))) if valid.any() else .01
-        shade = np.clip(.97+(-dx-dy)*.045/scale, .87, 1.04)
+        if game_terrain:
+            # Steep crater walls become rock faces, while flats retain the
+            # green/sand height bands. This is a display convention, not a
+            # claim about lunar vegetation or rock composition.
+            cliff = np.clip((slope/scale-.55)/.65, 0, .88)[:, :, None]
+            rgb = rgb*(1-cliff)+np.array([132., 115., 87.], np.float32)*cliff
+            shade = np.clip(.97+(-dx-dy)*.14/scale, .68, 1.12)
+        else:
+            shade = np.clip(.97+(-dx-dy)*.045/scale, .87, 1.04)
         rgb *= shade[:, :, None]
     return rgb.round().clip(0, 255).astype(np.uint8)
 
@@ -569,7 +630,8 @@ def elevation_alpha(raster, project):
 
 def colorize_elevation(raster, project, *, image=None):
     rgba = np.zeros((*raster.heights.shape, 4), np.uint8)
-    if project.art_style == "topographic" and project.elevation_palette == "wilderness":
+    if ((project.art_style == "topographic" and project.elevation_palette == "wilderness") or
+            (project.art_style == "redalert" and project.elevation_palette == "redalert")):
         rgba[:, :, :3] = cartographic_colors(raster, project)
         rgba[:, :, 3] = elevation_alpha(raster, project)
         return rgba
@@ -612,6 +674,8 @@ def build_map_layers(project, shape, *, image=None):
 
 
 def grid_color(project):
+    if project.art_style in ART_MAP_INKS:
+        return ART_MAP_INKS[project.art_style].grid
     if project.art_style == "topographic":
         return "#edd99b"
     return "#f0cc7b" if project.art_style == "manuscript" else "#a7d9ed"
@@ -702,13 +766,15 @@ def legend_svg(project, shape, *, contour_interval=None):
     u = h/6
     title = legend_title(project, contour_interval)
     interval = project.contour_interval if contour_interval is None else contour_interval
-    family, background, border = ("sans-serif", "#372f1b", f' stroke="#968454" stroke-width="{max(.5, u*.045):.3f}"') if project.art_style == "topographic" else ("serif", "#10151d", "")
-    parts = [f'<g id="elevation-legend" font-family="{family}" font-size="{max(1, round(u))}" fill="#f0ece1">',
-            f'<rect x="{x:.3f}" y="{y:.3f}" width="{w:.3f}" height="{h:.3f}" rx="{u*.4:.3f}" fill="{background}" fill-opacity=".92"{border}/>',
+    style = legend_style(project)
+    border = f' stroke="{style.border}" stroke-width="{max(.5, u*.045):.3f}"' if style.border else ''
+    opacity = style.alpha/255 if project.art_style in ART_MAP_INKS else .92
+    parts = [f'<g id="elevation-legend" font-family="{style.family}" font-size="{max(1, round(u))}" fill="{style.foreground}">',
+            f'<rect x="{x:.3f}" y="{y:.3f}" width="{w:.3f}" height="{h:.3f}" rx="{u*.4:.3f}" fill="{style.background}" fill-opacity="{opacity:.3f}"{border}/>',
             f'<text x="{x+u:.3f}" y="{y+u*1.5:.3f}">{title}</text>']
     if not project.elevation_enabled:
         index = f"Index: {interval*5:g} km · " if interval != "auto" else ""
-        parts.extend([f'<path d="M {x+u:.3f},{y+u*2.7:.3f} H {x+w-u:.3f}" stroke="#c5bb82" fill="none" stroke-width="{max(1., u*.12):.3f}"/>',
+        parts.extend([f'<path d="M {x+u:.3f},{y+u*2.7:.3f} H {x+w-u:.3f}" stroke="{style.sample}" fill="none" stroke-width="{max(1., u*.12):.3f}"/>',
                       f'<text x="{x+u:.3f}" y="{y+u*4.8:.3f}">{index}R = 1737.4 km</text>', '</g>'])
         return parts
     ramp = png_data(legend_image(shape, project.elevation_palette))

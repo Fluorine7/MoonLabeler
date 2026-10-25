@@ -2,14 +2,21 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
-开发阶段误写的 1.9.x 已统一更正为 0.9.x。详细实现与验证记录可查 Git 历史。
-Development versions labelled 1.9.x are corrected to 0.9.x; implementation details remain in Git history.
+## 0.10.0
+
+2026-10-26
+
+- 新增蓝晒星图、铜版图录、水墨朱砂、红警地形图，配套高程着色、等高线和图例。 / Added cyanotype, copperplate, ink/cinnabar and Red Alert terrain themes with matching map layers and legends.
+- 新增照片区域示意图，外观跟随艺术样式，可按住 Cmd / Ctrl 移动，位置随工程保存并用于 PNG/SVG。 / Added a themed photo-footprint locator with Cmd/Ctrl dragging and saved positions in PNG/SVG exports.
+- “重新生成标注”固定在标注页顶部，合并重复的应用按钮；重排标签不再顺带应用其他待修改设置。 / Pinned Regenerate annotations at the top of the tab and removed the duplicate Apply button. Reflow leaves other pending settings untouched.
+- 修正待应用样式与实时滑块相互干扰的问题，地形类别跟随简体、繁体或英文界面显示。 / Fixed live sliders modifying the applied map while another style was pending; feature types now follow the interface language.
+- 采用蔡明翰（Evan Tsai）的 [PR #16](https://github.com/Fluorine7/MoonLabeler/pull/16) 修复：测试显式使用 UTF-8，解决繁体 Windows 代码页的解码错误，并加入编码检查。 / Applied Evan Tsai's UTF-8 test fixes and encoding checks for Traditional Chinese Windows.
+
+本次更新源码，安装包仍为 0.9.3。 / Source update; downloadable apps remain at 0.9.3.
 
 ## 0.9.5
 
 - 合并 [sothic 的 PR #15](https://github.com/Fluorine7/MoonLabeler/pull/15)：工具栏增加原始大小、放大、缩小按钮及快捷键，缩放时保持视图中心。 / Merged sothic's toolbar zoom controls and shortcuts, preserving the viewport centre.
-
-本次仅更新源码，暂不打包。 / Source update only; no new application packages.
 
 ## 0.9.4
 

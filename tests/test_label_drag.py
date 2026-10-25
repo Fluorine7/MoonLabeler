@@ -8,6 +8,7 @@ from PySide6.QtGui import QFocusEvent, QMouseEvent
 from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 from moonlabeler.app import Canvas, Annotation
+from moonlabeler.annotation_style import ART_STYLES
 from moonlabeler.project import Project
 from moonlabeler.ui.map_layers import ElevationLegend
 
@@ -15,7 +16,7 @@ CTRL = Qt.KeyboardModifier.ControlModifier  # Qt maps this to Command on macOS.
 NONE = Qt.KeyboardModifier.NoModifier
 LEFT = Qt.MouseButton.LeftButton
 
-@pytest.fixture(params=[(1., "standard"), (2., "standard"), (1., "manuscript"), (2., "manuscript")])
+@pytest.fixture(params=[(zoom, style) for style in ART_STYLES for zoom in (1., 2.)])
 def view(request):
     app = QApplication.instance() or QApplication([])
     canvas = Canvas(); canvas.resize(600, 450)
@@ -185,7 +186,7 @@ def test_wheel_over_label_zooms_without_moving_it(view):
     assert label.pos() == original and not moves
 
 
-@pytest.mark.parametrize('style', ['manuscript', 'topographic'])
+@pytest.mark.parametrize('style', ART_STYLES[1:])
 def test_art_drag_keeps_leader_visibility_when_the_position_is_saved(style):
     from moonlabeler.app import MainWindow
     app = QApplication.instance() or QApplication([])

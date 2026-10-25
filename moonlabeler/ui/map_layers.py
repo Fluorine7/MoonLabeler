@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QGraphicsItem, QGraphicsPixmapItem, QGraphicsPathI
 from .drag import DRAG_KEY, ModifierDragItem
 from ..i18n import trf
 from ..map_layers import (grid_color, grid_appearance, grid_dashes, legend_rect, legend_image,
-                          legend_title, contour_appearance, terminator_appearance, terminator_dashes, line_strokes,
+                          legend_title, legend_style, contour_appearance, terminator_appearance, terminator_dashes, line_strokes,
                           feathered_coverage)
 
 
@@ -133,22 +133,25 @@ class ElevationLegend(ModifierDragItem):
     def paint(self, painter, option, widget=None):
         x, y, w, h = self.rect.getRect()
         u = h/6
+        style = legend_style(self.project)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(55, 47, 27, 225) if self.project.art_style == "topographic" else QColor(16, 21, 29, 235))
-        if self.project.art_style == "topographic":
-            painter.setPen(QPen(QColor("#968454"), max(.5, u*.045)))
+        background = QColor(style.background)
+        background.setAlpha(style.alpha)
+        painter.setBrush(background)
+        if style.border:
+            painter.setPen(QPen(QColor(style.border), max(.5, u*.045)))
         painter.drawRoundedRect(self.rect, u*.4, u*.4)
         if self.project.elevation_enabled:
             painter.drawImage(QRectF(x+u, y+u*2.2, w-2*u, u), self.ramp)
-        font = QFont("sans-serif" if self.project.art_style == "topographic" else "serif")
+        font = QFont(style.family)
         font.setPixelSize(max(1, round(u)))
         painter.setFont(font)
-        painter.setPen(QColor("#f0ece1"))
+        painter.setPen(QColor(style.foreground))
         painter.drawText(QPointF(x+u, y+u*1.5), legend_title(self.project, self.contour_interval))
         if not self.project.elevation_enabled:
-            painter.setPen(QPen(QColor("#c5bb82"), max(1., u*.12)))
+            painter.setPen(QPen(QColor(style.sample), max(1., u*.12)))
             painter.drawLine(QPointF(x+u, y+u*2.7), QPointF(x+w-u, y+u*2.7))
-            painter.setPen(QColor("#f0ece1"))
+            painter.setPen(QColor(style.foreground))
             index = f"Index: {self.contour_interval*5:g} km · " if self.contour_interval != "auto" else ""
             painter.drawText(QPointF(x+u, y+u*4.8), f"{index}R = 1737.4 km")
             return
