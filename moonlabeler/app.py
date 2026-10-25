@@ -145,7 +145,22 @@ class Canvas(QGraphicsView):
     def postpone_text_refinement(self):
         if self._text_cancel is not None:
             self._text_cancel.set()
-        self._text_timer.start()
+        if self.isVisible():
+            self._text_timer.start()
+        else:
+            self._text_timer.stop()
+
+    def hideEvent(self, event):
+        if hasattr(self, '_text_timer'):
+            self._text_timer.stop()
+            if self._text_cancel is not None:
+                self._text_cancel.set()
+        super().hideEvent(event)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if hasattr(self, '_text_timer'):
+            self.postpone_text_refinement()
 
     def update_text_caches(self):
         self.postpone_text_refinement()
@@ -157,7 +172,7 @@ class Canvas(QGraphicsView):
                 item.cache_for_view(scale)
 
     def refine_text_caches(self):
-        if self._text_worker is not None:
+        if self._text_worker is not None or not self.isVisible():
             return
         visible = self.mapToScene(self.viewport().rect()).boundingRect()
         requests = []
@@ -201,7 +216,7 @@ class Canvas(QGraphicsView):
         interrupted = self._text_cancel.is_set()
         self._text_worker = None
         self._text_cancel = None
-        if interrupted:
+        if interrupted and self.isVisible():
             self._text_timer.start()
         # A completed batch waits for the next navigation request. Otherwise a
         # viewport exceeding Qt's shared cache budget can refine/evict forever.

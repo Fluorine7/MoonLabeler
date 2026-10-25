@@ -105,6 +105,60 @@ def test_cancel_during_foreground_fill_discards_the_obsolete_caption(monkeypatch
     assert fills and result is None, 'Cancelled foreground work must not be published as a completed preview'
 
 
+@pytest.mark.parametrize('inflight', [False, True])
+def test_closed_canvas_does_not_schedule_more_background_text(monkeypatch, inflight):
+    from PySide6.QtTest import QTest
+    from moonlabeler import app as app_module
+    app = QApplication.instance() or QApplication([])
+    canvas = Canvas()
+    canvas.resize(800, 500)
+    canvas.setSceneRect(-1000, -1000, 2000, 2000)
+    label = Annotation({'id': 'test', 'name': 'Copernicus'}, (0, 0), '哥白尼 · Copernicus',
+                       Project(font_size=73, art_style='manuscript'), lambda *args: None, lambda *args: None)
+    canvas.scene().addItem(label)
+    canvas.scale(.2, .2)
+    canvas.show()
+    app.processEvents()
+    canvas.viewport().grab()
+    calls, started, release = [], threading.Event(), threading.Event()
+    original = app_module.rasterize_caption
+
+    def render(*args):
+        calls.append(True)
+        started.set()
+        assert release.wait(5)
+        return original(*args)
+
+    monkeypatch.setattr(app_module, 'rasterize_caption', render)
+    canvas.scale(2, 2)
+    assert canvas._text_timer.isActive()
+    if inflight:
+        canvas.refine_text_caches()
+        assert started.wait(5)
+    canvas.close()
+    assert not canvas._text_timer.isActive(), 'Closed canvases must not keep their idle refinement timer'
+    if inflight:
+        assert canvas._text_cancel.is_set()
+    release.set()
+    deadline = time.monotonic()+5
+    while canvas._text_worker is not None and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(.005)
+    assert canvas._text_worker is None
+    QTest.qWait(canvas._text_timer.interval()+50)
+    assert len(calls) == int(inflight) and canvas._text_worker is None
+    assert not canvas._text_timer.isActive(), 'Finishing a cancelled job must not rearm a hidden canvas'
+    canvas.show()
+    app.processEvents()
+    canvas.refine_text_caches()
+    deadline = time.monotonic()+5
+    while canvas._text_worker is not None and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(.005)
+    assert len(calls) == int(inflight)+1 and label._preview_size == label._cache_size
+    canvas.close()
+
+
 def test_zoom_refines_text_in_background_and_discards_removed_labels(monkeypatch):
     from moonlabeler import app as app_module
     app = QApplication.instance() or QApplication([])

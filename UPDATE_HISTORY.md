@@ -10,7 +10,7 @@
 - 新增照片区域示意图，外观跟随艺术样式，可按住 Cmd / Ctrl 移动，位置随工程保存并用于 PNG/SVG。 / Added a themed photo-footprint locator with Cmd/Ctrl dragging and saved positions in PNG/SVG exports.
 - “重新生成标注”固定在标注页顶部，合并重复的应用按钮；重排标签不再顺带应用其他待修改设置。 / Pinned Regenerate annotations at the top of the tab and removed the duplicate Apply button. Reflow leaves other pending settings untouched.
 - 修正待应用样式与实时滑块相互干扰的问题，地形类别跟随简体、繁体或英文界面显示。 / Fixed live sliders modifying the applied map while another style was pending; feature types now follow the interface language.
-- 分段填充后台文字预览，减少文字细化时的界面停顿，并及时响应缩放、拖动的取消操作。 / Split background text fills to reduce refinement stalls and respond to navigation cancellation.
+- 分段填充后台文字预览，缩放、拖动可及时中断；关闭或隐藏画布后停止细化任务。 / Split background text fills for responsive navigation; hidden or closed canvases stop refinement.
 - 采用蔡明翰（Evan Tsai）的 [PR #16](https://github.com/Fluorine7/MoonLabeler/pull/16) 修复：测试显式使用 UTF-8，解决繁体 Windows 代码页的解码错误，并加入编码检查。 / Applied Evan Tsai's UTF-8 test fixes and encoding checks for Traditional Chinese Windows.
 
 本次更新源码，安装包仍为 0.9.3。 / Source update; downloadable apps remain at 0.9.3.
