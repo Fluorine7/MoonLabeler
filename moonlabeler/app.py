@@ -312,7 +312,7 @@ def label_font(pixel_size, project=None, feature=None):
     return font
 
 
-def paint_caption(painter, path, halo, halo_width, color, face_width, *, stroke_paths=None, cancel=None):
+def paint_caption(painter, path, halo, halo_width, color, face_width, *, stroke_paths=None, fill_paths=None, cancel=None):
     for ink, width in ((halo, halo_width), (color, face_width)):
         if width:
             pen = QPen(QColor(ink), width, Qt.PenStyle.SolidLine,
@@ -321,22 +321,21 @@ def paint_caption(painter, path, halo, halo_width, color, face_width, *, stroke_
                 if cancel is not None and cancel.wait(.001):
                     return False
                 painter.strokePath(part, pen)
-    painter.fillPath(path, QColor(color))
-    return True
+    for part in fill_paths if fill_paths is not None else (path,):
+        if cancel is not None and cancel.wait(.001):
+            return False
+        painter.fillPath(part, QColor(color))
+    return cancel is None or not cancel.is_set()
 
 
-def caption_stroke_paths(path):
-    """Batch closed glyph contours without a long, uninterruptible paint call.
-
-    Preserve Bezier curves and paint all halos before the foreground. The fill
-    still uses the complete path so counters and overlapping glyphs keep their
-    original winding rule. Vector exports continue to use the original path.
-    """
+def caption_contours(path):
+    """Copy closed text contours with their original curves and winding rule."""
     parts, part, index = [], QPainterPath(), 0
     while index < path.elementCount():
         point = path.elementAt(index)
         if point.isMoveTo():
             if not part.isEmpty():
+                part.setFillRule(path.fillRule())
                 parts.append(part)
             part = QPainterPath()
             part.moveTo(point.x, point.y)
@@ -348,9 +347,15 @@ def caption_stroke_paths(path):
             index += 2
         index += 1
     if not part.isEmpty():
+        part.setFillRule(path.fillRule())
         parts.append(part)
+    return parts
+
+
+def caption_stroke_paths(path, *, contours=None):
+    """Batch glyph outlines without a long, uninterruptible paint call."""
     batches, batch = [], QPainterPath()
-    for part in parts:
+    for part in caption_contours(path) if contours is None else contours:
         if batch.elementCount()+part.elementCount() > 128 and not batch.isEmpty():
             batches.append(batch)
             batch = QPainterPath()
@@ -358,6 +363,33 @@ def caption_stroke_paths(path):
     if not batch.isEmpty():
         batches.append(batch)
     return batches
+
+
+def caption_fill_paths(path, contours):
+    """Group intersecting contour bounds so holes and overlaps stay together.
+
+    Separate groups cannot affect each other's fill rule. Filling them one at
+    a time lets navigation interrupt work between glyphs; exports still paint
+    the complete path in one call.
+    """
+    groups, active = [], []
+    for contour in sorted(contours, key=lambda contour: contour.boundingRect().left()):
+        part = QPainterPath(contour)
+        bounds, retained = part.boundingRect(), []
+        for group, rect in active:
+            if rect.right() < bounds.left():
+                groups.append(group)
+            elif rect.intersects(bounds):
+                part.addPath(group)
+                bounds = bounds.united(rect)
+            else:
+                retained.append((group, rect))
+        retained.append((part, bounds))
+        active = retained
+    groups.extend(group for group, rect in active)
+    for group in groups:
+        group.setFillRule(path.fillRule())
+    return groups
 
 
 def rasterize_caption(size, bounds, path, halo, halo_width, color, face_width, cancel=None):
@@ -369,8 +401,11 @@ def rasterize_caption(size, bounds, path, halo, halo_width, color, face_width, c
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.scale(size[0]/bounds.width(), size[1]/bounds.height())
     painter.translate(-bounds.x(), -bounds.y())
+    contours = caption_contours(path)
     complete = paint_caption(painter, path, halo, halo_width, color, face_width,
-                             stroke_paths=caption_stroke_paths(path), cancel=cancel)
+                             stroke_paths=caption_stroke_paths(path, contours=contours),
+                             fill_paths=caption_fill_paths(path, contours) if cancel is not None else None,
+                             cancel=cancel)
     painter.end()
     return image if complete else None
 

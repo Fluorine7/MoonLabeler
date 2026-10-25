@@ -54,8 +54,11 @@ def test_cached_text_matches_vector_size_across_wheel_zoom_buckets(style):
     ('topographic', 'Crater', '哥白尼 · Copernicus'),
     ('manuscript', 'Mons, montes', '斯匹次卑尔根山脉 · Montes Spitzbergen'),
     ('manuscript', 'Mare', '雨海 · MARE IMBRIUM'),
+    ('copperplate', 'Mare', '風暴洋 · OCEANUS PROCELLARUM'),
+    ('inkwash', 'Crater', '哥白尼 · Copernicus'),
 ])
-def test_caption_preview_preserves_vector_ink_and_holes(style, kind, text):
+@pytest.mark.parametrize('interruptible', [False, True])
+def test_caption_preview_preserves_vector_ink_and_holes(style, kind, text, interruptible):
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QPainter
     from moonlabeler.app import paint_caption, rasterize_caption
@@ -65,7 +68,7 @@ def test_caption_preview_preserves_vector_ink_and_holes(style, kind, text):
     bounds = label.boundingRect()
     size = round(bounds.width()*1.7), round(bounds.height()*1.7)
     request = label.text_raster_request(size)
-    preview = rasterize_caption(*request)
+    preview = rasterize_caption(*request, threading.Event() if interruptible else None)
     vector = QImage(*size, QImage.Format.Format_ARGB32_Premultiplied)
     vector.fill(Qt.GlobalColor.transparent)
     painter = QPainter(vector)
@@ -80,6 +83,26 @@ def test_caption_preview_preserves_vector_ink_and_holes(style, kind, text):
     # Separate anti-aliased contours can differ at a few overlapping edge
     # pixels. Halos, counters, curved placement and the foreground must agree.
     assert np.abs(pixels(preview)-pixels(vector)).mean() < .5
+
+
+def test_cancel_during_foreground_fill_discards_the_obsolete_caption(monkeypatch):
+    from moonlabeler import app as app_module
+    app = QApplication.instance() or QApplication([])
+    label = Annotation({'id': 'test', 'name': 'Montes Spitzbergen', 'kind': 'Mons, montes'},
+                       (0, 0), '斯匹次卑尔根山脉 · Montes Spitzbergen',
+                       Project(font_size=110, art_style='manuscript'), lambda *args: None, lambda *args: None)
+    label.cache_for_view(4.)
+    cancel, fills = threading.Event(), []
+
+    class CancelDuringFill(app_module.QPainter):
+        def fillPath(self, *args):
+            super().fillPath(*args)
+            fills.append(True)
+            cancel.set()  # A wheel/pan gesture arrives during foreground rendering.
+
+    monkeypatch.setattr(app_module, 'QPainter', CancelDuringFill)
+    result = app_module.rasterize_caption(*label.text_raster_request(label._cache_size), cancel)
+    assert fills and result is None, 'Cancelled foreground work must not be published as a completed preview'
 
 
 def test_zoom_refines_text_in_background_and_discards_removed_labels(monkeypatch):
