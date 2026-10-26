@@ -64,8 +64,8 @@ def test_combo_boxes_keep_simplified_project_values(traditional_window):
     window = traditional_window
     # Display text is Traditional, the stored project value stays the Simplified source value
     # so .moonlabel files remain compatible with upstream.
-    assert window.kind.itemText(0) == "全部"
-    assert window.kind.itemData(0) == "全部"
+    assert window.kind.all_checkbox.text() == "全部"
+    assert window.kind.selection() == "全部"
     labels = [window.language.itemText(i) for i in range(window.language.count())]
     values = [window.language.itemData(i) for i in range(window.language.count())]
     assert values == list(LANGUAGE_CHOICES)
@@ -90,19 +90,19 @@ def test_feature_types_follow_interface_language_without_changing_saved_filters(
     window = MainWindow()
     try:
         for kind, caption in [('Crater, craters', crater), ('Catena, catenae', chain), ('Vallis, valles', valley)]:
-            index = window.kind.findData(kind)
-            assert index >= 0 and window.kind.itemText(index) == caption
-        for index in range(1, window.kind.count()):
-            caption = window.kind.itemText(index)
+            assert window.kind.checks[kind].text() == caption
+        for checkbox in window.kind.checks.values():
+            caption = checkbox.text()
             assert bool(re.search(r'[一-鿿]', caption)) == (language != i18n.ENGLISH)
-        window.kind.setCurrentIndex(window.kind.findData('Crater, craters'))
+        window.kind.all_checkbox.setChecked(False)
+        window.kind.checks['Crater, craters'].setChecked(True)
         window.apply_label_settings()
         path = tmp_path/'地形类别.moonlabel'
         window.project.save(path)
         window.project = Project.load(path)
         window.sync_controls()
-        assert window.project.kind == window.kind.currentData() == 'Crater, craters'
-        assert window.kind.currentText() == crater
+        assert window.project.kind == window.kind.selection() == ['Crater, craters']
+        assert window.kind.checks['Crater, craters'].text() == crater
     finally:
         window.dirty = False
         window.close()
@@ -315,8 +315,8 @@ def test_widgets_show_english_text(english_window):
 
 def test_english_combo_boxes_keep_simplified_project_values(english_window):
     window = english_window
-    assert window.kind.itemText(0) == "All"
-    assert window.kind.itemData(0) == "全部"
+    assert window.kind.all_checkbox.text() == "All"
+    assert window.kind.selection() == "全部"
     labels = [window.language.itemText(i) for i in range(window.language.count())]
     values = [window.language.itemData(i) for i in range(window.language.count())]
     assert values == list(LANGUAGE_CHOICES)
@@ -381,7 +381,7 @@ def test_simplified_window_is_unchanged(app, language_state):
     i18n.set_language(i18n.SIMPLIFIED)
     window = MainWindow()
     assert window.identify_button.text() == "自动识别并标注"
-    assert window.kind.itemData(0) == "全部"
+    assert window.kind.selection() == "全部"
     window.close()
 
 

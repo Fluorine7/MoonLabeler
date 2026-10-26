@@ -27,7 +27,7 @@ from .zh_variant import to_traditional
 from .annotation_style import (ART_STYLES, ART_PRESETS, SERIF_STYLES, HIERARCHICAL_STYLES, appearance, manuscript_fonts,
                                svg_caption, caption_typography, placed_caption_typography,
                                caption_text, caption_span, svg_serif_family, photo_for_style)
-from .map_layers import GRID_SPACINGS, CONTOUR_INTERVALS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg
+from .map_layers import GRID_SPACINGS, CONTOUR_INTERVALS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg, photo_lightness
 from .photo_overview import overview_svg
 
 # Stable project-file values, in the order shown by the name-language picker.
@@ -174,7 +174,12 @@ def _validate_project_data(data):
                 'elevation_enabled', 'contour_enabled', 'terminator_enabled', 'map_light_mask', 'overview_enabled'):
         if key in style and type(style[key]) is not bool:
             _invalid_field(f'style.{key}')
-    for key in ('kind', 'language', 'color', 'crater_outline_shape', 'landing_color', 'font_weight',
+    if 'kind' in style:
+        kind = style['kind']
+        if not (isinstance(kind, str) or (isinstance(kind, list) and
+                all(isinstance(value, str) and value != '全部' for value in kind))):
+            _invalid_field('style.kind')
+    for key in ('language', 'color', 'crater_outline_shape', 'landing_color', 'font_weight',
                 'art_style', 'elevation_palette', 'terminator_source'):
         if key in style and not isinstance(style[key], str):
             _invalid_field(f'style.{key}')
@@ -348,7 +353,7 @@ class Project:
     landing_color: str = DEFAULT_LANDING_COLOR
     language: str = "双语"
     min_diameter: float = 40.
-    kind: str = "全部"
+    kind: str | list[str] = "全部"
     illuminated_only: bool = True
     max_labels: int = 200
     latitude: float | None = None
@@ -588,7 +593,30 @@ class Project:
                 pixels[i] = center
         return pixels, visible, lit
 
-    def visible_features(self, catalog, shape, image=None, *, all_candidates=False):
+    def feature_lightness(self, feature, anchor, image):
+        """A cached display score: local ground or a visible bright crater rim."""
+        h, w = image.shape[:2]
+        scale = np.sqrt(abs(np.linalg.det(self.matrix[:, :2])))
+        radius = max(4., min(min(h, w)*.08, feature['diameter']*scale/(2*MOON_RADIUS_KM)*1.12))
+        dx, dy = np.meshgrid(np.linspace(-1, 1, 13), np.linspace(-1, 1, 13))
+        disk = dx*dx+dy*dy <= 1
+
+        def brightness(points):
+            locations = np.rint(points).astype(int)
+            values = image[np.clip(locations[:, 1], 0, h-1), np.clip(locations[:, 0], 0, w-1)]
+            if values.ndim == 2:
+                values = np.rint(values[:, :3] @ np.array([.299, .587, .114]))
+            return float(np.percentile(values, 80))
+
+        score = brightness(np.asarray(anchor)+radius*np.column_stack((dx[disk], dy[disk])))
+        if feature['kind'] in ('Crater, craters', 'Satellite Feature'):
+            rim, visible = self._project_crater_rim(feature, (.85, 1., 1.15))
+            inside = visible & (rim[:, 0] >= 0) & (rim[:, 0] < w) & (rim[:, 1] >= 0) & (rim[:, 1] < h)
+            if inside.sum() >= 12:
+                score = max(score, brightness(rim[inside]))
+        return score
+
+    def visible_features(self, catalog, shape, image=None, *, all_candidates=False, lightness=None, include_unlit=False):
         """Rank visible catalogue entries; the scene requests reserves as well.
 
         This estimates photographic prominence, not crater identification.
@@ -617,22 +645,23 @@ class Project:
         scale = np.sqrt(abs(np.linalg.det(self.matrix[:, :2])))
         reference_font = self.font_sizes(shape)[1]
         bright = max(16., float(np.percentile(gray[::8, ::8], 95))) if gray is not None else None
-        brightness_limit = max(4., bright*.08) if gray is not None else None
-        if gray is not None and self.identification.get("lens_distortion"):
-            # Eyepiece background glow is not illuminated lunar terrain.
-            brightness_limit = max(brightness_limit, 30., bright*.25)
+        brightness_limit = None
+        if image is not None and self.illuminated_only and not include_unlit:
+            lightness = photo_lightness(self, image) if lightness is None else lightness
+            brightness_limit = lightness.resolve_threshold(self.map_light_threshold)
         offsets = np.linspace(-1, 1, 13)
         dx, dy = np.meshgrid(offsets, offsets)
         disk = dx*dx+dy*dy <= 1
         dx, dy = dx[disk], dy[disk]
         inside = (pixels[:,0] >= 0) & (pixels[:,0] < w) & (pixels[:,1] >= 0) & (pixels[:,1] < h)
+        kinds = None if self.kind == '全部' else ({self.kind} if isinstance(self.kind, str) else set(self.kind))
         candidates = []
         depths = surface_vectors([f['lat'] for f in catalog], [f['lon'] for f in catalog]) @ self.geometry.observer
         for f, xy, okay, sunlight, depth in zip(catalog, pixels, visible & inside, lit, depths):
             if not okay:
                 continue
             site = is_landing_site(f)
-            if not site and (f["diameter"] < self.min_diameter or (self.kind != "全部" and f["kind"] != self.kind)):
+            if not site and (f["diameter"] < self.min_diameter or (kinds is not None and f["kind"] not in kinds)):
                 continue
             contrast, roughness = 0., 0.
             if gray is not None:
@@ -641,27 +670,13 @@ class Project:
                 sy = np.clip(np.rint((xy[1]+radius*dy)/stride).astype(int), 0, gray.shape[0]-1)
                 low, light, high = np.percentile(gray[sy, sx], (10, 80, 90))
                 contrast = min(1., (high-low)/bright)
-            if self.illuminated_only:
+            if self.illuminated_only and not include_unlit:
                 if gray is None:
                     if not sunlight:
                         continue
                 else:
-                    if light < brightness_limit:
-                        # A large crater can have a completely dark floor.
-                        # Sample its foreshortened rim, even outside the small
-                        # center neighborhood; this is independent of drawing
-                        # outlines and never samples clipped off-frame points.
-                        if f["kind"] not in ("Crater, craters", "Satellite Feature"):
-                            continue
-                        rim, rim_visible = self._project_crater_rim(f, (.85, 1., 1.15))
-                        on_photo = rim_visible & (rim[:, 0] >= 0) & (rim[:, 0] < w) & (rim[:, 1] >= 0) & (rim[:, 1] < h)
-                        if on_photo.sum() < 12:
-                            continue
-                        locations = np.rint(rim[on_photo]/stride).astype(int)
-                        rx = np.clip(locations[:, 0], 0, gray.shape[1]-1)
-                        ry = np.clip(locations[:, 1], 0, gray.shape[0]-1)
-                        if np.percentile(gray[ry, rx], 80) < brightness_limit:
-                            continue
+                    if self.feature_lightness(f, xy, image) < brightness_limit:
+                        continue
             if gray is not None:
                 if f['kind'] in ('Crater, craters', 'Satellite Feature'):
                     rim, rim_visible = self._project_crater_rim(f, (.4, .7, 1., 1.3, 1.6, 2.))

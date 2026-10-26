@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QListView, QTabWidget, QSizePolicy, QSlider,
 )
 from .capture import CaptureField
+from .feature_types import FeatureTypeSelector
 from ..project import LANGUAGE_CHOICES
 from ..map_layers import CONTOUR_INTERVALS
 from ..annotation_style import ART_PRESETS
@@ -403,7 +404,7 @@ class WindowUiMixin:
         self.crater_outline_shape.setEnabled(original and self.crater_outlines.isChecked())
         has_map = bool(self.grid_spacing.currentData()) or self.elevation_toggle.isChecked() or self.contour_toggle.isChecked()
         self.map_light_toggle.setEnabled(has_map)
-        light_controls = has_map and self.map_light_toggle.isChecked()
+        light_controls = self.lit.isChecked() or (has_map and self.map_light_toggle.isChecked())
         for slider, readout, enabled in (
                 (self.grid_opacity, self.grid_opacity_value, bool(self.grid_spacing.currentData())),
                 (self.elevation_opacity, self.elevation_opacity_value, self.elevation_toggle.isChecked()),
@@ -890,21 +891,6 @@ class WindowUiMixin:
         form.addRow(tr("等高距"), self.contour_interval)
         self.contour_opacity, self.contour_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.contour_opacity*100), tr("等高线不透明度"))
         form.addRow(tr("等高线不透明度"), opacity_row)
-        self.map_light_toggle = QCheckBox(tr("地图仅覆盖受光区域"))
-        self.map_light_toggle.setChecked(self.project.map_light_mask)
-        form.addRow(self.map_light_toggle)
-        self.pending_map_light_threshold = self.project.map_light_threshold
-        value = 1 if self.pending_map_light_threshold == "auto" else self.pending_map_light_threshold
-        self.map_light_threshold, self.map_light_readout, threshold_row = self.ui_numeric_slider(value, tr("受光阈值"), 255)
-        for control in (self.map_light_threshold, self.map_light_readout):
-            control.setToolTip(tr("按照片亮度估计；调高阈值会收窄覆盖，调低会扩大。拖动立即更新，滚轮只滚动面板。"))
-        self.map_light_auto = QPushButton(tr("自动"))
-        self.map_light_auto.setCheckable(True)
-        self.map_light_auto.setChecked(self.project.map_light_threshold == "auto")
-        self.map_light_auto.setFixedWidth(52)
-        self.map_light_auto.setToolTip(tr("重新使用照片自动估计的受光阈值。"))
-        threshold_row.addWidget(self.map_light_auto)
-        form.addRow(tr("受光阈值"), threshold_row)
         dem_row = QHBoxLayout()
         download = QPushButton(tr("下载基础高程"))
         download.clicked.connect(self.download_dem)
@@ -919,8 +905,6 @@ class WindowUiMixin:
         form.addRow(self.map_layer_status)
         group = QGroupBox(tr("标注内容"))
         form = self.ui_form(group)
-        self.kind = self.ui_combo()
-        self.kind.addItem(tr("全部"), "全部")
         kind_labels = {
             "Albedo Feature": tr("反照率特征"),
             "Astronaut-named features": tr("宇航员命名地形"),
@@ -941,10 +925,10 @@ class WindowUiMixin:
             "Statio": tr("着陆基地"),
             "Vallis": tr("月谷"),
         }
-        for kind in sorted(set(f["kind"] for f in self.catalog)):
-            self.kind.addItem(kind_labels.get(kind.split(",")[0], kind), kind)
-        self.kind.currentTextChanged.connect(self.style_changed)
-        form.addRow(tr("地形类别"), self.kind)
+        self.kind = FeatureTypeSelector([(kind, kind_labels.get(kind.split(",")[0], kind))
+                                         for kind in sorted(set(f["kind"] for f in self.catalog))])
+        self.kind.selectionChanged.connect(self.style_changed)
+        form.addRow(self.kind)
         self.diameter = QDoubleSpinBox()
         self.diameter.setRange(0, 3000)
         self.diameter.setSuffix(" km")
@@ -959,8 +943,23 @@ class WindowUiMixin:
         self.lit = QCheckBox(tr("仅标注受光地形"))
         self.lit.setToolTip(tr("检查照片上的坑体与坑缘明暗，保留亮坑缘、暗坑底；避免日期计算误删可见地形。"))
         self.lit.setChecked(True)
-        self.lit.toggled.connect(self.style_changed)
+        self.lit.toggled.connect(self.apply_label_light_controls)
         form.addRow(self.lit)
+        self.map_light_toggle = QCheckBox(tr("地图仅覆盖受光区域"))
+        self.map_light_toggle.setChecked(self.project.map_light_mask)
+        form.addRow(self.map_light_toggle)
+        self.pending_map_light_threshold = self.project.map_light_threshold
+        value = 1 if self.pending_map_light_threshold == "auto" else self.pending_map_light_threshold
+        self.map_light_threshold, self.map_light_readout, threshold_row = self.ui_numeric_slider(value, tr("受光阈值"), 255)
+        for control in (self.map_light_threshold, self.map_light_readout):
+            control.setToolTip(tr("地名与地图共用照片亮度阈值；调高减少受光范围，调低扩大。拖动只切换显隐，保留标签位置。"))
+        self.map_light_auto = QPushButton(tr("自动"))
+        self.map_light_auto.setCheckable(True)
+        self.map_light_auto.setChecked(self.project.map_light_threshold == "auto")
+        self.map_light_auto.setFixedWidth(52)
+        self.map_light_auto.setToolTip(tr("重新使用照片自动估计的受光阈值。"))
+        threshold_row.addWidget(self.map_light_auto)
+        form.addRow(tr("受光阈值"), threshold_row)
         landing_row = QHBoxLayout()
         self.landing_sites_toggle = QCheckBox(tr("着陆点（阿波罗 / 嫦娥）"))
         self.landing_sites_toggle.setToolTip(tr("按公开坐标标注，使用小档字号。勾选后点击重新生成标注。"))
@@ -1039,6 +1038,7 @@ class WindowUiMixin:
         self.map_light_auto.clicked.connect(self.reset_map_light_threshold)
         self.map_light_toggle.toggled.connect(self.update_map_controls)
         self.map_light_toggle.toggled.connect(self.apply_map_light_controls)
+        self.lit.toggled.connect(self.update_map_controls)
         for control in (self.elevation_toggle, self.contour_toggle, self.terminator_toggle):
             control.toggled.connect(self.update_map_controls)
             control.toggled.connect(self.style_changed)

@@ -19,7 +19,7 @@ The initial PySide6/Shiboken6 6.12.0 PyPI bindings require macOS 26 despite thei
 
 ```bash
 python setup.py bdist_wheel --qtpaths=<SDK>/bin/qtpaths \
-  --module-subset=Core,Gui,Widgets,Network,DBus --parallel=4 \
+  --module-subset=Core,Gui,Widgets,Network,DBus,Svg --parallel=4 \
   --macos-arch=arm64 --macos-deployment-target=14.4 --standalone
 ```
 

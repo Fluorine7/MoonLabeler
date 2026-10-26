@@ -23,6 +23,8 @@ from moonlabeler.sources import read_image
     ('projection_surface', 'unknown'), ('projection_surface', None), ('projection_surface', []),
     ('style.max_labels', 0), ('style.min_diameter', -1),
     ('style.illuminated_only', 'false'), ('style.language', []),
+    ('style.kind', None), ('style.kind', {'Crater, craters': True}),
+    ('style.kind', [None]), ('style.kind', ['全部', 'Crater, craters']),
     ('style.legend_position', [1]), ('style.legend_position', 'top left'),
     ('style.legend_position', [True, 2]), ('style.legend_position', [1, float('nan')]),
     ('anchors', [{'id': '42', 'pixel': [1]}]),

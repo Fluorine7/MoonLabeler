@@ -105,9 +105,47 @@ def test_locator_keeps_its_geographic_annotations_in_the_compact_layout():
     assert model.grid and model.footprint and model.earth is not None
     root = ET.fromstring(overview_document(model))
     texts = [node.text for node in root.findall('.//{http://www.w3.org/2000/svg}text')]
-    assert all(label in texts for label in ('N', 'Earth', 'LAT', 'LON'))
+    assert all(label in texts for label in ('N', 'S', 'Earth', 'LAT', 'LON'))
     assert any('0.00° N' in text for text in texts)
     assert any('0.00° E' in text for text in texts)
+
+
+@pytest.mark.parametrize('latitude', [-48., 0., 48.])
+def test_poles_have_readable_surface_markers_or_direction_cues(latitude):
+    p = registered()
+    xy, _, _ = p.geometry.project([latitude], [0.])
+    p.matrix[:, 2] = [150, 100]-p.matrix[:, :2] @ xy[0]
+    matrix, geometry = p.matrix.copy(), deepcopy(p.geometry.to_dict())
+    model = build_overview(p, (200, 300, 3))
+    assert (model.north is not None) == (latitude > 0)
+    assert (model.south is not None) == (latitude < 0)
+    root = ET.fromstring(overview_document(model))
+    ns = {'s': 'http://www.w3.org/2000/svg'}
+    for pole, letter in (('north', 'N'), ('south', 'S')):
+        marker = root.find(f'.//s:g[@id="overview-{pole}-pole"]', ns)
+        assert marker is not None
+        visible = getattr(model, pole) is not None
+        assert marker.get('data-placement') == ('surface' if visible else 'direction')
+        caption = marker.find('s:text', ns)
+        assert caption.text == letter and float(caption.get('font-size')) >= 14
+        assert 10 <= float(caption.get('y')) <= 306
+        assert (marker.find('s:circle', ns) is not None) == visible
+    assert np.array_equal(p.matrix, matrix) and p.geometry.to_dict() == geometry
+
+
+def test_standard_footprint_does_not_tint_the_lunar_surface(application):
+    model = replace(build_overview(registered(), (200, 300, 3)), grid=[], earth=None, footprint=[])
+    full_frame = replace(model, footprint=[[[0., 0.], [383., 0.], [383., 383.], [0., 383.]]])
+
+    def pixels(value):
+        image = QImage(320, 366, QImage.Format.Format_RGB32)
+        image.fill(Qt.GlobalColor.black)
+        painter = QPainter(image)
+        QSvgRenderer(overview_document(value).encode('utf-8')).render(painter)
+        painter.end()
+        return np.asarray(image.constBits()).reshape(366, 320, 4).copy()
+
+    assert np.array_equal(pixels(model)[100:200, 100:220], pixels(full_frame)[100:200, 100:220])
 
 
 def test_overview_position_roundtrips_and_legacy_projects_remain_opt_in(tmp_path):

@@ -79,7 +79,7 @@ def test_reverting_pending_controls_preserves_precise_project_values(window):
 
 
 @pytest.mark.parametrize('change', ['style', 'grid'])
-def test_pending_map_configuration_does_not_live_edit_the_applied_map(window, monkeypatch, change):
+def test_shared_lighting_does_not_apply_other_pending_map_settings(window, monkeypatch, change):
     win, _ = window
     win.grid_spacing.setCurrentIndex(win.grid_spacing.findData(15))
     win.apply_label_settings()
@@ -91,11 +91,11 @@ def test_pending_map_configuration_does_not_live_edit_the_applied_map(window, mo
     else:
         win.grid_spacing.setCurrentIndex(win.grid_spacing.findData(30))
     monkeypatch.setattr(win, 'refresh_annotations', lambda: pytest.fail('Pending controls must leave the applied scene intact'))
-    monkeypatch.setattr(win, 'refresh_map_coverage', lambda: pytest.fail('Pending maps must not alter applied coverage'))
     win.grid_opacity.setValue(81)
     win.map_light_toggle.setChecked(not coverage)
     win.map_light_threshold.setValue(51)
-    assert win.project.grid_opacity == opacity and win.project.map_light_mask == coverage
+    assert win.project.grid_opacity == opacity and win.project.grid_spacing == 15
+    assert win.project.map_light_threshold == 51 and win.project.art_style == 'standard'
     assert win.map_items == items and win.annotation_items == labels
     assert win.style_pending
 
@@ -104,7 +104,10 @@ def test_inapplicable_controls_are_disabled_and_restore_their_values(window):
     win, _ = window
     step, outlines = win.ui_font_step.value(), win.crater_outlines.isChecked()
     assert win.generate_labels_button.isEnabled()
-    assert not win.map_light_toggle.isEnabled() and not win.map_light_threshold.isEnabled()
+    assert not win.map_light_toggle.isEnabled() and win.map_light_threshold.isEnabled()
+    win.lit.setChecked(False)
+    assert not win.map_light_threshold.isEnabled()
+    win.lit.setChecked(True)
     win.art_style.setCurrentIndex(win.art_style.findData('manuscript'))
     for control in (win.ui_font_step, win.font_weight, win.color_button,
                     win.crater_outlines, win.crater_outline_shape):

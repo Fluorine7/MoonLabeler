@@ -957,6 +957,46 @@ def test_exact_new_and_full_moon_have_no_visible_reference_sphere_terminator(pha
     assert not build_map_layers(p, (600, 600, 3)).terminator
 
 
+@pytest.mark.parametrize('source', ['photo', 'ephemeris'])
+@pytest.mark.parametrize('style', ART_STYLES)
+def test_both_terminator_sources_have_matching_dashed_preview_png_and_svg(tmp_path, source, style):
+    from moonlabeler.ui.map_layers import add_map_layers
+    application = QApplication.instance() or QApplication([])
+    p = project(terminator_enabled=True, terminator_source=source, art_style=style)
+    photo = np.zeros((120, 600, 3), np.uint8)
+    layers = MapLayers(terminator=[[[20., 60.], [580., 60.]]])
+    scene = QGraphicsScene()
+    scene.setSceneRect(0, 0, 600, 120)
+    items = add_map_layers(scene, p, photo.shape, layers)
+    assert len(items) == 2  # The foreground and its contrast edge need the same gaps.
+    for item in items:
+        pen = item.pen()
+        assert pen.style() == Qt.PenStyle.CustomDashLine
+        assert np.allclose(np.asarray(pen.dashPattern())*pen.widthF(), [28., 14.])
+    raster = QImage(600, 120, QImage.Format.Format_RGB32)
+    raster.fill(Qt.GlobalColor.black)
+    painter = QPainter(raster)
+    scene.render(painter, QRectF(0, 0, 600, 120), scene.sceneRect())
+    painter.end()
+    png = tmp_path/'terminator.png'
+    assert raster.save(str(png))
+    svg = tmp_path/'terminator.svg'
+    export_svg(svg, photo, [], p, layers=layers)
+    group = ET.parse(svg).find('.//{http://www.w3.org/2000/svg}g[@id="lunar-terminator"]')
+    assert group.attrib['data-source'] == source
+    for path in group.findall('{http://www.w3.org/2000/svg}path'):
+        assert path.attrib['stroke-dasharray'] == '28.000 14.000'
+    vector = QImage(600, 120, QImage.Format.Format_RGB32)
+    vector.fill(Qt.GlobalColor.black)
+    painter = QPainter(vector)
+    QSvgRenderer(str(svg)).render(painter)
+    painter.end()
+    for pixels in (np.asarray(Image.open(png).convert('RGB')),
+                   np.asarray(vector.constBits()).reshape(120, 600, 4)[:, :, :3]):
+        assert pixels[60, 28].max() > 0
+        assert not pixels[60, 55:58].any(), 'The contrast edge must not fill a dash gap'
+
+
 def test_terminator_without_dem_live_opacity_save_reopen_and_exports(window, tmp_path, monkeypatch):
     from moonlabeler import app as app_module
     win = window

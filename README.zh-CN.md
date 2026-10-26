@@ -1,17 +1,17 @@
 # MoonLabeler 使用说明
 
-**0.10.1** · Fluorine Zhu · [English](README.md) · [更新记录](UPDATE_HISTORY.md)
+**0.10.2** · Fluorine Zhu · [English](README.md) · [更新记录](UPDATE_HISTORY.md)
 
 为整月或局部月面照片配准、编辑地名，并导出 PNG / SVG。界面支持简体中文、繁体中文和英文。
 
 ## 下载与打开
 
-当前源码为 0.10.1，安装包为 0.9.3。
+当前源码为 0.10.2，安装包为 0.10.2。
 
 | 系统 | 下载 | 打开方式 |
 | --- | --- | --- |
-| macOS 14.4+，Apple Silicon（M1 或更新） | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.9.3/MoonLabeler-0.9.3-macos-arm64.zip) | 解压后打开 `MoonLabeler.app`，也可拖入“应用程序” |
-| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.9.3/MoonLabeler-0.9.3-windows-x64.zip) | 完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹 |
+| macOS 14.4+，Apple Silicon（M1 或更新） | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.10.2/MoonLabeler-0.10.2-macos-arm64.zip) | 解压后打开 `MoonLabeler.app`，也可拖入“应用程序” |
+| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.10.2/MoonLabeler-0.10.2-windows-x64.zip) | 完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹 |
 
 安装包自带运行环境、FITS 支持和离线星历。Mac 包采用临时签名，首次打开若被拦截，可在“系统设置 → 隐私与安全性”中允许运行；不支持 Intel Mac。
 
@@ -49,6 +49,8 @@ WinJUPOS 文件名可自动导入 UTC。例如 `2026-08-31-2137_7-Moon.tif` 对�
 
 ## 标签与导出
 
+- 地形类别默认折叠；取消“全部”后可勾选多个类别，点击“重新生成标注”生效。
+- “标注内容”中的受光阈值供地名和地图共用。拖动只改变标签显隐，位置不动；两个受光开关分别控制地名和地图。
 - 默认最多 200 个标签；避让空间不足的条目会显示“避让收起”，可减少数量或手动调整。
 - 字号按照片短边分大、中、小三档，默认 **1.8% / 1.5% / 1.2%**。“字号递减”设为 0 可统一大小。
 - 重新生成标注会保留手工文字和位置。“重新自动排布标签”只清除手工位置，不应用其他待修改设置；“重置手工编辑”同时恢复名称、位置和可见性。
@@ -71,7 +73,7 @@ WinJUPOS 文件名可自动导入 UTC。例如 `2026-08-31-2137_7-Moon.tif` 对�
 | 红警地形图 | 借鉴游戏内草地、沙土和山崖的分色；按高程分层，陡峭坑壁呈现岩石色与立体阴影 |
 | 月面经纬网 | 10° / 15° / 30° 间隔 |
 | 高程着色与等高线 | 需要 LOLA DEM；等高距默认自动，也可手动指定，缩放画面不会改变间距 |
-| 晨昏线 | “照片估计”为近似虚线；“工程时间”为理论实线，需要准确时间 |
+| 晨昏线 | 两种依据均显示为虚线；照片估计为近似位置，工程时间的理论位置需要准确时间 |
 
 新样式视觉参考：[蓝晒制图](https://www.nps.gov/subjects/museums/upload/19-09_508.pdf)、[铜版月面图](https://blogs.loc.gov/maps/2020/03/going-to-the-moon-early-cartography-of-the-lunar-surface/)、[敦煌星图](https://idp.bl.uk/blog/the-dunhuang-star-chart/)。
 
@@ -81,7 +83,7 @@ WinJUPOS 文件名可自动导入 UTC。例如 `2026-08-31-2137_7-Moon.tif` 对�
 
 高程图例也可按住 Cmd / Ctrl 拖动；位置随工程保存，PNG / SVG 使用相同位置。
 
-在 **“标注 → 辅助图示”** 勾选 **“照片区域示意图”** 立即显示深色圆角矩形定位图，默认在左上角。主题色边框标出覆盖范围，保留清晰经纬网、方位、Earth 标记及中心坐标；月球底色、边框与字体随已应用的艺术样式变化。按住 Cmd（Windows / Linux 用 Ctrl）拖动小图，位置随工程保存并用于 PNG / SVG；普通拖动仍平移画布。示意范围依据配准，光照依据工程时间；换样式只更新外观缓存，不改变范围或受光筛选。
+在 **“标注 → 辅助图示”** 勾选 **“照片区域示意图”** 即可显示，默认在左上角。边框标出取景范围，保留经纬网、N/S 极点、Earth 标记及中心坐标；背面极点用方向箭头表示。原始样式使用灰度月球，艺术样式沿用主题配色。按住 Cmd（Windows / Linux 用 Ctrl）拖动小图，位置随工程保存并用于 PNG / SVG。范围依据配准，光照依据工程时间；换样式复用几何，缩放和拖动复用外观缓存。
 
 图层首次应用后，不透明度和受光阈值可实时调整：拖动滑块，或在数字框输入后回车、移开焦点。若样式或对应图层配置待应用，滑块会一起暂存，避免改动当前画面。“自动”恢复照片估计阈值。地图受光覆盖采用柔和过渡，关闭后覆盖全部有效月面；地名和晨昏线独立控制。
 

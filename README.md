@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**0.10.1** · Fluorine Zhu · GPL-3.0-or-later
+**0.10.2** · Fluorine Zhu · GPL-3.0-or-later
 
 Register lunar photographs, edit terrain labels, and export annotated PNG or SVG images.
 为月面照片配准、标注地名并导出图片。
@@ -13,12 +13,12 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### 下载
 
-当前源码为 0.10.1，安装包为 0.9.3。
+当前源码为 0.10.2，安装包为 0.10.2。
 
 | 系统 | 安装包 | 打开方式 |
 | --- | --- | --- |
-| macOS 14.4+，Apple Silicon | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.9.3/MoonLabeler-0.9.3-macos-arm64.zip) | 解压后打开 `MoonLabeler.app`，也可拖入“应用程序” |
-| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.9.3/MoonLabeler-0.9.3-windows-x64.zip) | 完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹 |
+| macOS 14.4+，Apple Silicon | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.10.2/MoonLabeler-0.10.2-macos-arm64.zip) | 解压后打开 `MoonLabeler.app`，也可拖入“应用程序” |
+| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.10.2/MoonLabeler-0.10.2-windows-x64.zip) | 完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹 |
 
 安装包自带 Python、FITS 支持和离线星历。Mac 包为临时签名，若首次打开被拦截，可在“系统设置 → 隐私与安全性”中允许；不支持 Intel Mac。Linux 使用源码安装。
 
@@ -34,7 +34,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 ### 功能与图层
 
 - 自动、参考点辅助和手动配准，支持旋转、镜像及目镜后照片。
-- 可编辑地名、自动避让、分档字号，以及阿波罗 / 嫦娥着陆点。
+- 地形类别可多选，支持地名编辑、自动避让、分档字号，以及阿波罗 / 嫦娥着陆点。
 - 可选中世纪风、旷野地形图、蓝晒星图、铜版图录、水墨朱砂、红警地形图；支持经纬网、高程着色、等高线与晨昏线。
 - 照片区域示意图标出当前覆盖范围，外观随艺术样式变化，支持 Cmd / Ctrl 拖动、保存位置并导出。
 - 不透明度和受光阈值实时调整，支持滑块及数字输入；原图、配准和手工编辑保留。
@@ -59,12 +59,12 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### Download
 
-Source version: 0.10.1. Downloadable apps: 0.9.3.
+Source version: 0.10.2. Downloadable apps: 0.10.2.
 
 | Platform | Package | Open after extracting |
 | --- | --- | --- |
-| macOS 14.4+, Apple Silicon | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.9.3/MoonLabeler-0.9.3-macos-arm64.zip) | `MoonLabeler.app`; also movable to Applications |
-| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.9.3/MoonLabeler-0.9.3-windows-x64.zip) | `MoonLabeler.exe`; keep the `_internal` folder beside it |
+| macOS 14.4+, Apple Silicon | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.10.2/MoonLabeler-0.10.2-macos-arm64.zip) | `MoonLabeler.app`; also movable to Applications |
+| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.10.2/MoonLabeler-0.10.2-windows-x64.zip) | `MoonLabeler.exe`; keep the `_internal` folder beside it |
 
 Both packages include Python, FITS support and offline ephemerides. The Mac app is ad-hoc signed; if blocked on first launch, allow it in System Settings → Privacy & Security. The Mac package requires Apple Silicon; Linux uses the source installation below.
 
@@ -80,7 +80,7 @@ Ordinary dragging pans the canvas; the wheel zooms it or scrolls settings withou
 ### Features
 
 - Automatic, reference-assisted and manual registration, including rotated, mirrored and afocal photographs.
-- Editable terrain names, collision-aware label placement, relative font sizes and optional Apollo/Chang’e landing locations.
+- Select multiple terrain types, edit names and use collision-aware placement, relative font sizes and optional Apollo/Chang’e landing locations.
 - Optional **medieval**, **wilderness topographic**, **cyanotype**, **copperplate**, **ink/cinnabar** and **Red Alert terrain** themes, with lunar grids, elevation colours, contours and terminators.
 - Optional lunar locator showing the registered photo footprint, styled to match the art theme, with Cmd/Ctrl dragging and a saved position shared by PNG/SVG exports.
 - Live opacity and photo-lit coverage controls. Sliders also accept numeric input; press Enter or leave the field to apply it.

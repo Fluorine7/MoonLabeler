@@ -133,6 +133,7 @@ class Overview:
     center: tuple | None  # Geographic field centre; None when the frame misses the Moon.
     north: tuple | None
     earth: tuple | None
+    south: tuple | None = None
 
 
 def build_overview(project, shape, *, size=384):
@@ -180,7 +181,35 @@ def build_overview(project, shape, *, size=384):
         return tuple(center+scale*xy[0]) if visible[0] else None
 
     return Overview(size, rgba, footprint, grid, view.libration if footprint else None,
-                    marker(np.array([0., 0., 1.])), marker(project.geometry.observer))
+                    marker(np.array([0., 0., 1.])), marker(project.geometry.observer),
+                    south=marker(np.array([0., 0., -1.])))
+
+
+def _pole_markup(model, theme, family):
+    # Visible poles mark their projected surface position. A hidden pole gets
+    # a bearing at the north-up globe's rim, never a false point on its face.
+    parts = []
+    scale = 300/model.size
+    for name, letter, title, point, edge in (('north', 'N', tr('北极'), model.north, 22.),
+                                           ('south', 'S', tr('南极'), model.south, 298.)):
+        visible = point is not None
+        x, y = (10+point[0]*scale, 10+point[1]*scale) if visible else (160., edge)
+        text_x, text_y = min(296., max(24., x+17)), min(298., max(22., y))
+        if not visible:
+            title += ' · '+tr('背面，箭头表示方向')
+        parts.extend([f'<g id="overview-{name}-pole" data-placement="{"surface" if visible else "direction"}">',
+                      f'<title>{escape(title)}</title>'])
+        if visible:
+            parts.append(f'<circle cx="{x:.3f}" cy="{y:.3f}" r="3" fill="{theme.ink}" stroke="{theme.panel}" stroke-width="1.2"/>')
+        else:
+            direction = -1 if name == 'north' else 1
+            arrow = f'M {x-4:.3f},{y-3*direction:.3f} L {x:.3f},{y+3*direction:.3f} L {x+4:.3f},{y-3*direction:.3f}'
+            for color, width in ((theme.panel, 4.), (theme.ink, 1.7)):
+                parts.append(f'<path d="{arrow}" fill="none" stroke="{color}" stroke-width="{width}" stroke-linejoin="round" stroke-linecap="round"/>')
+        parts.extend([f'<rect x="{text_x-10:.3f}" y="{text_y-10:.3f}" width="20" height="20" rx="4" fill="{theme.panel}" fill-opacity=".94" stroke="{theme.border}" stroke-width=".65"/>',
+                      f'<text x="{text_x:.3f}" y="{text_y+5:.3f}" text-anchor="middle" fill="{theme.ink}" font-family="{family}" font-size="15" font-weight="700">{letter}</text>',
+                      '</g>'])
+    return ''.join(parts)
 
 
 def overview_markup(model, art_style='standard'):
@@ -206,20 +235,19 @@ def overview_markup(model, art_style='standard'):
              f'<circle cx="{center}" cy="{center}" r="{rim}" fill="none" stroke="{"#757e73" if original else theme.muted}" stroke-width="1.1"/>'])
     for polygon in model.footprint:
         path = svg_segments([polygon])+' Z'
-        parts.extend([f'<path class="photo-footprint" d="{path}" fill="{"#e9ad50" if original else theme.accent}" fill-opacity=".10" stroke="{"#493b26" if original else theme.panel}" stroke-width="4.5" stroke-linejoin="round"/>',
+        parts.extend([f'<path class="photo-footprint" d="{path}" fill="{"none" if original else theme.accent}" fill-opacity=".10" stroke="{"#493b26" if original else theme.panel}" stroke-width="4.5" stroke-linejoin="round"/>',
                       f'<path d="{path}" fill="none" stroke="{theme.accent}" stroke-width="2.5" stroke-linejoin="round"/>'])
     earth_color = '#9eb6c5' if original else theme.accent
-    for point, label, color in ((model.north, 'N', theme.ink), (model.earth, 'Earth', earth_color)):
-        if point is None:
-            continue
-        x, y = point
+    if model.earth is not None:
+        x, y = model.earth
         anchor = 'end' if x > model.size*.72 else 'start'
         text_x = x-7 if anchor == 'end' else x+7
-        parts.extend([f'<circle cx="{x:.3f}" cy="{y:.3f}" r="2.3" fill="{color}"/>',
-                      f'<text x="{text_x:.3f}" y="{y+4:.3f}" text-anchor="{anchor}" fill="{color}" font-family="{family}" font-size="12" stroke="{theme.panel}" stroke-width=".3">{label}</text>'])
+        # Keep the original Earth annotation clear of the new limb bearings.
+        text_y = y-18 if y > model.size*.85 else (y+28 if y < model.size*.15 else y+4)
+        parts.extend([f'<circle cx="{x:.3f}" cy="{y:.3f}" r="2.3" fill="{earth_color}"/>',
+                      f'<text x="{text_x:.3f}" y="{text_y:.3f}" text-anchor="{anchor}" fill="{earth_color}" font-family="{family}" font-size="12" stroke="{theme.panel}" stroke-width=".3">Earth</text>'])
     parts.append('</g>')
-    if model.north is None:
-        parts.append(f'<text x="168" y="14" fill="{"#b8c5bf" if original else theme.ink}" font-family="{family}" font-size="9">N</text>')
+    parts.append(_pole_markup(model, theme, family))
     if model.center is None:
         lat_text = lon_text = '—'
     else:

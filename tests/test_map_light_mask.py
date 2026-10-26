@@ -77,6 +77,26 @@ def test_manual_threshold_expands_and_reduces_coverage(application):
     assert field.coverage(255)[0] == []
 
 
+@pytest.mark.parametrize('threshold,expected', [(0, {'dark', 'mid', 'bright'}),
+                                             (50, {'mid', 'bright'}), (150, {'bright'}), (255, set())])
+def test_label_filter_and_map_coverage_share_the_photo_threshold(application, threshold, expected):
+    p, _ = half_moon()
+    p.min_diameter, p.map_light_threshold = 0, threshold
+    image = np.full((256, 256, 3), 40, np.uint8)
+    image[:, 85:170] = 130
+    image[:, 170:] = 220
+    x = np.array([65., 128., 190.])
+    lat, lon, _ = p.geometry.unproject(np.column_stack(((x-128)/110, np.zeros(3))))
+    features = [dict(id=fid, name=fid, lat=latitude, lon=longitude, diameter=1., kind='Rima, rimae')
+                for fid, latitude, longitude in zip(('dark', 'mid', 'bright'), lat, lon)]
+    field = photo_lightness(p, image)
+    names = {f['id'] for f, _ in p.visible_features(features, image.shape, image=image, lightness=field)}
+    polygons, level = field.coverage(threshold)
+    covered = inside(polygons, *((value, 128.) for value in x))
+    assert names == expected == {f['id'] for f, yes in zip(features, covered) if yes}
+    assert level == threshold
+
+
 @pytest.mark.parametrize("brightness,covered", [(0, False), (180, True), (255, True)])
 def test_uniform_crops_do_not_invent_a_terminator(application, brightness, covered):
     p, image = half_moon()
@@ -177,6 +197,63 @@ def test_slider_and_auto_are_live_without_rebuilding_layers_or_labels(window, mo
     assert Project.load(tmp_path/"live.moonlabel").map_light_mask
 
 
+def test_shared_threshold_is_outside_art_section_and_only_switches_cached_visibility(window, monkeypatch, tmp_path):
+    win = window
+    for control in (win.lit, win.map_light_toggle, win.map_light_threshold, win.map_light_readout, win.map_light_auto):
+        assert not win.map_styles_block.isAncestorOf(control)
+    win.map_styles_toggle.setChecked(False)
+    assert win.map_light_threshold.isVisibleTo(win.workspace_tabs.widget(1))
+    win.map_light_threshold.setValue(0)
+    items, maps = list(win.annotation_items), list(win.map_items)
+    positions = [item.pos() for item in items]
+    paths, font = [item.path for item in items], win.project.font_percent
+    labels = json.loads(json.dumps(win.project.labels))
+    win.font_size.setValue(2.4)
+    for method in ('refresh_annotations', 'refresh_map_layers'):
+        monkeypatch.setattr(win, method, lambda: pytest.fail('Live lighting must reuse items and layout'))
+    monkeypatch.setattr(win.project, 'feature_lightness', lambda *a: pytest.fail('Use cached label brightness'))
+    monkeypatch.setattr(win.project, 'visible_features', lambda *a, **k: pytest.fail('Do not reselect candidates while dragging'))
+    for threshold, visible in ((255, False), (0, True), (255, False)):
+        win.map_light_threshold.setValue(threshold)
+        assert all(item.isVisible() == visible for item in items)
+        assert win.map_items == maps and win.annotation_items == items
+        assert [item.pos() for item in items] == positions
+        assert all(item.path is path for item, path in zip(items, paths))
+        assert win.project.font_percent == font and win.project.labels == labels
+        assert len(win.annotation_entries()) == (len(items) if visible else 0)
+    output = tmp_path/'hidden-labels.svg'
+    export_svg(output, win.image, win.annotation_entries(), win.project, win.annotation_leaders(), layers=win.map_layers)
+    group = ET.parse(output).find('.//{http://www.w3.org/2000/svg}g[@id="annotations"]')
+    assert len(group) == 0
+    win.render_png(tmp_path/'hidden-labels.png')
+    assert not any(item.isVisible() or item.line.isVisible() for item in items)
+    win.lit.setChecked(False)
+    assert all(item.isVisible() for item in items) and win.map_layers.coverage == []
+    win.lit.setChecked(True)
+    assert not any(item.isVisible() for item in items)
+    win.map_light_toggle.setChecked(False)
+    assert win.map_layers.coverage is None and not any(item.isVisible() for item in items)
+    win.reset_map_light_threshold()
+    assert win.project.map_light_threshold == 'auto' and any(item.isVisible() for item in items)
+    assert [item.pos() for item in items] == positions and win.style_pending
+
+
+def test_initially_hidden_captions_have_bounded_previews_before_first_reveal(window, monkeypatch):
+    from moonlabeler import app as app_module
+    win = window
+    win.map_light_threshold.setValue(255)
+    win.refresh_annotations()
+    items = list(win.annotation_items)
+    assert items and not any(item.isVisible() for item in items)
+    for item in items:
+        assert not item._fallback_preview.isNull()
+        assert item._fallback_preview.width()*item._fallback_preview.height() <= item.MAX_FALLBACK_PIXELS
+    monkeypatch.setattr(app_module, 'rasterize_caption', lambda *a, **k: pytest.fail('First reveal must use prepared previews'))
+    win.map_light_threshold.setValue(0)
+    win.canvas.viewport().grab()
+    assert all(item.isVisible() for item in items)
+
+
 def test_png_and_svg_share_coverage_and_leave_legend_and_names_independent(window, tmp_path):
     win = window
     win.map_light_threshold.setValue(255)
@@ -188,6 +265,8 @@ def test_png_and_svg_share_coverage_and_leave_legend_and_names_independent(windo
     win.render_png(full)
     a, b = np.array(Image.open(empty)), np.array(Image.open(full))
     assert np.count_nonzero(np.any(a != b, axis=2)) > 100
+    assert not any(item.isVisible() for item in win.annotation_items)
+    win.lit.setChecked(False)
     assert all(item.isVisible() for item in win.annotation_items)
     win.map_light_toggle.setChecked(True)
     win.reset_map_light_threshold()

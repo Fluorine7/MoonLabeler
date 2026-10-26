@@ -451,6 +451,7 @@ class Annotation(ModifierDragItem):
         self.appearance = appearance(project, landing=is_landing_site(feature))
         self.outline_segments = []
         self.outline_item = None
+        self.lightness = None
         self.font = label_font(self.font_size, project, feature)
         self.typography = caption_typography(project, feature)
         self.path = caption_path(text, self.font_size, self.font, self.typography)
@@ -531,7 +532,7 @@ class Annotation(ModifierDragItem):
         # Art captions only expose their ordinary locator during a drag.
         permanent = not self.appearance.map_style or is_landing_site(self.feature)
         dragging = self._drag_offset is not None and not self._export_mode
-        self.line.setVisible(permanent or dragging)
+        self.line.setVisible(self.isVisible() and (permanent or dragging))
 
     def padded_bounds(self, bounds):
         padding = max(5., self.font_size*.04, self.appearance.halo_width(self.font_size)/2+1)
@@ -607,18 +608,21 @@ class Annotation(ModifierDragItem):
             self._fallback_preview = preview.scaled(width, height, Qt.AspectRatioMode.IgnoreAspectRatio,
                                                     Qt.TransformationMode.SmoothTransformation)
 
+    def prepare_fallback_preview(self):
+        if self._fallback_preview.isNull() and self._cache_size is not None:
+            width, height = self._cache_size
+            scale = min(1., math.sqrt(self.MAX_FALLBACK_PIXELS/(width*height)))
+            size = max(1, int(width*scale)), max(1, int(height*scale))
+            image = rasterize_caption(*self.text_raster_request(size))
+            self.install_text_preview(image, size)
+
     def paint(self, painter, option, widget=None):
         if self._export_mode or self._cache_size is None:
             self.paint_text(painter)
         else:
             preview = QPixmap()
             if not QPixmapCache.find(self._preview_key, preview):
-                if self._fallback_preview.isNull():
-                    width, height = self._cache_size
-                    scale = min(1., math.sqrt(self.MAX_FALLBACK_PIXELS/(width*height)))
-                    size = max(1, int(width*scale)), max(1, int(height*scale))
-                    image = rasterize_caption(*self.text_raster_request(size))
-                    self.install_text_preview(image, size)
+                self.prepare_fallback_preview()
                 preview = self._fallback_preview
             # Explicit source/target rectangles keep cache density independent
             # of scene geometry. Qt's custom ItemCoordinateCache size can scale
@@ -797,6 +801,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         compute.set_mode(compute_mode if compute_mode in compute.MODES else 'auto')
         self.catalog_by_id = {f["id"]: f for f in self.catalog}
         self.annotation_items = []
+        self.auto_omitted = set()
         self.map_items = []
         self.overview_item = None
         self._overview_key = self._overview_model = None
@@ -1518,7 +1523,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         if self.project.utc:
             dt = datetime.fromisoformat(self.project.utc).astimezone(timezone.utc)
             self.date.setDateTime(QDateTime.fromString(dt.isoformat(), Qt.DateFormat.ISODate))
-        self.kind.setCurrentIndex(max(0, self.kind.findData(self.project.kind)))
+        self.kind.set_selection(self.project.kind)
         self.diameter.setValue(self.project.min_diameter)
         self.maximum.setValue(self.project.max_labels)
         self.language.setCurrentIndex(max(0, self.language.findData(self.project.language)))
@@ -2173,8 +2178,13 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def annotation_settings(self):
         """Read staged controls without rounding untouched project values."""
         p = self.project
+        kind = self.kind.selection()
+        if kind != '全部' and p.kind != '全部':
+            stored = {p.kind} if isinstance(p.kind, str) else set(p.kind)
+            if set(kind) == stored:
+                kind = p.kind  # Keep legacy single-type filters unchanged.
         settings = {
-            "min_diameter": self.diameter.value(), "kind": self.kind.currentData(),
+            "min_diameter": self.diameter.value(), "kind": kind,
             "max_labels": self.maximum.value(), "language": self.language.currentData(),
             "font_weight": self.font_weight.currentData(), "art_style": self.art_style.currentData(),
             "grid_spacing": self.grid_spacing.currentData(),
@@ -2273,23 +2283,42 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.pending_map_light_threshold = "auto"
             self.apply_map_light_controls()
 
+    def apply_label_light_controls(self):
+        if self.rebuilding:
+            return
+        self.project.illuminated_only = self.lit.isChecked()
+        self.update_label_lighting()
+        self.update_grid_captions()
+        self.dirty = self.dirty or self.image is not None
+        self.style_changed()
+
+    def update_label_lighting(self):
+        if self.image is None:
+            self.layout_status.setText('')
+            return
+        field = self.current_photo_lightness() if self.project.illuminated_only else None
+        threshold = field.resolve_threshold(self.project.map_light_threshold) if field is not None else 0
+        for item in self.annotation_items:
+            item.setVisible(item.lightness is None or item.lightness >= threshold)
+            item.update_map_leader()
+        count = sum(item.isVisible() for item in self.annotation_items)
+        self.layout_status.setText(trf("{count} 个标签", count=count) +
+                                  (trf(" · 避让隐藏 {count} 个", count=len(self.auto_omitted)) if self.auto_omitted else ""))
+        self.canvas.postpone_text_refinement()
+
     def apply_map_light_controls(self, *args):
         if self.rebuilding:
             return
         self.update_map_light_hint()
         p = self.project
-        fields = ["grid_spacing", "elevation_enabled", "contour_enabled"]
-        if p.elevation_enabled:
-            fields.append("elevation_palette")
-        if p.contour_enabled:
-            fields.append("contour_interval")
-        if not (p.grid_spacing or p.elevation_enabled or p.contour_enabled) or not self.map_controls_match(*fields):
-            self.style_changed()
-            return
-        p.map_light_mask = self.map_light_toggle.isChecked()
+        # Shared lighting remains live while other appearance changes wait.
+        # A threshold edit must not copy a preset's unapplied map toggle.
+        if args:
+            p.map_light_mask = bool(args[0])
         p.map_light_threshold = self.pending_map_light_threshold
         self.refresh_map_coverage()
         update_map_coverage(self.map_items, self.map_layers.coverage)
+        self.update_label_lighting()
         self.update_grid_captions()
         self._map_display_key = None
         if self.image is not None:
@@ -2411,7 +2440,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def update_grid_captions(self):
         # Feature names have priority over coordinate captions. Keep the same
         # visibility in the SVG, including after the user drags a name.
-        bounds = [item.sceneBoundingRect() for item in self.annotation_items]
+        bounds = [item.sceneBoundingRect() for item in self.annotation_items if item.isVisible()]
         if self.map_layers.elevation is not None or self.map_layers.contours is not None:
             bounds.append(QRectF(*legend_rect(self.image.shape, self.project.legend_position)))
         if self.overview_item is not None:
@@ -2557,6 +2586,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         anchors, _, _ = self.project.annotation_points([item.feature for item in items])
         for item, anchor in zip(items, anchors):
             item.set_crater_outline(self.project.crater_outline(item.feature, self.image.shape), anchor)
+            item.lightness = self.project.feature_lightness(item.feature, anchor, self.image)
+        self.update_label_lighting()
 
     def refresh_crater_outlines(self):
         self._outlines_pending = False
@@ -2645,7 +2676,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
                     dem_path=self.dem_path if not self.project.identification else '',
                     lens_distortion=self.project.identification.get('lens_distortion'))
                 self._annotation_relief_attempt = None if self.project.annotation_relief else key
-        candidates = self.project.visible_features(self.catalog, self.image.shape, image=self.image, all_candidates=True)
+        # Lay out a bounded pool once. The threshold only hides/reveals these
+        # items; it never moves captions or rebuilds their paths while dragging.
+        candidates = self.project.visible_features(self.catalog, self.image.shape, image=self.image,
+                                                   all_candidates=True, include_unlit=True)
         font_sizes = self.project.label_font_sizes([feature for feature, _ in candidates], self.image.shape)
         reference_font = self.project.font_sizes(self.image.shape)[1]
         objects = {}
@@ -2715,11 +2749,14 @@ class MainWindow(WindowUiMixin, QMainWindow):
             scene.addItem(item.line)
             scene.addItem(item)
             item.setPos(position)
+            item.lightness = self.project.feature_lightness(feature, xy, self.image)
             self.annotation_items.append(item)
+        self.update_label_lighting()
         self.canvas.update_text_caches()
+        for item in self.annotation_items:
+            if not item.isVisible():
+                item.prepare_fallback_preview()
         self.update_grid_captions()
-        self.layout_status.setText(trf("{count} 个标签", count=len(self.annotation_items)) +
-                                  (trf(" · 避让隐藏 {count} 个", count=len(self.auto_omitted)) if self.auto_omitted else ""))
         self.rebuilding = False
         self.refresh_crater_outlines()
 
@@ -2760,11 +2797,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def annotation_entries(self):
         return [(item.feature, [item.anchor.x(), item.anchor.y()], [item.pos().x(), item.pos().y()])
-                for item in self.annotation_items]
+                for item in self.annotation_items if item.isVisible()]
 
     def annotation_leaders(self):
         return {item.feature["id"]: (item.line.line().x1(), item.line.line().y1(), item.line.line().x2(), item.line.line().y2())
-                for item in self.annotation_items}
+                for item in self.annotation_items if item.isVisible()}
 
     def render_png(self, path):
         if self.image is None or self.project.matrix is None:

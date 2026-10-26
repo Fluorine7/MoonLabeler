@@ -112,9 +112,12 @@ class PhotoLightness:
     automatic_threshold: int
     source_shape: tuple
 
+    def resolve_threshold(self, threshold="auto"):
+        return self.automatic_threshold if threshold == "auto" else int(threshold)
+
     def coverage(self, threshold="auto"):
         """Keep broad bright regions and enclosed crater shadows, using cached lightness."""
-        level = self.automatic_threshold if threshold == "auto" else threshold
+        level = self.resolve_threshold(threshold)
         mask = np.uint8(self.values >= level)*255
         # Close narrow shadow gaps before retaining external contours. Enclosed
         # dark crater floors remain covered; the open dark hemisphere stays out.
@@ -318,7 +321,7 @@ def terminator_appearance(project, shape):
 
 
 def terminator_dashes(project, width):
-    return (width*10, width*5) if project.terminator_source == "photo" else ()
+    return width*10, width*5
 
 
 def cartographic_colors(raster, project):
@@ -394,6 +397,8 @@ def photo_lightness(project, image, *, max_edge=512):
         # A conservative fraction of the foreground split retains dark maria and
         # thin bright rims. Manual control can suppress stronger earthshine.
         threshold = max(1, round(min(otsu*.35, high*.15)))
+        if project.identification.get('lens_distortion'):
+            threshold = max(threshold, 30, round(high*.25))
     else:
         threshold = 1
     return PhotoLightness(smooth, threshold, (h, w))

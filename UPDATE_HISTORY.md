@@ -2,6 +2,16 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.10.2
+
+2026-10-26
+
+- 地形类别改为默认折叠的多选框，支持同时标注多种地形；保留旧工程的类别选择。 / Feature types now use a collapsed checklist with multiple selection; existing project filters are preserved.
+- 两种晨昏线统一使用虚线，预览与 PNG / SVG 导出一致。 / Both terminator sources now use dashed lines in the preview and PNG/SVG exports.
+- 示意图补充南北极标记，背面极点用方向箭头表示；原始样式的取景范围不再给月球染色。 / Added locator pole markers and direction arrows for hidden poles; the original-style footprint no longer tints the lunar surface.
+- 受光阈值移到“标注内容”，地名和地图共用；拖动实时显隐标签，保留原来的位置和排版。 / Moved the shared light threshold to annotation content. Labels and maps use the same value; dragging changes label visibility without moving them.
+- 提供 Windows x64 和 macOS 14.4+ Apple Silicon 应用包。 / Windows x64 and macOS 14.4+ Apple Silicon app packages.
+
 ## 0.10.1
 
 2026-10-26

@@ -43,6 +43,36 @@ def wheel(widget, delta=120, *, touchpad=False):
     QApplication.sendEvent(widget, event)
 
 
+@pytest.mark.parametrize('field', ['toggle', 'all_checkbox', 'type'])
+@pytest.mark.parametrize('focused', [False, True])
+def test_feature_type_checklist_wheel_scrolls_panel_without_changing_selection(window, field, focused):
+    selector = window.kind
+    selector.toggle.setChecked(True)
+    selector.all_checkbox.setChecked(False)
+    checkbox = selector.checks['Crater, craters']
+    checkbox.setChecked(True)
+    control = checkbox if field == 'type' else getattr(selector, field)
+    QApplication.processEvents()
+    control.setFocus() if focused else window.catalog_button.setFocus()
+    QApplication.processEvents()
+    assert control.hasFocus() == focused
+    area = window.annotation_scroll
+    bar = area.verticalScrollBar()
+    before = selector.selection()
+    window.style_pending = False
+    for touchpad in (False, True):
+        bar.setValue(0)
+        wheel(control, -120, touchpad=touchpad)
+        assert selector.selection() == before and selector.toggle.isChecked()
+        assert not window.style_pending
+        assert bar.value() > 0
+    selector.all_checkbox.setChecked(True)
+    assert not checkbox.isEnabled()
+    bar.setValue(0)
+    wheel(checkbox, -120)
+    assert selector.selection() == '全部' and bar.value() > 0
+
+
 @pytest.mark.parametrize("field", ["font_size", "ui_font_step", "grid_opacity", "elevation_opacity",
                                    "diameter", "maximum", "art_style", "grid_spacing",
                                    "elevation_palette", "contour_interval", "contour_opacity", "terminator_opacity", "terminator_source", "map_light_threshold", "language", "font_weight",
@@ -133,11 +163,15 @@ def test_slider_numbers_accept_precise_typing_and_stay_in_sync(window, field, re
 
 
 def test_number_field_follows_layer_enablement_through_background_work(window):
+    window.lit.setChecked(False)
     window.map_light_toggle.setChecked(False)
     assert not window.map_light_threshold.isEnabled() and not window.map_light_readout.isEnabled()
     window.sidebar.setEnabled(False)
     window.map_light_toggle.setChecked(True)
     window.sidebar.setEnabled(True)
+    assert window.map_light_threshold.isEnabled() and window.map_light_readout.isEnabled()
+    window.map_light_toggle.setChecked(False)
+    window.lit.setChecked(True)
     assert window.map_light_threshold.isEnabled() and window.map_light_readout.isEnabled()
 
 
