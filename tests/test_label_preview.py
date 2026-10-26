@@ -202,9 +202,28 @@ def test_zoom_refines_text_in_background_and_discards_removed_labels(monkeypatch
         canvas.close()
 
 
-def test_complex_caption_refinement_keeps_the_ui_responsive():
+def test_complex_caption_refinement_keeps_the_ui_responsive(monkeypatch):
     from PySide6.QtCore import QTimer
     from PySide6.QtTest import QTest
+    from moonlabeler import app as app_module
+    spans = []
+    ui_thread = threading.get_ident()
+    def timed(name, function):
+        def call(*args, **kwargs):
+            start, cpu = time.monotonic(), time.thread_time()
+            try:
+                return function(*args, **kwargs)
+            finally:
+                spans.append((name, threading.get_ident(), start, time.monotonic(), time.thread_time()-cpu))
+        return call
+    class TimedPainter(app_module.QPainter):
+        strokePath = timed('stroke', app_module.QPainter.strokePath)
+        fillPath = timed('fill', app_module.QPainter.fillPath)
+    monkeypatch.setattr(app_module, 'QPainter', TimedPainter)
+    for owner, names in ((app_module, ('caption_contours', 'caption_stroke_paths', 'caption_fill_paths', 'rasterize_caption')),
+                         (Annotation, ('install_text_preview',))):
+        for name in names:
+            monkeypatch.setattr(owner, name, timed(name, getattr(owner, name)))
     app = QApplication.instance() or QApplication([])
     canvas = Canvas()
     canvas.resize(1100, 730)
@@ -218,12 +237,13 @@ def test_complex_caption_refinement_keeps_the_ui_responsive():
     canvas.centerOn(label.boundingRect().center())
     app.processEvents()
     canvas.viewport().grab()
-    gaps, last = [], [time.monotonic()]
+    gaps, clocks, last = [], [], [(time.monotonic(), time.thread_time(), time.process_time())]
     pulse = QTimer()
     pulse.setInterval(8)
     def heartbeat():
-        now = time.monotonic()
-        gaps.append(now-last[0])
+        now = (time.monotonic(), time.thread_time(), time.process_time())
+        gaps.append(now[0]-last[0][0])
+        clocks.append((last[0], now))
         last[0] = now
     pulse.timeout.connect(heartbeat)
     pulse.start()
@@ -238,6 +258,13 @@ def test_complex_caption_refinement_keeps_the_ui_responsive():
                 time.sleep(.001)
             assert canvas._text_worker is None
             QTest.qWait(20)
+        if gaps and max(gaps) >= .06:
+            before, after = clocks[gaps.index(max(gaps))]
+            operations = [(name, 'ui' if thread == ui_thread else 'worker', round((end-start)*1000, 1), round(cpu*1000, 1))
+                          for name, thread, start, end, cpu in spans if start <= after[0] and end >= before[0]]
+            print('[DEBUG-caption-latency]', 'DPR', canvas.devicePixelRatioF(),
+                  'gap wall/ui/process ms', [round((end-start)*1000, 1) for start, end in zip(before, after)],
+                  'overlapping operation wall/cpu ms', operations)
         assert gaps and max(gaps) < .06, f'UI blocked for {max(gaps)*1000:.1f} ms while refining one caption'
     finally:
         pulse.stop()
