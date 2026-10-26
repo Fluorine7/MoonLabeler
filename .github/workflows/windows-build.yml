@@ -3,7 +3,7 @@ name: Windows portable build
 # Builds the portable dist/MoonLabeler/MoonLabeler.exe with build-windows.ps1 (PyInstaller
 # one-folder build with the minimal OpenCV, JPL kernels and FITS support). The zip is kept
 # as a workflow artifact; pushing a v* tag attaches only the app ZIP to a release
-# draft. Publish the draft after adding and validating the locally built macOS app.
+# draft. Published release retries verify the existing ZIP without replacing it.
 
 on:
   push:
@@ -25,7 +25,7 @@ on:
         type: string
         default: ""
       reuse_portable_run:
-        description: "Run ID with a successful portable job for that tag; reuse without rebuilding"
+        description: "Successful portable run for the tag; upload a draft or verify published assets without rebuilding"
         type: string
         default: ""
 
@@ -244,7 +244,7 @@ jobs:
           path: portable
           run-id: ${{ steps.source.outputs.run_id }}
           github-token: ${{ github.token }}
-      - name: Upload only the Windows app to the release draft
+      - name: Publish or verify the Windows app ZIP
         shell: python
         env:
           GH_TOKEN: ${{ github.token }}
@@ -269,8 +269,15 @@ jobs:
           existing = subprocess.run(['gh', 'release', 'view', tag, '--repo', repo, '--json', 'isDraft,assets'], text=True, capture_output=True)
           if existing.returncode == 0:
               release = json.loads(existing.stdout)
-              assert release['isDraft'], 'Refusing to overwrite a published release'
               assert {a['name'] for a in release['assets']} <= allowed, 'Unexpected release attachment'
+              if not release['isDraft']:
+                  published = json.loads(gh('api', f'repos/{repo}/releases/tags/{tag}'))
+                  assert published['tag_name'] == tag and not published['draft'], 'Release state changed'
+                  assets = {a['name']: a.get('digest') for a in published['assets']}
+                  assert assets.keys() == allowed, 'Published release must contain both app ZIPs only'
+                  assert assets[name] == 'sha256:' + expected, 'Published Windows ZIP differs from the verified build'
+                  print('Verified published Windows ZIP. Existing release assets were not modified.')
+                  raise SystemExit(0)
           else:
               entry = Path('UPDATE_HISTORY.md').read_text(encoding='utf-8').split(f'## {version}\n', 1)[1].split('\n## ', 1)[0].strip()
               entry = re.sub(r'\]\((?!https?://|#)([^)]+)\)', lambda m: f'](https://github.com/{repo}/blob/{tag}/{m[1]})', entry)
