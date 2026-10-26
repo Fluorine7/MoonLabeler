@@ -59,6 +59,7 @@ from .geometry import compute_geometry, MOON_RADIUS_KM
 from .layout import LabelBox, arrange_labels, leader_segment
 from .landing_sites import is_landing_site, landing_marker_radius
 from .project import Project, export_svg, DEFAULT_FONT_PERCENT, font_tier_percentages, label_font_families
+from .terrain_rims import prepare_project_rims
 from .registration import calibration_report, transform_points, auto_register
 from .sources import load_catalog, read_image, nasa_reference, refresh_catalog, feature_search_text, COMMON_FEATURES
 from .terrain import ElevationMap, download_basic_dem, render_region
@@ -449,6 +450,7 @@ class Annotation(ModifierDragItem):
         self.color = project.label_color(feature)
         self.appearance = appearance(project, landing=is_landing_site(feature))
         self.outline_segments = []
+        self.outline_item = None
         self.font = label_font(self.font_size, project, feature)
         self.typography = caption_typography(project, feature)
         self.path = caption_path(text, self.font_size, self.font, self.typography)
@@ -490,6 +492,39 @@ class Annotation(ModifierDragItem):
             self.marker = marker
         self.update_map_leader()
         self.update_caption_placement()
+
+    def set_crater_outline(self, segments, anchor=None):
+        self.outline_segments = segments
+        if anchor is not None:
+            self.anchor = QPointF(*anchor)
+            if self.marker is not None:
+                radius = self.marker.rect().width()/2
+                self.marker.setRect(self.anchor.x()-radius, self.anchor.y()-radius, radius*2, radius*2)
+        if segments:
+            contour = QPainterPath()
+            for segment in segments:
+                contour.moveTo(*segment[0])
+                for point in segment[1:]:
+                    contour.lineTo(*point)
+            if self.outline_item is None:
+                # Absolute photo coordinates belong to the leader, not the
+                # movable caption. Updating a rim keeps the text cache intact.
+                self.outline_item = QGraphicsPathItem(self.line)
+                self.outline_item.setPen(QPen(QColor(self.appearance.line), max(1.2, self.font_size*.045)))
+                self.outline_item.setZValue(-1)
+            self.outline_item.setPath(contour)
+        if self.outline_item is not None:
+            self.outline_item.setVisible(bool(segments))
+        if self.marker is not None:
+            self.marker.setVisible(not segments)
+        self.update_leader()
+
+    def update_leader(self):
+        rect = self.boundingRect().translated(self.pos())
+        segment = leader_segment((self.anchor.x(), self.anchor.y()), (rect.x(), rect.y(), rect.width(), rect.height()),
+                                 outline=self.outline_segments)
+        self.line.setLine(*segment)
+        self.update_map_leader()
 
     def update_map_leader(self):
         # A saved position is an edit, not a change of cartographic style.
@@ -604,12 +639,8 @@ class Annotation(ModifierDragItem):
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
             self.update_caption_placement()
-            rect = self.boundingRect().translated(self.pos())
-            segment = leader_segment((self.anchor.x(), self.anchor.y()), (rect.x(), rect.y(), rect.width(), rect.height()),
-                                     outline=self.outline_segments)
-            self.line.setLine(*segment)
+            self.update_leader()
             self.moved(self.feature["id"], [self.pos().x(), self.pos().y()])
-            self.update_map_leader()
         return super().itemChange(change, value)
 
     def mouseDoubleClickEvent(self, event):
@@ -779,6 +810,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self._grid_preview_key = self._grid_preview = None
         self._photo_light_key = self._photo_lightness = None
         self._map_layers_pending = False
+        self._outlines_pending = False
+        self._outline_attempt_key = None
+        self._outline_failed = set()
         self._dem_revision = 0
         self.reference_items = []
         self.crater_items = []
@@ -1210,6 +1244,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             if self._map_layers_pending:
                 self._map_layers_pending = False
                 QTimer.singleShot(0, self.refresh_annotations)
+            elif self._outlines_pending:
+                QTimer.singleShot(0, self.refresh_crater_outlines)
         worker.signals.finished.connect(finished)
         QThreadPool.globalInstance().start(worker)
 
@@ -2284,7 +2320,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def apply_label_settings(self):
         if self.busy:
             return
-        for key, value in self.annotation_settings().items():
+        settings = self.annotation_settings()
+        changed = {key for key, value in settings.items() if value != getattr(self.project, key)}
+        outlines_only = (changed == {'crater_outline_shape'} and self.project.art_style == 'standard'
+                         and self.annotation_items and self._elevation_failed_key is None)
+        for key, value in settings.items():
             setattr(self.project, key, value)
         if (self.project.elevation_enabled or self.project.contour_enabled) and self.dem_path:
             self.project.terrain_path = self.dem_path
@@ -2293,7 +2333,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self._elevation_failed_key = None
         if self.image is not None:
             self.project.update_font_size(self.image.shape)
-        self.refresh_annotations()
+        if outlines_only:
+            self.update_crater_outlines()
+            self.refresh_crater_outlines()
+        else:
+            self.refresh_annotations()
         self.displayed_font_percent = self.font_size.value()
         self.displayed_font_step_percent = self.ui_font_step.value()
         self.style_pending = False
@@ -2486,6 +2530,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self._grid_preview_key = grid_key
 
     def check_map_export(self):
+        if (self._outlines_pending and self.project.art_style == 'standard' and self.project.crater_outlines
+                and self.project.crater_outline_shape == 'terrain'):
+            raise ValueError(tr("坑缘轮廓正在生成，请完成后再导出。"))
         if self.project.terminator_enabled and self.map_layers.terminator_unreliable:
             raise ValueError(tr("照片内未找到可靠的晨昏交界；请选择工程时间的理论线，或关闭晨昏线再导出。"))
         if self.project.contour_enabled and (self.map_layers.contours is None or
@@ -2496,8 +2543,78 @@ class MainWindow(WindowUiMixin, QMainWindow):
             raise ValueError(tr("高程图尚未生成；请先生成或关闭高程着色再导出。"))
         self.refresh_photo_overview()
 
+    def crater_rim_source(self):
+        for source in (self.dem_path, self.project.terrain_path, CACHE/'terrain/LDEM_16.LBL'):
+            if source and Path(source).is_file():
+                return str(Path(source).resolve())
+        return ''
+
+    def update_crater_outlines(self, feature_ids=None):
+        items = [item for item in self.annotation_items if item.outline_segments and
+                 (feature_ids is None or item.feature['id'] in feature_ids)]
+        if not items:
+            return
+        anchors, _, _ = self.project.annotation_points([item.feature for item in items])
+        for item, anchor in zip(items, anchors):
+            item.set_crater_outline(self.project.crater_outline(item.feature, self.image.shape), anchor)
+
+    def refresh_crater_outlines(self):
+        self._outlines_pending = False
+        self.outline_status.hide()
+        p = self.project
+        if (self.image is None or p.geometry is None or p.matrix is None or
+                p.art_style != 'standard' or not p.crater_outlines or p.crater_outline_shape != 'terrain'):
+            return
+        features = {item.feature['id']: item.feature for item in self.annotation_items if item.outline_segments}
+        missing = set(features)-p.terrain_rims.keys()
+        if not missing:
+            return
+        source = self.crater_rim_source()
+        sampling = self.map_sampling_key()
+        key = sampling, source
+        if key != self._outline_attempt_key:
+            self._outline_attempt_key, self._outline_failed = key, set()
+            self.outline_status.setToolTip('')
+        wanted = missing-self._outline_failed
+        if not source:
+            message = tr("手绘坑缘需要高程数据：请下载或导入 DEM；当前显示目录参考圈。")
+        elif not wanted:
+            message = tr("部分坑缘未能从高程中提取，仍显示目录参考圈。")
+        else:
+            message = tr("正在提取手绘坑缘…")
+        self.outline_status.setText(message)
+        self.outline_status.show()
+        if not source or not wanted:
+            return
+        self._outlines_pending = True
+        if self.busy:
+            return
+        snapshot, shape = replace(p, matrix=p.matrix.copy()), self.image.shape
+        candidates = [dict(features[fid]) for fid in sorted(wanted)]
+
+        def current():
+            return self.map_sampling_key() == sampling and self.crater_rim_source() == source
+
+        def ready(rims):
+            if current():
+                p.terrain_rims.update(rims)
+                self._outline_failed.update(wanted-rims.keys())
+                self.update_crater_outlines(rims)
+                self.refresh_crater_outlines()
+                self.dirty = True
+
+        def failed(exc):
+            if current():
+                self._outline_failed.update(wanted)
+                self.outline_status.setToolTip(self.error_text(exc))
+                self.refresh_crater_outlines()
+
+        self.run_background(message, lambda: prepare_project_rims(source, snapshot, candidates, shape),
+                            ready, failed, allow_canvas=True)
+
     def refresh_annotations(self):
         self.rebuilding = True
+        self.outline_status.hide()
         scene = self.canvas.scene()
         if self.image is not None and self.photo_item is not None:
             photo_key = (id(self.image), self.project.art_style != "standard")
@@ -2514,6 +2631,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.names.clear()
         if self.image is None:
             self.layout_status.setText("")
+            self._outlines_pending = False
             self.rebuilding = False
             return
         if (self.project.projection_surface == 'terrain' and self.project.geometry is not None and
@@ -2544,20 +2662,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                   font_size=font_sizes[fid])
                 outline = self.project.crater_outline(feature, self.image.shape)
                 if outline:
-                    item.outline_segments = outline
-                    contour = QPainterPath()
-                    for segment in outline:
-                        contour.moveTo(*segment[0])
-                        for point in segment[1:]:
-                            contour.lineTo(*point)
-                    ring = self.canvas.scene().addPath(contour, QPen(QColor(item.appearance.line), max(1.2, item.font_size*.045)))
-                    # Own the absolute contour with the leader; moving the
-                    # caption must leave the projected crater rim in place.
-                    self.canvas.scene().removeItem(ring)
-                    ring.setParentItem(item.line)
-                    ring.setZValue(-1)
-                    if item.marker is not None:
-                        item.marker.hide()
+                    item.set_crater_outline(outline)
                 bounds = item.layout_bounds()
                 fixed = (data["position"][0]+bounds.x(), data["position"][1]+bounds.y()) if "position" in data else None
                 if feature["kind"] in ("Crater, craters", "Satellite Feature"):
@@ -2616,6 +2721,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.layout_status.setText(trf("{count} 个标签", count=len(self.annotation_items)) +
                                   (trf(" · 避让隐藏 {count} 个", count=len(self.auto_omitted)) if self.auto_omitted else ""))
         self.rebuilding = False
+        self.refresh_crater_outlines()
 
     def label_visibility_changed(self, item):
         if self.rebuilding:

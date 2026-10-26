@@ -2,6 +2,13 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.10.1
+
+2026-10-26
+
+- 修复切换手绘风后仍画椭圆的问题：缺少坑缘时后台按 DEM 提取并缓存，数据不足时明确提示参考圈。 / Fixed hand-drawn outlines falling back silently to ellipses; missing crests are traced from the DEM in the background and cached, with an explicit reference-ring fallback.
+- 切换坑缘形状只更新轮廓线，保留文字缓存和标签位置，避免生成完成时卡顿。 / Rim shape changes reuse labels and text caches, avoiding a pause when tracing finishes.
+
 ## 0.10.0
 
 2026-10-26

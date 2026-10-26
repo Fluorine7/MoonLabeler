@@ -423,7 +423,6 @@
     "直径至少 35 km 且在照片中足够大的环形山显示轮廓，小坑保留短引线。": "Craters at least 35 km in diameter that are large enough in the photo show an outline; small craters keep short leader lines.",
     "椭圆": "Ellipse",
     "坑缘轮廓（手绘风）": "Rim contour (hand-drawn style)",
-    "椭圆：将投影坑缘拟合为平滑椭圆。坑缘轮廓：保留高程数据中的不规则形状；无高程坑缘时使用目录参考圈。": "Ellipse: fits the projected rim with a smooth ellipse. Rim contour: keeps the irregular shape from elevation data; uses the catalogue reference circle when no elevation rim is available.",
     "轮廓形状": "Outline shape",
     "重新生成标注": "Regenerate annotations",
     "重新自动排布标签": "Re-run automatic label layout",
@@ -527,7 +526,12 @@
     "附属地形": "Satellite feature",
     "月湾": "Bay",
     "着陆基地": "Landing station",
-    "月谷": "Valley"
+    "月谷": "Valley",
+    "坑缘轮廓正在生成，请完成后再导出。": "Crater outlines are still being generated. Wait for them to finish before exporting.",
+    "手绘坑缘需要高程数据：请下载或导入 DEM；当前显示目录参考圈。": "Crater contours need elevation data. Download or import a DEM; catalogue reference rings are shown for now.",
+    "部分坑缘未能从高程中提取，仍显示目录参考圈。": "Some rims could not be resolved in the DEM; those use catalogue reference rings.",
+    "正在提取手绘坑缘…": "Tracing crater contours…",
+    "椭圆：将坑缘拟合为平滑椭圆。手绘风：按高程数据提取不规则坑缘，首次后台生成并缓存；数据不足时提示使用参考圈。": "Ellipse: fit a smooth ellipse to the rim. Hand-drawn: trace the irregular DEM crest in the background and cache it; indicate reference rings when data are insufficient."
   },
   "templates": {
     "{message}\n相机直拍模式未启用目镜畸变校正。": "{message}\nEyepiece distortion correction is not enabled in Direct camera mode.",

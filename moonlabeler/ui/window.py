@@ -1061,9 +1061,12 @@ class WindowUiMixin:
         self.crater_outline_shape = self.ui_combo()
         self.crater_outline_shape.addItem(tr("椭圆"), "ellipse")
         self.crater_outline_shape.addItem(tr("坑缘轮廓（手绘风）"), "terrain")
-        self.crater_outline_shape.setToolTip(tr("椭圆：将投影坑缘拟合为平滑椭圆。坑缘轮廓：保留高程数据中的不规则形状；无高程坑缘时使用目录参考圈。"))
+        self.crater_outline_shape.setToolTip(tr("椭圆：将坑缘拟合为平滑椭圆。手绘风：按高程数据提取不规则坑缘，首次后台生成并缓存；数据不足时提示使用参考圈。"))
         self.crater_outline_shape.currentIndexChanged.connect(self.style_changed)
         outline_form.addRow(tr("轮廓形状"), self.crater_outline_shape)
+        self.outline_status = self.ui_note("")
+        self.outline_status.hide()
+        outline_form.addRow(self.outline_status)
         option_box.addLayout(outline_form)
         labels_layout.addWidget(group)
 

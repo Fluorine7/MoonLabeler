@@ -9,6 +9,8 @@ import numpy as np
 from .geometry import MOON_RADIUS_KM, surface_vectors
 from .registration import transform_points
 from .project import MIN_OUTLINE_DIAMETER_KM
+from .eyepiece import distort_points
+from .terrain import ElevationMap
 
 
 def trace_crater_rim(dem, feature):
@@ -66,7 +68,7 @@ def trace_crater_rim(dem, feature):
             'source': dem.name, 'resolution_km': dem.resolution_km}
 
 
-def trace_catalog_rims(dem, geometry, matrix, catalog, shape):
+def trace_catalog_rims(dem, geometry, matrix, catalog, shape, *, lens_distortion=None):
     """Keep only resolvable crater outlines large enough for this photograph."""
     h, w = shape[:2]
     eligible = [f for f in catalog if f['kind'] in ('Crater, craters', 'Satellite Feature')
@@ -74,7 +76,7 @@ def trace_catalog_rims(dem, geometry, matrix, catalog, shape):
     if not eligible:
         return {}
     points, visible, _ = geometry.project([f['lat'] for f in eligible], [f['lon'] for f in eligible])
-    pixels = transform_points(matrix, points)
+    pixels = distort_points(transform_points(matrix, points), lens_distortion)
     scale = np.sqrt(abs(np.linalg.det(matrix[:, :2])))
     rims = {}
     for feature, pixel, okay in zip(eligible, pixels, visible):
@@ -86,4 +88,21 @@ def trace_catalog_rims(dem, geometry, matrix, catalog, shape):
         rim = trace_crater_rim(dem, feature)
         if rim:
             rims[feature['id']] = rim
+    return rims
+
+
+def prepare_project_rims(path, project, catalog, shape):
+    """Trace display outlines without changing the fitted projection surface."""
+    dem = ElevationMap.load(path)
+    try:
+        rims = trace_catalog_rims(dem, project.geometry, project.matrix, catalog, shape,
+                                  lens_distortion=project.identification.get('lens_distortion'))
+    finally:
+        dem.close()
+    if project.projection_surface == 'sphere':
+        # A sphere-based fit already describes the photograph's datum. Keep
+        # the measured crest's latitude/longitude without a second height shift.
+        for rim in rims.values():
+            for coordinate in rim['coordinates']:
+                coordinate[2] = 0.
     return rims
