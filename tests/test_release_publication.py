@@ -72,4 +72,4 @@ def test_existing_draft_still_accepts_only_the_verified_windows_archive(publicat
     release['draft'] = True
     exec(script, {})
     assert len(writes) == 1
-    assert writes[0][-1] == 'portable/dist/MoonLabeler-0.10.2-windows-x64.zip'
+    assert Path(writes[0][-1]) == Path('portable/dist/MoonLabeler-0.10.2-windows-x64.zip')
