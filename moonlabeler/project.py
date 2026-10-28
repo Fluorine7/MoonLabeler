@@ -140,6 +140,31 @@ def _validate_project_data(data):
         _point(data['image_size'], 'image_size')
         for size in data['image_size']:
             _number(size, 'image_size', 1, 2147483647, integer=True)
+    if 'recognition_mask' in data:
+        mask = _mapping(data['recognition_mask'], 'recognition_mask')
+        if not isinstance(mask.get('enabled'), bool):
+            _invalid_field('recognition_mask.enabled')
+        operations = mask.get('operations')
+        if not isinstance(operations, list) or len(operations) > 128:
+            _invalid_field('recognition_mask.operations')
+        count = 0
+        for op in operations:
+            _mapping(op, 'recognition_mask.operations')
+            kind, points = op.get('kind'), op.get('points')
+            if kind not in ('polygon', 'paint', 'erase') or not isinstance(points, list):
+                _invalid_field('recognition_mask.operations')
+            if not (3 if kind == 'polygon' else 1) <= len(points) <= 2048:
+                _invalid_field('recognition_mask.points')
+            count += len(points)
+            for point in points:
+                _point(point, 'recognition_mask.points')
+                for axis, value in enumerate(point):
+                    _number(value, 'recognition_mask.points', 0,
+                            data['image_size'][axis] if data.get('image_size') else 2147483647)
+            if kind in ('paint', 'erase'):
+                _number(op.get('radius'), 'recognition_mask.radius', .5, 4000)
+        if count > 16384:
+            _invalid_field('recognition_mask.points')
     if 'coordinate_system' in data:
         coordinates = _mapping(data['coordinate_system'], 'coordinate_system')
         for key, value in PROJECT_COORDINATE_SYSTEM.items():
@@ -411,6 +436,7 @@ class Project:
     overview_enabled: bool = False
     overview_position: list[float] | None = None  # None uses the photo's upper-left corner.
     image_size: tuple[int, int] | None = None  # Width, height after EXIF/FITS orientation.
+    recognition_mask: dict = field(default_factory=lambda: {'enabled': True, 'operations': []})
 
     def photo_points(self, points):
         """Map projected lunar coordinates into untouched photograph pixels."""
@@ -504,6 +530,7 @@ class Project:
                 "matrix": self.matrix.tolist() if self.matrix is not None else None,
                 "anchors": self.anchors, "labels": self.labels,
                 "crater_detection": self.crater_settings,
+                "recognition_mask": self.recognition_mask,
                 "automatic_recognition": self.identification,
                 "terrain_rims": self.terrain_rims,
                 "annotation_relief": self.annotation_relief,
@@ -531,6 +558,7 @@ class Project:
         project.terrain_path = str((path.parent/terrain["dem_path"]).resolve()) if terrain.get("dem_path") else ""
         project.terrain_settings = terrain.get("settings", {})
         project.crater_settings = data.get("crater_detection", {})
+        project.recognition_mask = data.get('recognition_mask', {'enabled': True, 'operations': []})
         project.identification = data.get("automatic_recognition", {})
         project.terrain_rims = data.get("terrain_rims", {})
         project.annotation_relief = data.get("annotation_relief", {})

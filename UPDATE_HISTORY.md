@@ -2,6 +2,18 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.11.0
+
+2026-10-28
+
+- 修复高程读取中断后打印异常可能崩溃的问题：映射缓冲区随最后一个数组引用释放，避免提前关闭仍被使用的数据；不复制高程图。 / Fixed crashes while reporting interrupted terrain work by retaining mapped buffers until their last array reference is released, without copying the DEM.
+- 改善低对比月面配准：月缘和月相给出唯一方向、但月海纹理不足时，按该方向重新匹配高程细节；结果仍须通过四分区留出验证、新参考图和独立月缘检查，已成功的快速路径不增加这一步。 / Added a bounded terrain fallback for distinct limb/phase poses with weak albedo, retaining spatial holdouts, fresh-render and independent limb checks; successful fast paths skip it.
+- 辅助找坑增加坑缘与邻近纹理的对比，减少密集山脊造成的圆形误检，并合并同一坑底的重复圆圈。 / Assisted detection now compares circular rims against nearby terrain and merges duplicate floor circles.
+- 校准页新增识别排除区域，支持半透明红色画笔、直径滑块、橡皮擦、撤销和重做，随工程保存，供自动识别与辅助找坑共用；不影响现有标注和导出。顶部新增标注、蒙版预览开关。 / Added persistent recognition exclusions with a brush, diameter slider, eraser, undo and redo, plus independent label and mask preview toggles. Existing annotations and exports are unchanged.
+- 排除区域同时参与月面选择和亮度阈值估计，避免已涂掉的大型插图继续干扰识别；保留未被涂抹的画面边缘部分坑缘。 / Masked insets no longer influence lunar-region selection or brightness thresholds; unrelated exclusions preserve valid partial craters at the image edge.
+
+提供 Windows x64 和 macOS 14.4+ Apple Silicon 应用包。 / Windows x64 and macOS 14.4+ Apple Silicon app packages.
+
 ## 0.10.3
 
 2026-10-28

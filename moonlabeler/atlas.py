@@ -16,6 +16,7 @@ from .geometry import MOON_RADIUS_KM, surface_vectors
 from .identification import IdentificationError, IdentificationResult
 from .pose_refinement import refine_view
 from .registration import auto_register, transform_points, prepare_registration_photo
+from .recognition_mask import mask_kwargs
 
 
 def render_atlas(geometry, size=1600):
@@ -40,7 +41,7 @@ def render_atlas(geometry, size=1600):
     return reference, matrix
 
 
-def _photographed_limb(image, matrix, geometry=None):
+def _photographed_limb(image, matrix, geometry=None, *, photo_mask=None):
     """Measure a long outer arc in a moon-sized crop, ignoring canvas padding."""
     from .limb import fit_lunar_limb  # limb also uses render_atlas
     scale = np.linalg.norm(matrix[:, 0])
@@ -67,7 +68,9 @@ def _photographed_limb(image, matrix, geometry=None):
     lower = np.maximum(np.floor(center-1.1*scale).astype(int), 0)
     upper = np.minimum(np.ceil(center+1.1*scale).astype(int), [width, height])
     try:
-        measured_center, radius, rms, count = fit_lunar_limb(image[lower[1]:upper[1], lower[0]:upper[0]])
+        crop = image[lower[1]:upper[1], lower[0]:upper[0]]
+        crop_mask = photo_mask.cropped(lower, crop.shape, image.shape) if photo_mask is not None else None
+        measured_center, radius, rms, count = fit_lunar_limb(crop, **mask_kwargs(crop_mask))
     except IdentificationError:
         return None
     return measured_center+lower, radius, rms, count
@@ -133,12 +136,12 @@ def _refine_atlas_pose(image, geometry, matrix, projection, match, limb):
 
 
 def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None, *, reference=None,
-                       allow_eyepiece=True, prepared_photo=None):
+                       allow_eyepiece=True, prepared_photo=None, photo_mask=None):
     if not allow_eyepiece:
         raise IdentificationError(f"{message}\n相机直拍模式未启用目镜畸变校正。")
     from .eyepiece import identify_eyepiece
     try:
-        return identify_eyepiece(image, geometry, projection, match, limb=limb)
+        return identify_eyepiece(image, geometry, projection, match, limb=limb, **mask_kwargs(photo_mask))
     except IdentificationError as exc:
         original_error = str(exc)
     # One bounded retry after a strong coarse match and observed long limb.
@@ -147,13 +150,15 @@ def _eyepiece_or_raise(image, geometry, projection, match, message, limb=None, *
     if reference is not None and limb is not None and match.inliers >= 64:
         from .registration import realign_registration_matches
         try:
-            rematch = realign_registration_matches(reference, image, match, prepared_photo=prepared_photo)
+            rematch = realign_registration_matches(reference, image, match, prepared_photo=prepared_photo,
+                                                   **mask_kwargs(photo_mask))
             if rematch.mirrored == match.mirrored:
                 camera = (np.vstack((rematch.matrix, [0., 0., 1.])) @
                           np.vstack((projection, [0., 0., 1.])))[:2]
-                observed = _photographed_limb(image, camera, geometry)
+                observed = _photographed_limb(image, camera, geometry, **mask_kwargs(photo_mask))
                 if observed is not None:
-                    result = identify_eyepiece(image, geometry, projection, rematch, limb=observed)
+                    result = identify_eyepiece(image, geometry, projection, rematch, limb=observed,
+                                               **mask_kwargs(photo_mask))
                     result.method += ' / rigid-aligned rematch'
                     return result
         except ValueError:
@@ -205,7 +210,7 @@ def _border_caption_area(stats, main, shape):
     return removed if removed <= .30*area else 0
 
 
-def _compact_lunar_field(image):
+def _compact_lunar_field(image, *, photo_mask=None):
     """Find a small isolated bright field; never crop ordinary or partial fields.
 
     This is only a search window, not a lunar-limb measurement. Texture and
@@ -217,6 +222,8 @@ def _compact_lunar_field(image):
                        interpolation=cv2.INTER_AREA)
     gray = cv2.cvtColor(small, cv2.COLOR_RGB2GRAY) if small.ndim == 3 else small
     mask = (gray > 30).astype(np.uint8)
+    if photo_mask is not None:
+        mask[photo_mask.raster(gray.shape) == 0] = 0
     count, _, stats, _ = cv2.connectedComponentsWithStats(mask)
     if count < 2:
         return None
@@ -240,13 +247,15 @@ def _compact_lunar_field(image):
     return image[lower[1]:upper[1], lower[0]:upper[0]], lower
 
 
-def identify_from_atlas(image, geometry, *, allow_eyepiece=True):
+def identify_from_atlas(image, geometry, *, allow_eyepiece=True, photo_mask=None):
     """No supplied region, camera angle, mirror, scale or feature names."""
-    compact = _compact_lunar_field(image)
+    compact = _compact_lunar_field(image, **mask_kwargs(photo_mask))
     if compact is not None:
         field, origin = compact
+        crop_mask = photo_mask.cropped(origin, field.shape, image.shape) if photo_mask is not None else None
         try:
-            result = _identify_atlas_field(field, geometry, allow_eyepiece=allow_eyepiece)
+            result = _identify_atlas_field(field, geometry, allow_eyepiece=allow_eyepiece,
+                                           **mask_kwargs(crop_mask))
         except IdentificationError:
             pass  # Preserve the full-frame search if the isolated field fails.
         else:
@@ -258,21 +267,21 @@ def identify_from_atlas(image, geometry, *, allow_eyepiece=True):
                     np.asarray(result.lens_distortion['center'])+origin).tolist()
             result.method += " / compact lunar field"
             return result
-    return _identify_atlas_field(image, geometry, allow_eyepiece=allow_eyepiece)
+    return _identify_atlas_field(image, geometry, allow_eyepiece=allow_eyepiece, **mask_kwargs(photo_mask))
 
 
-def _identify_atlas_field(image, geometry, *, allow_eyepiece=True):
+def _identify_atlas_field(image, geometry, *, allow_eyepiece=True, photo_mask=None):
     reference, projection = render_atlas(geometry)
     # Scope features to this unchanged search image. Crops and later searches
     # get their own preparation; only a reference reorientation reuses it.
-    prepared = prepare_registration_photo(image)
-    match = auto_register(reference, image, prepared_photo=prepared)
+    prepared = prepare_registration_photo(image, **mask_kwargs(photo_mask))
+    match = auto_register(reference, image, prepared_photo=prepared, **mask_kwargs(photo_mask))
     # The map search has no user-supplied region, so require more evidence than
     # the existing manually selected reference matching tool.
     if match.inliers < 24 or match.inliers/match.matches < .45:
         raise IdentificationError("纹理对应点太少或过于集中，未采用配准。")
     matrix = (np.vstack((match.matrix, [0., 0., 1.])) @ np.vstack((projection, [0., 0., 1.])))[:2]
-    limb = _photographed_limb(image, matrix, geometry)
+    limb = _photographed_limb(image, matrix, geometry, **mask_kwargs(photo_mask))
     coverage = match.coverage
     if limb is not None:
         # An independently measured whole-Moon arc licenses measuring spatial
@@ -287,17 +296,21 @@ def _identify_atlas_field(image, geometry, *, allow_eyepiece=True):
     effective_geometry = refined.geometry if refined is not None else geometry
     if limb is not None and _limb_error(matrix, effective_geometry, limb) > max(3., limb[1]*.008, limb[2]*4):
         return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片月缘不一致，未采用配准。", limb,
-                                  reference=reference, allow_eyepiece=allow_eyepiece, prepared_photo=prepared)
+                                  reference=reference, allow_eyepiece=allow_eyepiece, prepared_photo=prepared,
+                                  **mask_kwargs(photo_mask))
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
     height, width = gray.shape
     sample = cv2.resize(gray[:round(height*.93)], (60, 54), interpolation=cv2.INTER_AREA)
     yy, xx = np.nonzero(sample > 30)
     foreground = np.column_stack(((xx+.5)*width/60, (yy+.5)*round(height*.93)/54))
+    if photo_mask is not None:
+        foreground = foreground[photo_mask.allows(foreground, image.shape)]
     if len(foreground):
         inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
         if (np.linalg.norm(transform_points(inverse, foreground), axis=1) < 1.015).mean() < .95:
             return _eyepiece_or_raise(image, geometry, projection, match, "纹理配准与照片中的月盘范围不一致。", limb,
-                                      reference=reference, allow_eyepiece=allow_eyepiece, prepared_photo=prepared)
+                                      reference=reference, allow_eyepiece=allow_eyepiece, prepared_photo=prepared,
+                                      **mask_kwargs(photo_mask))
     method = "LROC albedo / symmetric SIFT / JPL projection"
     if refined is not None:
         method += " / spatially validated view refinement"

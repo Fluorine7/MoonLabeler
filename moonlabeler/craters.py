@@ -12,6 +12,7 @@ import math
 
 from ._opencv import cv2
 import numpy as np
+from .recognition_mask import mask_kwargs
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,7 @@ def _map_candidate(candidate, sx, sy, x=0, y=0):
                            candidate.support, candidate.method)
 
 
-def _lunar_surface(image):
+def _lunar_surface(image, *, photo_mask=None):
     """Photographic search footprint, independent of any solved lunar pose.
 
     Use the full photograph, even for a viewport search, so zooming into a
@@ -68,14 +69,17 @@ def _lunar_surface(image):
     sample = cv2.resize(image, (max(1, round(w*factor)), max(1, round(h*factor))),
                         interpolation=cv2.INTER_AREA) if factor < 1 else image
     gray = cv2.cvtColor(sample, cv2.COLOR_RGB2GRAY) if sample.ndim == 3 else sample
-    threshold = max(4., float(np.percentile(gray, 99))*.08)
+    bright = photo_mask.percentile(gray, 99) if photo_mask is not None else float(np.percentile(gray, 99))
+    threshold = max(4., bright*.08)
     kernel = max(3, round(max(gray.shape)/180) | 1)
     foreground = cv2.morphologyEx((gray > threshold).astype(np.uint8), cv2.MORPH_CLOSE,
                                  np.ones((kernel, kernel), np.uint8))
     contours, _ = cv2.findContours(foreground, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     surface = np.zeros(gray.shape, np.uint8)
     if contours:
-        cv2.fillPoly(surface, [max(contours, key=cv2.contourArea)], 1)
+        contour = photo_mask.largest_contour(contours, gray.shape) if photo_mask is not None else max(contours, key=cv2.contourArea)
+        if contour is not None:
+            cv2.fillPoly(surface, [contour], 1)
     return surface
 
 
@@ -97,7 +101,7 @@ def _surrounded_by_surface(candidate, surface, image_shape):
     return np.count_nonzero(surface[yy[valid], xx[valid]]) >= len(t)*.6
 
 
-def _large_rim_candidates(gray):
+def _large_rim_candidates(gray, *, photo_mask=None):
     """Low-frequency arc proposals for craters dominating a close-up.
 
     High-pass enhancement fragments terraced rims. Fit long smoothed arcs,
@@ -117,6 +121,8 @@ def _large_rim_candidates(gray):
     for sigma in (1.3, 2.):
         smooth = cv2.GaussianBlur(sample, (0, 0), sigma)
         edges = cv2.Canny(smooth, 10, 25)
+        if photo_mask is not None:
+            edges[photo_mask.raster(sample.shape, padding=3) == 0] = 0
         ey, ex = np.nonzero(edges)
         if not len(ex):
             continue
@@ -182,7 +188,7 @@ def _large_rim_candidates(gray):
     return sorted(proposals, key=lambda c: -c.support)
 
 
-def detect_crater_rims(image):
+def detect_crater_rims(image, *, photo_mask=None):
     """Group partial rim arcs with OpenCV EDCircles at several resolutions.
 
     Unlike closed shadow contours, separate illuminated arcs can contribute to
@@ -197,7 +203,7 @@ def detect_crater_rims(image):
     h, w = gray.shape
     if min(h, w) < 64 or float(np.std(gray)) < 1:
         return DetectionResult([], (0, 0, w, h), 1.)
-    surface = _lunar_surface(image)
+    surface = _lunar_surface(image, **mask_kwargs(photo_mask))
     proposals = []
     # Exclude a detached, very dark caption strip if a sharp full-width seam
     # starts it near the bottom. Letter loops must not become crater evidence.
@@ -243,11 +249,14 @@ def detect_crater_rims(image):
                 continue
             original_angle = math.degrees(math.atan2(axes[1, 0], axes[0, 0])) % 180
             proposals.append(CraterCandidate(x, y, float(major), float(minor), original_angle, None, "edge-drawing"))
-    proposals.extend(_large_rim_candidates(gray[:bottom]))
+    coarse_mask = photo_mask.cropped((0, 0), (bottom, w)) if photo_mask is not None else None
+    proposals.extend(_large_rim_candidates(gray[:bottom], **mask_kwargs(coarse_mask)))
     # Keep the first high resolution fit in each scale-consistent cluster;
     # retaining every pass would falsely count one rim as several observations.
     kept = []
     for candidate in proposals:
+        if photo_mask is not None and not photo_mask.accepts_crater(candidate, image.shape):
+            continue
         if not _surrounded_by_surface(candidate, surface, image.shape):
             continue
         duplicate = any(math.hypot(candidate.x-other.x, candidate.y-other.y) < .45*min(candidate.major, other.major)
@@ -258,7 +267,7 @@ def detect_crater_rims(image):
     return DetectionResult(kept[:120], (0, 0, w, h), 1.)
 
 
-def detect_craters(image, options=None, region=None):
+def detect_craters(image, options=None, region=None, *, photo_mask=None):
     """Return ellipse candidates in ORIGINAL image pixels, optionally in an ROI.
 
     Radius limits refer to the mean of ellipse semiaxes. Support is sampled
@@ -300,7 +309,8 @@ def detect_craters(image, options=None, region=None):
     factor = min(sx, sy)
     if float(np.std(gray)) < 1:
         return DetectionResult([], (x, y, w, h), factor)
-    surface = _lunar_surface(image)
+    surface = _lunar_surface(image, **mask_kwargs(photo_mask))
+    region_mask = photo_mask.cropped((x, y), (h, w)) if photo_mask is not None else None
     background = cv2.GaussianBlur(gray, (0, 0), sigmaX=32., sigmaY=32.)
     high_pass = cv2.addWeighted(gray, 1., background, -1., 128.)
     equalized = cv2.createCLAHE(clipLimit=2., tileGridSize=(8, 8)).apply(high_pass)
@@ -312,6 +322,8 @@ def detect_craters(image, options=None, region=None):
     lower = max(12., (.75-.45*sensitivity)*median)
     upper = max(lower+20., (1.7-.5*sensitivity)*median)
     edges = cv2.Canny(enhanced, lower, min(255., upper))
+    if region_mask is not None:
+        edges[region_mask.raster(gray.shape, padding=3) == 0] = 0
     closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE,
                              cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
     distance, labels = cv2.distanceTransformWithLabels(255-edges, cv2.DIST_L2, 3, labelType=cv2.DIST_LABEL_PIXEL)
@@ -325,7 +337,7 @@ def detect_craters(image, options=None, region=None):
         gradient[labels[ey, ex]] = normals
     proposals = []
     if options.max_radius*factor >= min(gray.shape)*.2:
-        for candidate in _large_rim_candidates(gray):
+        for candidate in _large_rim_candidates(gray, **mask_kwargs(region_mask)):
             original = _map_candidate(candidate, sx, sy, x, y)
             if options.min_radius <= (original.major+original.minor)/2 <= options.max_radius:
                 proposals.append(original)
@@ -360,6 +372,23 @@ def detect_craters(image, options=None, region=None):
             return
         if np.count_nonzero(supported.reshape(8, -1).mean(axis=1) >= .4) < 6:
             return
+        if method == 'circle':
+            # Hough circles have no fitted contour to distinguish a rim from
+            # dense, similarly oriented ridges. Require a radial peak above
+            # nearby terrain, not just many edges somewhere around the circle.
+            nearby = []
+            for ratio in (.65, .75, 1.25, 1.35):
+                nx = np.rint(cx+ratio*(a*np.cos(t)*cos_t-b*np.sin(t)*sin_t)).astype(int)
+                ny = np.rint(cy+ratio*(a*np.cos(t)*sin_t+b*np.sin(t)*cos_t)).astype(int)
+                valid = (nx >= 0) & (nx < sw) & (ny >= 0) & (ny < sh)
+                if region_mask is not None:
+                    valid &= region_mask.allows(np.column_stack((nx, ny)), gray.shape, padding=3)
+                if valid.sum() < len(t)*.75:
+                    continue
+                aligned = np.abs(np.sum(gradient[labels[ny[valid], nx[valid]]]*rim_normal[valid], axis=1)) > .85
+                nearby.append(np.mean((distance[ny[valid], nx[valid]] <= tolerance) & aligned))
+            if len(nearby) >= 3 and support-float(np.mean(nearby)) < .22-.08*sensitivity:
+                return
         if radius >= min(gray.shape)*.2:
             if support < .55:
                 return
@@ -399,12 +428,15 @@ def detect_craters(image, options=None, region=None):
     kept = []
     rank = (lambda c: (-c.support*(1.+.2*math.log1p(c.major/8)), -c.major, c.y, c.x)) if options.prefer_large else (lambda c: (-c.support, c.method != "ellipse", -c.major, c.y, c.x))
     for candidate in sorted(proposals, key=rank):
+        if photo_mask is not None and not photo_mask.accepts_crater(candidate, image.shape):
+            continue
         if not _surrounded_by_surface(candidate, surface, image.shape):
             continue
         # Compare radius as well as center, regardless of angle or method.
         # This suppresses two edges of one rim without merging nested craters.
         radius = (candidate.major+candidate.minor)/2
-        duplicate = any(math.hypot(candidate.x-other.x, candidate.y-other.y) < .45*min(radius, (other.major+other.minor)/2)
+        duplicate = any(math.hypot(candidate.x-other.x, candidate.y-other.y) <
+                        (.85 if candidate.method == other.method == 'circle' else .45)*min(radius, (other.major+other.minor)/2)
                         and .55 < radius/((other.major+other.minor)/2) < 1.8 for other in kept)
         if not duplicate:
             kept.append(candidate)

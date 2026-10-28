@@ -120,28 +120,36 @@ class RegistrationPhoto:
     contrast_threshold: float
     keypoints: tuple
     descriptors: np.ndarray
+    photo_mask: object = None
 
 
-def prepare_registration_photo(photograph, *, contrast_threshold=.02):
+def prepare_registration_photo(photograph, *, contrast_threshold=.02, photo_mask=None):
     photo, scale = _gray(photograph)
     sift = cv2.SIFT_create(nfeatures=10000, contrastThreshold=contrast_threshold)
-    points, descriptors = sift.detectAndCompute(photo, None)
+    points, descriptors = sift.detectAndCompute(photo, photo_mask.raster(photo.shape) if photo_mask is not None else None)
+    if photo_mask is not None and descriptors is not None:
+        keep = photo_mask.keypoint_selection(points, photo.shape)
+        points = tuple(point for point, retain in zip(points, keep) if retain)
+        descriptors = descriptors[keep]
     if descriptors is None or len(points) < 12:
         raise ValueError("照片细节不足，自动配准失败。请使用手动地形参考点。")
-    return RegistrationPhoto(photograph, photo, scale, contrast_threshold, points, descriptors)
+    return RegistrationPhoto(photograph, photo, scale, contrast_threshold, points, descriptors, photo_mask)
 
 
 def registration_candidates(reference, photograph, *, ratio_threshold=.75,
                             contrast_threshold=.02, min_inlier_fraction=.35,
-                            prepared_photo=None):
+                            prepared_photo=None, photo_mask=None):
     """Map reference pixels to photograph pixels. No assumed crop/rotation.
 
     Reflections are tested explicitly. RANSAC uses a similarity rather than an
     arbitrary homography that could bend a wrong match into apparent agreement.
     """
     ref, rs = _gray(reference)
-    prepared = prepared_photo or prepare_registration_photo(photograph, contrast_threshold=contrast_threshold)
-    if prepared.image is not photograph or prepared.contrast_threshold != contrast_threshold:
+    from .recognition_mask import mask_kwargs
+    prepared = prepared_photo or prepare_registration_photo(photograph, contrast_threshold=contrast_threshold,
+                                                            **mask_kwargs(photo_mask))
+    if (prepared.image is not photograph or prepared.contrast_threshold != contrast_threshold
+            or prepared.photo_mask is not photo_mask):
         raise ValueError("预提取的照片特征与当前图像或检测参数不一致。")
     photo, ps = prepared.gray, prepared.scale
     sift = cv2.SIFT_create(nfeatures=10000, contrastThreshold=contrast_threshold)
@@ -201,17 +209,18 @@ def registration_candidates(reference, photograph, *, ratio_threshold=.75,
 
 def auto_register(reference, photograph, *, ratio_threshold=.75,
                   contrast_threshold=.02, min_inlier_fraction=.35,
-                  prepared_photo=None):
+                  prepared_photo=None, photo_mask=None):
     """Return the strongest image pose, testing both camera handednesses."""
+    from .recognition_mask import mask_kwargs
     candidates = registration_candidates(reference, photograph,
                                          ratio_threshold=ratio_threshold,
                                          contrast_threshold=contrast_threshold,
                                          min_inlier_fraction=min_inlier_fraction,
-                                         prepared_photo=prepared_photo)
+                                         prepared_photo=prepared_photo, **mask_kwargs(photo_mask))
     return max(candidates, key=lambda candidate: (candidate.inliers, candidate.coverage))
 
 
-def realign_registration_matches(reference, photograph, coarse, *, prepared_photo=None):
+def realign_registration_matches(reference, photograph, coarse, *, prepared_photo=None, photo_mask=None):
     """Re-extract descriptors after rigid alignment, returning original pixels.
 
     Different sampling and local contrast after rotation/scale alignment can
@@ -223,7 +232,8 @@ def realign_registration_matches(reference, photograph, coarse, *, prepared_phot
     factor = min(1., 2200/max(h, w))
     alignment = coarse.matrix*factor
     aligned = cv2.warpAffine(reference, alignment, (round(w*factor), round(h*factor)))
-    match = auto_register(aligned, photograph, prepared_photo=prepared_photo)
+    from .recognition_mask import mask_kwargs
+    match = auto_register(aligned, photograph, prepared_photo=prepared_photo, **mask_kwargs(photo_mask))
     inverse = np.linalg.inv(np.vstack((alignment, [0., 0., 1.])))[:2]
     match.source_points = transform_points(inverse, match.source_points)
     match.source_matches = transform_points(inverse, match.source_matches)

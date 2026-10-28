@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2026 Fluorine Zhu
 """Local reference refinement using the same small, cached LOLA DEM."""
+from .recognition_mask import mask_kwargs
 from ._opencv import cv2
 import numpy as np
 from .geometry import surface_vectors
@@ -35,13 +36,20 @@ def render_local_reference(dem, geometry, matrix, shape):
     return output
 
 
-def local_correspondences(reference, photograph):
+def local_correspondences(reference, photograph, *, photo_mask=None):
     """Retrieve mutually matched, nearby points; deduplicate SIFT orientations."""
     sift = cv2.SIFT_create(nfeatures=10000, contrastThreshold=.01)
     mask = np.full(reference.shape, 255, np.uint8)
     mask[round(reference.shape[0]*.93):] = 0
     rk, rd = sift.detectAndCompute(_gray(reference)[0], mask)
-    pk, pd = sift.detectAndCompute(_gray(photograph)[0], mask)
+    photo = _gray(photograph)[0]
+    if photo_mask is not None:
+        mask = cv2.bitwise_and(mask, photo_mask.raster(photo.shape))
+    pk, pd = sift.detectAndCompute(photo, mask)
+    if photo_mask is not None and pd is not None:
+        keep = photo_mask.keypoint_selection(pk, photo.shape)
+        pk = tuple(point for point, retain in zip(pk, keep) if retain)
+        pd = pd[keep]
     empty = np.empty((0, 2), float)
     if rd is None or pd is None:
         return empty, empty.copy()
@@ -70,7 +78,7 @@ def local_correspondences(reference, photograph):
     return source[keep], target[keep]
 
 
-def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False, relief_aware=False):
+def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False, relief_aware=False, photo_mask=None):
     """Retain initial registration unless spatial and fresh-render checks pass."""
     from .terrain_identification import terrain_agreement, refinement_consensus
     from .identification import IdentificationError
@@ -87,7 +95,7 @@ def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False, 
     sx, sy = photograph.shape[1]/w, photograph.shape[0]/h
     working_matrix = np.diag([sx, sy])@matrix
     reference = render_local_reference(dem, geometry, working_matrix, photograph.shape)
-    source, target = local_correspondences(reference, photograph)
+    source, target = local_correspondences(reference, photograph, **mask_kwargs(photo_mask))
     camera = None
     if crater_verified:
         camera = refine_camera(geometry, working_matrix, source, target, photograph.shape)
@@ -95,7 +103,7 @@ def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False, 
         # Re-retrieve at the corrected camera. Keeping only matches near the
         # initial biased pose would omit valid terrain elsewhere in the photo.
         aligned = render_local_reference(dem, geometry, camera.matrix, photograph.shape)
-        source, target = local_correspondences(aligned, photograph)
+        source, target = local_correspondences(aligned, photograph, **mask_kwargs(photo_mask))
         result = refine_view(geometry, camera.matrix, source, target, photograph.shape)
         if result is None:
             result = camera
@@ -108,8 +116,8 @@ def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False, 
     identity = np.array([[1., 0., 0.], [0., 1., 0.]])
     updated = render_local_reference(dem, result.geometry, result.matrix, photograph.shape)
     try:
-        before = terrain_agreement(reference, photograph, identity, require_match=False)
-        after = terrain_agreement(updated, photograph, identity, require_match=False)
+        before = terrain_agreement(reference, photograph, identity, require_match=False, **mask_kwargs(photo_mask))
+        after = terrain_agreement(updated, photograph, identity, require_match=False, **mask_kwargs(photo_mask))
     except IdentificationError:
         return None
     if not refinement_consensus(after[0], after[1], result.details):
@@ -130,7 +138,7 @@ def refine_terrain_pose(image, geometry, matrix, dem, *, crater_verified=False, 
     return result
 
 
-def refine_crater_identification(result, image, geometry, cache, catalog):
+def refine_crater_identification(result, image, geometry, cache, catalog, *, photo_mask=None):
     """Refine a verified crater-region pose; optional DEM failure keeps it intact."""
     from dataclasses import replace
     from .terrain import ElevationMap, download_basic_dem
@@ -140,7 +148,7 @@ def refine_crater_identification(result, image, geometry, cache, catalog):
     try:
         dem = ElevationMap.load(download_basic_dem(cache))
         try:
-            refined = refine_terrain_pose(image, geometry, result.matrix, dem, crater_verified=True)
+            refined = refine_terrain_pose(image, geometry, result.matrix, dem, crater_verified=True, **mask_kwargs(photo_mask))
             rims = trace_catalog_rims(dem, refined.geometry if refined else geometry,
                                       refined.matrix if refined else result.matrix, catalog, image.shape)
         finally:

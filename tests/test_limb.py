@@ -18,7 +18,7 @@ def view():
 
 
 @pytest.mark.parametrize('mirror', [1, -1])
-def test_rotated_crescent_pose_and_mirror_recovered_from_limb_and_texture(mirror):
+def test_rotated_crescent_pose_and_mirror_recovered_from_limb_and_texture(mirror, monkeypatch, tmp_path):
     geometry = view()
     reference, projection = render_atlas(geometry, 600)
     theta = np.radians(37.)
@@ -28,7 +28,10 @@ def test_rotated_crescent_pose_and_mirror_recovered_from_limb_and_texture(mirror
     warp = (np.vstack((expected, [0., 0., 1.])) @ inverse)[:2]
     # Keep the bright outer arc in frame for either rotation / reflection.
     photograph = cv2.warpAffine(reference, warp, (1200, 1200))
-    result = identify_from_limb(photograph, geometry)
+    def unnecessary(*args, **kwargs):
+        pytest.fail('An accepted albedo/limb pose must not run the terrain fallback')
+    monkeypatch.setattr('moonlabeler.limb_refinement.identify_limb_terrain', unnecessary)
+    result = identify_from_limb(photograph, geometry, cache=tmp_path)
     probes = np.array([[.4, .1], [.6, -.3], [.85, .2]])
     error = np.linalg.norm(transform_points(result.matrix, probes)-transform_points(expected, probes), axis=1)
     assert error.max() < 8

@@ -102,7 +102,7 @@ def _triangle_index(points, radii, neighbors=14, centered=False):
     return np.ascontiguousarray(descriptors, np.float32), triangles
 
 
-def identify_from_candidates(candidates, catalog, geometry, image_shape, max_hypotheses=2400, image=None):
+def identify_from_candidates(candidates, catalog, geometry, image_shape, max_hypotheses=2400, image=None, *, photo_mask=None):
     """Try the compact named-crater index, then search satellite crater patterns.
 
     The broader search requires seven correspondences among the twenty largest
@@ -112,16 +112,16 @@ def identify_from_candidates(candidates, catalog, geometry, image_shape, max_hyp
     """
     candidates = list(candidates)
     try:
-        return _search_candidates(candidates, catalog, geometry, image_shape, max_hypotheses, image)
+        return _search_candidates(candidates, catalog, geometry, image_shape, max_hypotheses, image, photo_mask=photo_mask)
     except AmbiguousIdentificationError:
         raise
     except IdentificationError:
         if len(candidates) < 7:
             raise
-    return _search_candidates(candidates, catalog, geometry, image_shape, 50000, image, expanded=True)
+    return _search_candidates(candidates, catalog, geometry, image_shape, 50000, image, expanded=True, photo_mask=photo_mask)
 
 
-def _search_candidates(candidates, catalog, geometry, image_shape, max_hypotheses, image, expanded=False):
+def _search_candidates(candidates, catalog, geometry, image_shape, max_hypotheses, image, expanded=False, photo_mask=None):
     # FLANN's trees must not depend on which photograph was processed earlier.
     cv2.setRNGSeed(0)
     candidates = list(candidates)
@@ -167,6 +167,8 @@ def _search_candidates(candidates, catalog, geometry, image_shape, max_hypothese
         sample = cv2.resize(gray[:round(h*.93)], (40, 36), interpolation=cv2.INTER_AREA)
         yy, xx = np.nonzero(sample > 30)
         foreground = np.column_stack(((xx+.5)*w/40, (yy+.5)*round(h*.93)/36))
+        if photo_mask is not None:
+            foreground = foreground[photo_mask.allows(foreground, image_shape)]
     image_matcher = cv2.FlannBasedMatcher(dict(algorithm=1, trees=2), dict(checks=48))
     image_matcher.add([photo])
     image_matcher.train()

@@ -76,7 +76,7 @@ def _fit(initial, coordinates, target, geometry, sign, scale):
     return params
 
 
-def _limb_check(image, geometry, params, center, scale, sign, *, field_area=None):
+def _limb_check(image, geometry, params, center, scale, sign, *, field_area=None, photo_mask=None):
     """Use observed boundary pixels, not a fitted circle, as independent data."""
     h, w = image.shape[:2]
     # Bound contour/distance work on large photographs.
@@ -84,16 +84,21 @@ def _limb_check(image, geometry, params, center, scale, sign, *, field_area=None
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
     if factor < 1:
         gray = cv2.resize(gray, None, fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
-    threshold = max(30, float(np.percentile(gray, 99))*.25)
+    bright = photo_mask.percentile(gray, 99) if photo_mask is not None else float(np.percentile(gray, 99))
+    threshold = max(30, bright*.25)
     contours, _ = cv2.findContours((gray > threshold).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     if not contours:
         raise IdentificationError('目镜校正缺少可验证的受光月缘。')
-    contour = max(contours, key=cv2.contourArea)
+    contour = photo_mask.largest_contour(contours, gray.shape) if photo_mask is not None else max(contours, key=cv2.contourArea)
+    if contour is None:
+        raise IdentificationError('目镜校正缺少可验证的受光月缘。')
     area = h*w if field_area is None else min(h*w, field_area)
     if cv2.contourArea(contour)/factor**2 < area*.1:
         raise IdentificationError('目镜校正需要较完整的月面视野。')
     boundary = np.ones(gray.shape, np.uint8)
     cv2.drawContours(boundary, [contour], -1, 0, 1)
+    if photo_mask is not None:
+        boundary[photo_mask.raster(gray.shape, padding=2) == 0] = 1
     distances = cv2.distanceTransform(boundary, cv2.DIST_L2, 5)/factor
     angles = np.linspace(0, 2*np.pi, 720, endpoint=False)
     circle = np.column_stack((np.cos(angles), np.sin(angles)))
@@ -105,6 +110,8 @@ def _limb_check(image, geometry, params, center, scale, sign, *, field_area=None
     predicted = _radial(params, circle*[sign, 1])*scale+center
     keep = (illuminated & (predicted[:, 0] > 3) & (predicted[:, 0] < w-4)
             & (predicted[:, 1] > 3) & (predicted[:, 1] < h-4))
+    if photo_mask is not None:
+        keep &= photo_mask.allows(predicted, image.shape, padding=2)
     if keep.sum() < 240:
         raise IdentificationError('目镜校正的可验证月缘不足 120°。')
     xy = np.rint(predicted[keep]*factor).astype(int)
@@ -117,7 +124,8 @@ def _limb_check(image, geometry, params, center, scale, sign, *, field_area=None
     return circle[keep], float(np.percentile(errors, 95)), float(keep.sum()/2)
 
 
-def identify_eyepiece(image, geometry, projection, match, *, limb=None):
+def identify_eyepiece(image, geometry, projection, match, *, limb=None, photo_mask=None):
+    from .recognition_mask import mask_kwargs
     if match.inliers < 64 or match.source_matches is None or match.target_matches is None:
         raise IdentificationError('目镜校正缺少可靠的纹理对应点。')
     source, target = match.source_matches, match.target_matches
@@ -140,7 +148,7 @@ def identify_eyepiece(image, geometry, projection, match, *, limb=None):
     if match.coverage < .08:
         if limb is None:
             from .atlas import _photographed_limb
-            limb = _photographed_limb(image, camera, geometry)
+            limb = _photographed_limb(image, camera, geometry, **mask_kwargs(photo_mask))
         if limb is not None:
             area = min(area, 4*limb[1]**2)
             scale, center = limb[1], limb[0]
@@ -157,7 +165,8 @@ def identify_eyepiece(image, geometry, projection, match, *, limb=None):
     if inliers.sum() < 100 or inliers.mean() < .8 or coverage < .08:
         raise IdentificationError('目镜校正的纹理验证不足。')
     effective = shifted_geometry(geometry, params[7:])
-    rim, limb_error, arc = _limb_check(image, effective, params, center, scale, sign, field_area=area)
+    rim, limb_error, arc = _limb_check(image, effective, params, center, scale, sign, field_area=area,
+                                     **mask_kwargs(photo_mask))
     predicted_rim = _radial(params, rim*[sign, 1])*scale
     cells = np.minimum(((target-target.min(0))/np.maximum(np.ptp(target, axis=0), 1)*3).astype(int), 2)
     cells = cells[:, 0]+3*cells[:, 1]

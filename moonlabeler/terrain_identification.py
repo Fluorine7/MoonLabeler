@@ -10,6 +10,7 @@ and competing poses validate a result; catalogue labels share its map pose.
 """
 import math
 
+from .recognition_mask import mask_kwargs
 from ._opencv import cv2
 import numpy as np
 
@@ -41,7 +42,7 @@ def _render_terrain_atlas_cpu(dem, geometry, size=4000):
     return reference, np.array([[scale, 0., center], [0., scale, center]])
 
 
-def _photographic_footprint(gray):
+def _photographic_footprint(gray, *, photo_mask=None):
     """Exclude empty mosaic borders without deleting dark crater interiors.
 
     Derive this from the photograph alone, independent of the tested pose.
@@ -54,12 +55,13 @@ def _photographic_footprint(gray):
     contours, _ = cv2.findContours(foreground, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     footprint = np.zeros(gray.shape, np.uint8)
     if contours:
-        surface = max(contours, key=cv2.contourArea)
-        cv2.fillConvexPoly(footprint, cv2.convexHull(surface), 1)
+        surface = photo_mask.largest_contour(contours, gray.shape) if photo_mask is not None else max(contours, key=cv2.contourArea)
+        if surface is not None:
+            cv2.fillConvexPoly(footprint, cv2.convexHull(surface), 1)
     return footprint.astype(bool)
 
 
-def terrain_agreement(reference, photograph, reference_to_photo, *, require_match=True):
+def terrain_agreement(reference, photograph, reference_to_photo, *, require_match=True, photo_mask=None):
     """Independent dense light and spatial-detail checks, outside captions."""
     h, w = photograph.shape[:2]
     gray = cv2.cvtColor(photograph, cv2.COLOR_RGB2GRAY) if photograph.ndim == 3 else photograph
@@ -67,7 +69,9 @@ def terrain_agreement(reference, photograph, reference_to_photo, *, require_matc
     available = cv2.warpAffine(np.full(reference.shape, 255, np.uint8), reference_to_photo, (w, h)) > 250
     domain = np.zeros((h, w), bool)
     domain[round(h*.08):round(h*.93), round(w*.05):round(w*.95)] = True
-    domain &= available & _photographic_footprint(gray) & ((gray > 15) | (projected > 15))
+    domain &= available & _photographic_footprint(gray, **mask_kwargs(photo_mask)) & ((gray > 15) | (projected > 15))
+    if photo_mask is not None:
+        domain &= photo_mask.raster(gray.shape, padding=max(3, round(max(h, w)/88*3))) != 0
     if domain.sum() < 600 or np.std(gray[domain]) < 8 or np.std(projected[domain]) < 8:
         raise IdentificationError("高程参考有效纹理不足，未采用结果。")
     a, b = gray.astype(np.float32), projected.astype(np.float32)
@@ -143,7 +147,7 @@ def _adopt_refinement(result, refined):
     result.score = result.image_inliers*(result.texture_correlation+refined.details['detail_before_after'][1])
 
 
-def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=1536, refine=True, catalog=None):
+def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=1536, refine=True, catalog=None, photo_mask=None):
     """Search every atlas tile, both handednesses, at a coarse image scale."""
     dem = ElevationMap.load(download_basic_dem(cache))
     try:
@@ -156,12 +160,14 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
     photograph = cv2.resize(image, (round(w*factor), round(h*factor)), interpolation=cv2.INTER_AREA)
     gray = cv2.cvtColor(photograph, cv2.COLOR_RGB2GRAY) if photograph.ndim == 3 else photograph
     try:
-        prepared_photo = prepare_registration_photo(photograph, contrast_threshold=.01)
+        prepared_photo = prepare_registration_photo(photograph, contrast_threshold=.01, **mask_kwargs(photo_mask))
     except ValueError as exc:
         raise IdentificationError(str(exc)) from exc
     sample = cv2.resize(gray[:round(gray.shape[0]*.93)], (60, 54), interpolation=cv2.INTER_AREA)
     yy, xx = np.nonzero(sample > 30)
     foreground = np.column_stack(((xx+.5)*w/60, (yy+.5)*round(h*.93)/54))
+    if photo_mask is not None:
+        foreground = foreground[photo_mask.allows(foreground, image.shape)]
     # Rounded dimensions have independent x/y scales, retained in the pose.
     sx, sy = photograph.shape[1]/w, photograph.shape[0]/h
     tile_size = min(tile_size, atlas_size)
@@ -180,7 +186,7 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
                 # the normal albedo/manual matching defaults are unchanged.
                 match = auto_register(tile, photograph, ratio_threshold=.8,
                                       contrast_threshold=.01, min_inlier_fraction=.25,
-                                      prepared_photo=prepared_photo)
+                                      prepared_photo=prepared_photo, **mask_kwargs(photo_mask))
             except ValueError:
                 continue
             if match.inliers < 12 or match.coverage < .06:
@@ -188,7 +194,7 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
             offset = np.array([[1., 0., -x], [0., 1., -y], [0., 0., 1.]])
             reference_to_photo = (np.vstack((match.matrix, [0., 0., 1.])) @ offset)[:2]
             try:
-                light, detail = terrain_agreement(reference, photograph, reference_to_photo, require_match=False)
+                light, detail = terrain_agreement(reference, photograph, reference_to_photo, require_match=False, **mask_kwargs(photo_mask))
             except IdentificationError:
                 continue
             sparse_seed = match.inliers < 18
@@ -231,7 +237,7 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
             dem = ElevationMap.load(download_basic_dem(cache))
             try:
                 for candidate in distinct[:2]:
-                    refined = refine_terrain_pose(image, geometry, candidate.matrix, dem, relief_aware=True)
+                    refined = refine_terrain_pose(image, geometry, candidate.matrix, dem, relief_aware=True, **mask_kwargs(photo_mask))
                     if refined is None:
                         continue
                     light = refined.details['light_before_after'][1]
@@ -258,7 +264,7 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
         from .terrain_refinement import refine_terrain_pose
         dem = ElevationMap.load(download_basic_dem(cache))
         try:
-            refined = refine_terrain_pose(image, geometry, result.matrix, dem)
+            refined = refine_terrain_pose(image, geometry, result.matrix, dem, **mask_kwargs(photo_mask))
         finally:
             dem.close()
         if refined is not None:

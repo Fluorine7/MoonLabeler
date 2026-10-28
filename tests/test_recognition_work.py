@@ -15,14 +15,21 @@ from moonlabeler.geometry import Geometry
 from moonlabeler.identification import IdentificationResult
 
 
-@pytest.mark.parametrize('route', ['atlas', 'limb', 'craters', 'guided'])
-def test_recognition_only_detects_craters_when_used_and_preserves_review(monkeypatch, route):
+@pytest.mark.parametrize('route', ['atlas', 'limb', 'craters', 'guided', 'terrain'])
+@pytest.mark.parametrize('masked', [False, True])
+def test_recognition_only_detects_craters_when_used_and_preserves_review(monkeypatch, route, masked):
     application = QApplication.instance() or QApplication([])
     window = module.MainWindow()
     errors, stages = [], []
     window.error = errors.append
     try:
         window.set_image(np.zeros((400, 600, 3), np.uint8))
+        if masked:
+            window.mask_editor.add({'kind': 'paint', 'points': [[30, 30]], 'radius': 20})
+        photo_mask = window.current_photo_mask()
+        def check_mask(kwargs):
+            assert kwargs.get('photo_mask') is photo_mask
+            assert ('photo_mask' in kwargs) == masked
         geometry = Geometry(np.array([1., 0., 0.]), np.array([0., 1., 0.]),
                             np.array([0., 0., 1.]), np.array([1., 0., 0.]),
                             384400., '2023-05-27T11:51:00+00:00')
@@ -33,37 +40,52 @@ def test_recognition_only_detects_craters_when_used_and_preserves_review(monkeyp
         window.accept_crater_candidates(review)
         fresh = DetectionResult([CraterCandidate(320., 180., 30., 25., 0., None, 'edge-drawing')],
                                 (0, 0, 600, 400), 1.)
-        def detect(image):
+        def detect(image, **kwargs):
+            check_mask(kwargs)
             stages.append('detect')
             return fresh
         monkeypatch.setattr(module, 'detect_crater_rims', detect)
         result = IdentificationResult(np.array([[150., 0., 300.], [0., 150., 200.]]), [],
                                       1., 50., 0, method='test', image_inliers=50)
         def atlas(*args, **kwargs):
+            check_mask(kwargs)
             stages.append('atlas')
             if route != 'atlas':
                 raise ValueError('no atlas match')
             return result
         def limb(*args, **kwargs):
+            check_mask(kwargs)
             stages.append('limb')
             if route != 'limb':
                 raise ValueError('no limb match')
             return result
         def craters(candidates, *args, **kwargs):
+            check_mask(kwargs)
             stages.append('craters')
             assert candidates is fresh.candidates
+            if route == 'terrain':
+                raise ValueError('no crater match')
             return result
+        def terrain(*args, **kwargs):
+            check_mask(kwargs)
+            stages.append('terrain')
+            return result
+        def refine(recognition, *args, **kwargs):
+            check_mask(kwargs)
+            return recognition
         monkeypatch.setattr(module, 'identify_from_atlas', atlas)
         monkeypatch.setattr(module, 'identify_from_limb', limb)
         monkeypatch.setattr(module, 'identify_from_candidates', craters)
-        monkeypatch.setattr(module, 'refine_crater_identification', lambda recognition, *args: recognition)
+        monkeypatch.setattr(module, 'identify_from_terrain', terrain)
+        monkeypatch.setattr(module, 'refine_crater_identification', refine)
         if route in ('craters', 'guided'):
             feature = next(f for f in window.catalog if f['name'] == 'Tycho')
             point = geometry.project([feature['lat']], [feature['lon']])[0]
             pixel = (point @ result.matrix[:, :2].T + result.matrix[:, 2])[0].tolist()
             if route == 'guided':
                 window.project.anchors = [{'id': feature['id'], 'pixel': pixel, 'enabled': True}]
-                def guided(image, actual_geometry, cache, anchors, catalog, candidates):
+                def guided(image, actual_geometry, cache, anchors, catalog, candidates, **kwargs):
+                    check_mask(kwargs)
                     stages.append('guided')
                     assert candidates == [manual, *fresh.candidates]
                     return result
@@ -82,7 +104,8 @@ def test_recognition_only_detects_craters_when_used_and_preserves_review(monkeyp
         assert not errors
         expected = {'atlas': ['atlas'], 'limb': ['atlas', 'limb'],
                     'craters': ['atlas', 'limb', 'detect', 'craters'],
-                    'guided': ['detect', 'guided']}
+                    'guided': ['detect', 'guided'],
+                    'terrain': ['atlas', 'limb', 'detect', 'craters', 'terrain']}
         assert stages == expected[route]
         if route in ('atlas', 'limb'):
             assert window.crater_result is review

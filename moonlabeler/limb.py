@@ -15,22 +15,30 @@ import numpy as np
 from .atlas import render_atlas
 from .geometry import MOON_RADIUS_KM
 from .identification import IdentificationError, IdentificationResult
+from .recognition_mask import mask_kwargs
 
 
-def fit_lunar_limb(image):
+def fit_lunar_limb(image, *, photo_mask=None):
     """Return original-image center, radius, edge RMS and supporting samples."""
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
     factor = min(1., 800/max(gray.shape))
     small = cv2.resize(gray, None, fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
-    threshold = max(4., float(np.percentile(small, 99))*.12)
+    bright = photo_mask.percentile(small, 99) if photo_mask is not None else float(np.percentile(small, 99))
+    threshold = max(4., bright*.12)
     contours, _ = cv2.findContours((small > threshold).astype(np.uint8)*255,
                                   cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     if not contours:
         raise IdentificationError("没有可用的月盘轮廓。")
-    contour = max(contours, key=cv2.contourArea)
+    contour = photo_mask.largest_contour(contours, small.shape) if photo_mask is not None else max(contours, key=cv2.contourArea)
+    if contour is None:
+        raise IdentificationError("月盘外缘弧度不足；局部月缘不能仅靠轮廓定位。")
     if cv2.contourArea(contour) < small.size*.02 or len(contour) < 60:
         raise IdentificationError("月盘轮廓太小，无法独立验证。")
     points = contour[::max(1, len(contour)//700), 0].astype(float)
+    if photo_mask is not None:
+        points = points[photo_mask.allows(points, small.shape, padding=2)]
+        if len(points) < 60:
+            raise IdentificationError("月盘外缘弧度不足；局部月缘不能仅靠轮廓定位。")
     rng = np.random.default_rng(17)
     best = None
     h, w = small.shape
@@ -68,9 +76,9 @@ def _correlation(first, second):
     return float(np.dot(first, second)/denominator) if denominator > 1e-6 else -1.
 
 
-def identify_from_limb(image, geometry):
+def identify_from_limb(image, geometry, *, cache=None, photo_mask=None):
     """Require a long limb AND distinct albedo evidence, not phase alone."""
-    center, radius, rms, count = fit_lunar_limb(image)
+    center, radius, rms, count = fit_lunar_limb(image, **mask_kwargs(photo_mask))
     size = 256
     reference, _ = render_atlas(geometry, size)
     reference = cv2.cvtColor(reference, cv2.COLOR_RGB2GRAY).astype(np.float32)
@@ -99,8 +107,14 @@ def identify_from_limb(image, geometry):
         sample = cv2.remap(photo, target[:, :, 0].astype(np.float32), target[:, :, 1].astype(np.float32),
                            cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
         sample_hp = sample-cv2.GaussianBlur(sample, (0, 0), 8)
-        return (_correlation(reference_hp[keep], sample_hp[keep]),
-                _correlation(reference[disk], sample[disk]), mirror, degree)
+        detail_domain, phase_domain = keep, disk
+        if photo_mask is not None:
+            usable = photo_mask.allows(target, gray.shape, padding=3)
+            detail_domain, phase_domain = keep & usable, disk & usable
+            if detail_domain.sum() < max(500, keep.sum()*.5) or phase_domain.sum() < disk.sum()*.5:
+                return (-1., -1., mirror, degree)
+        return (_correlation(reference_hp[detail_domain], sample_hp[detail_domain]),
+                _correlation(reference[phase_domain], sample[phase_domain]), mirror, degree)
 
     for mirror in (1, -1):
         scores.extend(compare(degree, mirror) for degree in range(0, 360, 2))
@@ -109,14 +123,28 @@ def identify_from_limb(image, geometry):
     best = max(scores)
     texture, phase, mirror, degree = best
     alternatives = [row[0] for row in scores if row[2] != mirror or abs((row[3]-degree+180)%360-180) >= 8]
-    if texture < .5 or phase < .75:
-        raise IdentificationError("月盘轮廓已拟合，但月海纹理与月相未同时通过验证。")
-    if alternatives and texture-max(alternatives) < .15:
-        raise IdentificationError("月海纹理存在接近的方向或镜像结果，未采用配准。")
     theta = math.radians(degree)
     linear = np.array([[math.cos(theta), -math.sin(theta)],
                        [math.sin(theta), math.cos(theta)]]) @ np.diag([mirror, 1])
     matrix = np.column_stack((linear*scale, center))
+    if texture < .5 or phase < .75:
+        # A distinct direction below the albedo threshold can only nominate
+        # a bounded terrain search. Existing successful paths do no extra work;
+        # weak phase, competing directions and untextured shapes still fail.
+        if (cache is not None and .35 <= texture < .5 and phase >= .8
+                and (not alternatives or texture-max(alternatives) >= .15)):
+            from .limb_refinement import identify_limb_terrain
+            try:
+                verified = identify_limb_terrain(image, geometry, matrix, (center, radius, rms, count),
+                                                 cache, **mask_kwargs(photo_mask))
+            except (OSError, ValueError):
+                verified = None
+            if verified is not None:
+                verified.refinement.update(seed_albedo_correlation=texture, seed_phase_correlation=phase)
+                return verified
+        raise IdentificationError("月盘轮廓已拟合，但月海纹理与月相未同时通过验证。")
+    if alternatives and texture-max(alternatives) < .15:
+        raise IdentificationError("月海纹理存在接近的方向或镜像结果，未采用配准。")
     return IdentificationResult(matrix, [], rms, texture, 0,
                                 "lunar limb / phase + high-pass LROC albedo / JPL projection",
                                 limb_inliers=count, texture_correlation=texture)

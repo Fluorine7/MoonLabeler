@@ -20,7 +20,7 @@ from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QObject, Signal, QRun
 from PySide6.QtGui import QColor, QFont, QImage, QPixmap, QPixmapCache, QPainter, QPen, QPainterPath, QPainterPathStroker, QTransform
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
-    QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsLineItem, QGraphicsEllipseItem, QGraphicsPathItem,
+    QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsLineItem, QGraphicsEllipseItem, QGraphicsPathItem, QGraphicsRectItem,
     QPushButton, QLabel,
     QFileDialog, QMessageBox, QColorDialog, QTableWidgetItem,
     QListWidgetItem, QInputDialog,
@@ -36,6 +36,8 @@ from .ui.window import WindowUiMixin, label_drag_hint
 from .ui.wheel import protect_settings_from_wheel
 from .ui.drag import ModifierDragItem
 from .ui.photo_overview import PhotoOverview
+from .ui.recognition_mask import MaskEditor
+from .recognition_mask import PhotoMask, mask_kwargs
 from .photo_overview import build_overview, overview_key, overview_rect
 from .ui.map_layers import (add_map_layers, path_from_segments, GridCaption, ContourLayer, GridLayer,
                             MapCoverage, update_map_coverage, update_map_opacity, prepare_contour_preview)
@@ -532,7 +534,7 @@ class Annotation(ModifierDragItem):
         # Art captions only expose their ordinary locator during a drag.
         permanent = not self.appearance.map_style or is_landing_site(self.feature)
         dragging = self._drag_offset is not None and not self._export_mode
-        self.line.setVisible(self.isVisible() and (permanent or dragging))
+        self.line.setVisible(self.isVisibleTo(self.parentItem()) and (permanent or dragging))
 
     def padded_bounds(self, bounds):
         padding = max(5., self.font_size*.04, self.appearance.halo_width(self.font_size)/2+1)
@@ -802,6 +804,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         compute.set_mode(compute_mode if compute_mode in compute.MODES else 'auto')
         self.catalog_by_id = {f["id"]: f for f in self.catalog}
         self.annotation_items = []
+        self.annotation_group = None
         self.auto_omitted = set()
         self.map_items = []
         self.overview_item = None
@@ -842,10 +845,15 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.pending_color = self.project.color
         self.pending_landing_color = self.project.landing_color
         self.canvas = Canvas()
+        self.mask_editor = MaskEditor(self.canvas)
+        self._recognition_mask = None
         self.canvas.point_clicked.connect(self.canvas_point_clicked)
         self.canvas.image_dropped.connect(self.open_image)
         self.build_toolbar()
         self.build_sidebar()
+        self.mask_editor.changed.connect(self.recognition_mask_changed)
+        self.mask_editor.mode_changed.connect(self.update_mask_controls)
+        self.mask_editor.too_complex.connect(lambda: self.error(tr("排除区域过于复杂，请撤销部分区域后重试。")))
         self.displayed_font_percent = self.font_size.value()
         self.displayed_font_step_percent = self.ui_font_step.value()
         self.update_manual_guide()
@@ -853,9 +861,81 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.empty_hint = self.canvas.scene().addText(tr("打开或拖入照片"), label_font(26))
         self.empty_hint.setDefaultTextColor(QColor("#718399"))
         self.empty_hint.setPos(70, 100)
+    def current_photo_mask(self):
+        state = self.project.recognition_mask
+        if self.image is None or not state['enabled'] or not state['operations']:
+            return None
+        if self.mask_editor.overlay.path().isEmpty():
+            return None
+        if self._recognition_mask is None:
+            self._recognition_mask = PhotoMask(state['operations'], self.image.shape)
+        return self._recognition_mask
 
+    def start_mask_edit(self, mode):
+        if self.image is None or self.busy:
+            return
+        self.cancel_pick()
+        self.workspace_tabs.setCurrentIndex(0)
+        self.mask_section_toggle.setChecked(True)
+        self.show_mask.setChecked(True)
+        self.mask_editor.set_enabled(True)
+        self.mask_editor.start(mode)
 
+    def recognition_mask_changed(self):
+        self.project.recognition_mask = self.mask_editor.state()
+        self._recognition_mask = None
+        if self.image is not None:
+            self.dirty = True
+            if self.project.identification:
+                self.project.identification['mask_changed'] = True
+                self.identification_status.setText(tr("排除区域已修改，需重新识别"))
+            if self.crater_result is not None:
+                self.crater_status.setText(tr("排除区域已修改，需重新检测"))
+        self.update_mask_controls()
 
+    def update_mask_controls(self):
+        if not hasattr(self, 'mask_enabled'):
+            return
+        editor = self.mask_editor
+        ready = self.image is not None
+        self.mask_enabled.blockSignals(True)
+        self.mask_enabled.setChecked(editor.enabled)
+        self.mask_enabled.blockSignals(False)
+        self.mask_enabled.setEnabled(ready)
+        for button, mode in ((self.mask_brush, 'paint'), (self.mask_eraser, 'erase')):
+            button.setEnabled(ready)
+            button.setChecked(editor.mode == mode)
+        self.mask_brush_size.setEnabled(ready)
+        self.mask_brush_readout.setEnabled(ready)
+        self.mask_undo.setEnabled(ready and bool(editor._undo))
+        self.mask_redo.setEnabled(ready and bool(editor._redo))
+        self.mask_clear.setEnabled(ready and bool(editor.operations))
+        self.mask_finish.setEnabled(editor.mode is not None)
+        if not ready:
+            status = tr("打开照片后，用画笔涂抹文字、插图等干扰区域。")
+        elif editor.mode == 'erase':
+            status = tr("拖动擦除红色选区，松开后生效。")
+        elif editor.mode is not None:
+            status = tr("在照片上拖动画笔涂抹，松开后生效；每一笔都可以撤销。")
+        elif editor.operations:
+            status = tr("排除区域已设置，下次识别和辅助找坑时生效。") if editor.enabled else tr("排除区域已暂停，识别将使用整张照片。")
+        else:
+            status = tr("未设置排除区域，识别使用原有流程。")
+        self.mask_status.setText(status)
+        for item in editor.items:
+            if item is editor.overlay:
+                item.setVisible(ready and self.show_mask.isChecked())
+
+    def update_mask_preview(self, visible):
+        if not visible:
+            self.mask_editor.finish()
+        self.update_mask_controls()
+
+    def update_annotation_preview(self, visible):
+        if self.annotation_group is not None:
+            self.annotation_group.setVisible(visible)
+            if visible:
+                self.canvas.update_text_caches()
 
     def crater_settings_changed(self, *args):
         self.crater_settings_toggle.setText(trf("检测设置 · 半径 {minimum}–{maximum} px",
@@ -880,12 +960,15 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.error(tr("最大半径必须大于最小半径。"))
             return
         self.cancel_pick()
+        self.mask_editor.finish()
         region = None
         if self.crater_viewport.isChecked():
             rect = self.canvas.mapToScene(self.canvas.viewport().rect()).boundingRect().intersected(self.canvas.sceneRect())
             region = (rect.x(), rect.y(), rect.width(), rect.height())
         image = self.image
-        self.run_background(tr("正在本地检测疑似坑中心…"), lambda: detect_craters(image, options, region), self.accept_crater_candidates)
+        mask = self.current_photo_mask()
+        self.run_background(tr("正在本地检测疑似坑中心…"),
+                            lambda: detect_craters(image, options, region, **mask_kwargs(mask)), self.accept_crater_candidates)
 
     def identify_photo(self):
         if self.image is None:
@@ -897,13 +980,17 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.error(self.ui_capture_error.text())
             return
         self.cancel_pick()
+        self.mask_editor.finish()
         utc = self.utc()
         lat = self.latitude.value() if self.topocentric.isChecked() else None
         lon = self.longitude.value() if self.topocentric.isChecked() else None
         image, catalog = self.image, list(self.catalog)
+        photo_mask = self.current_photo_mask()
         allow_eyepiece = self.project.capture_mode != "direct"
         known = self.manual_reference_points()
         review_candidates = list(self.crater_candidates)
+        if photo_mask is not None:
+            review_candidates = [c for c in review_candidates if photo_mask.accepts_crater(c, image.shape)]
         cached_geometry = self.project.geometry
         # Never feed a previous image-derived correction back into ephemeris
         # matching: repeated recognition must not accumulate view offsets.
@@ -913,23 +1000,25 @@ class MainWindow(WindowUiMixin, QMainWindow):
             geometry = cached_geometry or compute_geometry(utc, CACHE / "ephemeris", lat, lon)
             detection = None
             if known:
-                detection = detect_crater_rims(image)
+                detection = detect_crater_rims(image, **mask_kwargs(photo_mask))
                 recognition = identify_from_reference_points(image, geometry, CACHE, known, catalog,
-                                                             review_candidates + detection.candidates)
+                                                             review_candidates + detection.candidates, **mask_kwargs(photo_mask))
             else:
                 try:
-                    recognition = identify_from_atlas(image, geometry, allow_eyepiece=allow_eyepiece)
+                    recognition = identify_from_atlas(image, geometry, allow_eyepiece=allow_eyepiece, **mask_kwargs(photo_mask))
                 except ValueError as atlas_error:
                     try:
-                        recognition = identify_from_limb(image, geometry)
+                        recognition = identify_from_limb(image, geometry, cache=CACHE, **mask_kwargs(photo_mask))
                     except ValueError as limb_error:
-                        detection = detect_crater_rims(image)
+                        detection = detect_crater_rims(image, **mask_kwargs(photo_mask))
                         try:
-                            recognition = identify_from_candidates(detection.candidates, catalog, geometry, image.shape, image=image)
-                            recognition = refine_crater_identification(recognition, image, geometry, CACHE, catalog)
+                            recognition = identify_from_candidates(detection.candidates, catalog, geometry, image.shape,
+                                                                   image=image, **mask_kwargs(photo_mask))
+                            recognition = refine_crater_identification(recognition, image, geometry, CACHE, catalog,
+                                                                       **mask_kwargs(photo_mask))
                         except ValueError as exc:
                             try:
-                                recognition = identify_from_terrain(image, geometry, CACHE, catalog=catalog)
+                                recognition = identify_from_terrain(image, geometry, CACHE, catalog=catalog, **mask_kwargs(photo_mask))
                             except (ValueError, OSError) as terrain_error:
                                 raise RecognitionFailure(len(detection.candidates), [
                                     ("纹理参考：", atlas_error), ("轮廓参考：", limb_error),
@@ -1020,7 +1109,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         elif recognition.lens_distortion:
             message = trf("目镜畸变校正 · {inliers} 个图像对应点 · 月缘偏差（95%）{limb:.1f} px",
                           inliers=recognition.image_inliers, limb=recognition.refinement['limb_p95_px'])
-        elif recognition.limb_inliers:
+        elif recognition.limb_inliers and not recognition.image_inliers:
             message = trf("月盘外缘与月海纹理配准成功 · 纹理相关 {correlation:.2f} · 外缘拟合偏差 {rms:.2f} px",
                           correlation=recognition.texture_correlation, rms=recognition.rms_px)
         elif recognition.refinement and recognition.matches:
@@ -1108,6 +1197,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def review_page_changed(self, *args):
         self.cancel_pick()
+        if self.workspace_tabs.currentIndex() != 0:
+            self.mask_editor.finish()
+            self.show_mask.setChecked(False)
+        self.update_mask_controls()
         self.show_crater_overlays()
 
     def registration_page_changed(self, *args):
@@ -1191,6 +1284,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.crater_status.setText(trf("保留 {count} 个候选", count=len(self.crater_candidates)))
 
     def repick_crater_candidate(self):
+        self.mask_editor.finish()
         index = self.crater_list.currentRow()
         if 0 <= index < len(self.crater_candidates):
             self.cancel_pick()
@@ -1427,7 +1521,16 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self._grid_preview_key = self._grid_preview = None
         self._photo_light_key = self._photo_lightness = None
         self.reference_items = []
+        self.mask_editor.before_scene_clear()
         self.canvas.scene().clear()
+        self.annotation_group = QGraphicsRectItem()
+        self.annotation_group.setFlag(QGraphicsItem.GraphicsItemFlag.ItemHasNoContents)
+        self.annotation_group.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        self.annotation_group.setZValue(20)
+        self.canvas.scene().addItem(self.annotation_group)
+        self.annotation_group.setVisible(self.show_annotations.isChecked())
+        self.mask_editor.reset(self.project.recognition_mask, image.shape)
+        self._recognition_mask = None
         self.photo_item = self.canvas.scene().addPixmap(QPixmap.fromImage(qimage(photo_for_style(display_image, self.project.art_style))))
         self.photo_item.setZValue(0)
         self._photo_display_key = (id(image), self.project.art_style != "standard")
@@ -1435,6 +1538,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.canvas_title.setText(Path(self.project.image_path).name or tr("月面照片"))
         self.canvas_details.setText(trf("{w:,} × {h:,} px   ·   滚轮缩放 · {hint} · 双击编辑文字", w=w, h=h, hint=label_drag_hint()))
         self.canvas.scene().setSceneRect(QRectF(0, 0, w, h))
+        self.update_mask_controls()
         self.cancel_pick()
         self.refresh_anchor_table()
         self.refresh_annotations()
@@ -1494,6 +1598,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                     self.identification_status.setToolTip("、".join(names[:4]))
             else:
                 self.identification_status.setText(tr("未识别"))
+            if project.identification.get('mask_changed'):
+                self.identification_status.setText(tr("排除区域已修改，需重新识别"))
             self.dirty = False
             self.statusBar().showMessage(trf("已打开 {name}", name=Path(path).name))
         except Exception as exc:
@@ -1666,6 +1772,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.ui_scroll_to_crater_controls()
 
     def start_pick(self):
+        self.mask_editor.finish()
         if self.image is None:
             self.error(tr("请先打开照片。"))
             return
@@ -1930,9 +2037,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.error(tr("NASA 参考使用地心视角。请取消“使用拍摄地点”，或用地形参考点做站心配准。"))
             return
         utc, photo = self.utc(), self.image.copy()
+        photo_mask = self.current_photo_mask()
         def work():
             reference, geometry, matrix, _ = nasa_reference(utc, CACHE)
-            match = auto_register(reference, photo)
+            match = auto_register(reference, photo, **mask_kwargs(photo_mask))
             composed = (np.vstack((match.matrix, [0.,0.,1.])) @ np.vstack((matrix,[0.,0.,1.])))[:2]
             return match, geometry, composed, utc.isoformat(), None, None
         self.run_background(tr("下载 NASA 同时刻影像并匹配…"), work, self.accept_auto, self.nasa_failed)
@@ -1959,9 +2067,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
             if delta > 3600:
                 raise ValueError(tr("参考工程与当前拍摄时间相差超过一小时，请先设置为相同拍摄时刻。不同日期的天平动不能用同一平面变换处理。"))
             photo, requested_utc = self.image.copy(), self.utc().isoformat()
+            photo_mask = self.current_photo_mask()
             def work():
                 reference = read_image(reference_project.image_path)
-                match = auto_register(reference, photo)
+                match = auto_register(reference, photo, **mask_kwargs(photo_mask))
                 composed = (np.vstack((match.matrix, [0.,0.,1.])) @ np.vstack((reference_project.matrix,[0.,0.,1.])))[:2]
                 return match, reference_project.geometry, composed, requested_utc, reference_project.latitude, reference_project.longitude
             self.run_background(tr("正在匹配本地参考照片…"), work,
@@ -2132,8 +2241,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.error(tr("这个视野内不足 64 个地形采样点，细节不足以自动匹配。请导入更高分辨率 DEM，或用地形点校准。"))
             return
         photo = self.image.copy()
+        photo_mask = self.current_photo_mask()
         def work():
-            match = auto_register(reference.image, photo)
+            match = auto_register(reference.image, photo, **mask_kwargs(photo_mask))
             matrix = (np.vstack((match.matrix, [0., 0., 1.])) @ np.vstack((reference.matrix, [0., 0., 1.])))[:2]
             return match, geometry, matrix
         self.run_background(tr("匹配 DEM 参考图…"), work, self.accept_terrain_match)
@@ -2306,7 +2416,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         for item in self.annotation_items:
             item.setVisible(item.lightness is None or item.lightness >= threshold)
             item.update_map_leader()
-        count = sum(item.isVisible() for item in self.annotation_items)
+        count = sum(item.isVisibleTo(item.parentItem()) for item in self.annotation_items)
         self.layout_status.setText(trf("{count} 个标签", count=count) +
                                   (trf(" · 避让隐藏 {count} 个", count=len(self.auto_omitted)) if self.auto_omitted else ""))
         self.canvas.postpone_text_refinement()
@@ -2445,7 +2555,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
     def update_grid_captions(self):
         # Feature names have priority over coordinate captions. Keep the same
         # visibility in the SVG, including after the user drags a name.
-        bounds = [item.sceneBoundingRect() for item in self.annotation_items if item.isVisible()]
+        bounds = [item.sceneBoundingRect() for item in self.annotation_items if item.isVisibleTo(item.parentItem())]
         if self.map_layers.elevation is not None or self.map_layers.contours is not None:
             bounds.append(QRectF(*legend_rect(self.image.shape, self.project.legend_position)))
         if self.overview_item is not None:
@@ -2753,6 +2863,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
             position = QPointF(x-bounds.x(), y-bounds.y())
             scene.addItem(item.line)
             scene.addItem(item)
+            item.line.setParentItem(self.annotation_group)
+            item.setParentItem(self.annotation_group)
             item.setPos(position)
             item.lightness = self.project.feature_lightness(feature, xy, self.image)
             self.annotation_items.append(item)
@@ -2802,19 +2914,21 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def annotation_entries(self):
         return [(item.feature, [item.anchor.x(), item.anchor.y()], [item.pos().x(), item.pos().y()])
-                for item in self.annotation_items if item.isVisible()]
+                for item in self.annotation_items if item.isVisibleTo(item.parentItem())]
 
     def annotation_leaders(self):
         return {item.feature["id"]: (item.line.line().x1(), item.line.line().y1(), item.line.line().x2(), item.line.line().y2())
-                for item in self.annotation_items if item.isVisible()}
+                for item in self.annotation_items if item.isVisibleTo(item.parentItem())}
 
     def render_png(self, path):
         if self.image is None or self.project.matrix is None:
             raise ValueError(tr("请先打开照片并配准。"))
         self.check_map_export()
+        annotation_preview = self.annotation_group.isVisible()
+        self.annotation_group.setVisible(True)
         # Keep the exported canvas exactly the original dimensions. Reference
         # markers and selection rectangles belong to the editor only.
-        hidden = [(item, item.isVisible()) for item in (*self.reference_items, *self.crater_items)]
+        hidden = [(item, item.isVisible()) for item in (*self.reference_items, *self.crater_items, *self.mask_editor.items)]
         selected = [item for item in self.annotation_items if item.isSelected()]
         contour_layers = [item for item in self.map_items if isinstance(item, ContourLayer)]
         for item, _ in hidden:
@@ -2840,6 +2954,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             if not result.save(str(path), "PNG"):
                 raise ValueError(tr("PNG 保存失败，请检查目标路径。"))
         finally:
+            self.annotation_group.setVisible(annotation_preview)
             if self.overview_item is not None:
                 self.overview_item.set_export_mode(False)
             for item in self.annotation_items:

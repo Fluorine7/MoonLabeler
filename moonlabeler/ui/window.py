@@ -143,7 +143,7 @@ class WindowUiMixin:
         self.registration_tabs.setCurrentWidget(self.crater_tab)
         for toggle in (self.manual_section_toggle, self.ui_reference_toggle,
                        self.ui_manual_pick_toggle, self.ui_crater_tools_toggle,
-                       self.crater_settings_toggle):
+                       self.crater_settings_toggle, self.mask_section_toggle):
             toggle.setChecked(False)
         self.scroll.verticalScrollBar().setValue(0)
         self.review_page_changed()
@@ -333,6 +333,8 @@ class WindowUiMixin:
             self.terrain_center.setCurrentIndex(0)
 
     def ui_cancel_pick(self):
+        if self.mask_editor.mode is not None:
+            self.mask_editor.cancel()
         self.cancel_pick()
 
     # ------------------------------------------------------------------ toolbar
@@ -368,6 +370,16 @@ class WindowUiMixin:
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.toolbar.addWidget(spacer)
+        self.show_annotations = QCheckBox(tr("显示标注"))
+        self.show_annotations.setChecked(True)
+        self.show_annotations.setToolTip(tr("仅切换画布上的地名、引线和坑缘；导出不受影响。"))
+        self.show_annotations.toggled.connect(self.update_annotation_preview)
+        self.toolbar.addWidget(self.show_annotations)
+        self.show_mask = QCheckBox(tr("显示蒙版"))
+        self.show_mask.setToolTip(tr("仅切换红色蒙版的显示；隐藏后排除区域仍用于识别。"))
+        self.show_mask.toggled.connect(self.update_mask_preview)
+        self.toolbar.addWidget(self.show_mask)
+        self.toolbar.addSeparator()
         action(tr("打开示例"), self.open_example)
         action(tr("计算设置"), self.compute_settings_dialog)
         action(tr("界面语言"), self.choose_ui_language)
@@ -586,6 +598,54 @@ class WindowUiMixin:
         self.topocentric.toggled.connect(show_location)
         show_location(False)
         layout.addWidget(group)
+
+        # -------------------------------------------------- 校准 · 可选识别排除区域
+        self.mask_section_toggle, self.mask_section_block, mask_box = self.ui_collapsible(tr("排除干扰区域（可选）"))
+        layout.addWidget(self.mask_section_toggle)
+        layout.addWidget(self.mask_section_block)
+        self.mask_enabled = QCheckBox(tr("启用排除区域"))
+        self.mask_enabled.setChecked(True)
+        self.mask_enabled.toggled.connect(self.mask_editor.set_enabled)
+        mask_box.addWidget(self.mask_enabled)
+        row = QHBoxLayout()
+        self.mask_brush = QPushButton(tr("画笔"))
+        self.mask_eraser = QPushButton(tr("橡皮擦"))
+        for button, mode in ((self.mask_brush, 'paint'), (self.mask_eraser, 'erase')):
+            button.setCheckable(True)
+            button.clicked.connect(lambda checked=False, mode=mode: self.start_mask_edit(mode))
+            row.addWidget(button)
+        mask_box.addLayout(row)
+        row = QHBoxLayout()
+        row.addWidget(QLabel(tr("画笔直径")))
+        self.mask_brush_size = QSlider(Qt.Orientation.Horizontal)
+        self.mask_brush_size.setRange(2, 2000)
+        self.mask_brush_size.setValue(80)
+        self.mask_brush_readout = QSpinBox()
+        self.mask_brush_readout.setRange(2, 2000)
+        self.mask_brush_readout.setSuffix(" px")
+        self.mask_brush_readout.setValue(80)
+        self.mask_brush_readout.setFixedWidth(90)
+        self.mask_brush_size.valueChanged.connect(self.mask_brush_readout.setValue)
+        self.mask_brush_readout.valueChanged.connect(self.mask_brush_size.setValue)
+        self.mask_brush_size.valueChanged.connect(lambda value: self.mask_editor.set_radius(value/2))
+        self.mask_brush_size.setToolTip(tr("拖动调整画笔和橡皮擦直径，按原图像素计算。"))
+        row.addWidget(self.mask_brush_size, 1)
+        row.addWidget(self.mask_brush_readout)
+        mask_box.addLayout(row)
+        row = QHBoxLayout()
+        self.mask_undo = QPushButton(tr("撤销"))
+        self.mask_redo = QPushButton(tr("重做"))
+        self.mask_clear = QPushButton(tr("清空"))
+        self.mask_finish = QPushButton(tr("完成"))
+        for button, callback in ((self.mask_undo, self.mask_editor.undo), (self.mask_redo, self.mask_editor.redo),
+                                 (self.mask_clear, self.mask_editor.clear), (self.mask_finish, self.mask_editor.finish)):
+            button.clicked.connect(callback)
+            row.addWidget(button)
+        mask_box.addLayout(row)
+        self.mask_status = self.ui_note(tr("打开照片后，用画笔涂抹文字、插图等干扰区域。"))
+        mask_box.addWidget(self.mask_status)
+        mask_box.addWidget(self.ui_note(tr("红色区域不参与识别和辅助找坑；原图与导出保持不变。拖动涂抹，空格加拖动平移，滚轮缩放，Esc 取消。")))
+        self.mask_section_toggle.toggled.connect(lambda checked: None if checked else self.mask_editor.finish())
 
         # -------------------------------------------------- 校准 · 自动识别
         group = QGroupBox(tr("自动识别"))
@@ -1159,6 +1219,7 @@ class WindowUiMixin:
         self.setCentralWidget(splitter)
         self.search_features("")
         self.ui_refresh_crater_review()
+        self.update_mask_controls()
 
     def build_crater_controls(self, page):
         box = QVBoxLayout(page)

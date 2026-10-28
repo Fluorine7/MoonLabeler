@@ -9,6 +9,7 @@ Only the existing small DEM is used; no extra map database is required.
 """
 from itertools import combinations
 
+from .recognition_mask import mask_kwargs
 from ._opencv import cv2
 import numpy as np
 
@@ -73,7 +74,7 @@ def _field_widths(features, points, pixels, candidates, image_shape):
     return list(dict.fromkeys(float(np.clip(round(width/10)*10, 40, 4200)) for width in widths))
 
 
-def _finish_guided_search(solutions, pending, image, geometry, dem, anchors, catalog):
+def _finish_guided_search(solutions, pending, image, geometry, dem, anchors, catalog, *, photo_mask=None):
     """Certify at most two distinct coarse poses, keeping every click as a check."""
     limit = max(image.shape[:2])*.08
     best = max(solutions, key=lambda result: result.score) if solutions else None
@@ -85,7 +86,7 @@ def _finish_guided_search(solutions, pending, image, geometry, dem, anchors, cat
         if all(_pose_difference(other.matrix, candidate.matrix, image.shape) > limit for other in distinct):
             distinct.append(candidate)
     for candidate in distinct[:2]:
-        refined = refine_terrain_pose(image, geometry, candidate.matrix, dem, relief_aware=True)
+        refined = refine_terrain_pose(image, geometry, candidate.matrix, dem, relief_aware=True, **mask_kwargs(photo_mask))
         if refined is None:
             continue
         light, detail = (refined.details['light_before_after'][1], refined.details['detail_before_after'][1])
@@ -108,7 +109,7 @@ def _finish_guided_search(solutions, pending, image, geometry, dem, anchors, cat
 
 
 def identify_from_reference_points(image, geometry, cache, anchors, catalog, candidates=(), *,
-                                   reference_size=600, refine=True):
+                                   reference_size=600, refine=True, photo_mask=None):
     """Use manual points first; accept only an independently verified local pose."""
     catalog = list(catalog)
     anchors = [a for a in anchors if a.get('enabled', True) and a.get('source') != 'automatic']
@@ -141,7 +142,7 @@ def identify_from_reference_points(image, geometry, cache, anchors, catalog, can
             reference = render_local_reference(dem, geometry, projection, (reference_size, reference_size))
             try:
                 matches = registration_candidates(reference, photograph, ratio_threshold=.8,
-                                                  contrast_threshold=.01, min_inlier_fraction=.25)
+                                                  contrast_threshold=.01, min_inlier_fraction=.25, **mask_kwargs(photo_mask))
             except ValueError:
                 continue
             solutions = []
@@ -155,14 +156,18 @@ def identify_from_reference_points(image, geometry, cache, anchors, catalog, can
                 if (errors > reference_point_tolerance(image.shape, rms)).any():
                     continue
                 try:
-                    light, detail = terrain_agreement(reference, photograph, match.matrix, require_match=False)
+                    light, detail = terrain_agreement(reference, photograph, match.matrix, require_match=False, **mask_kwargs(photo_mask))
                 except IdentificationError:
                     continue
                 # A small matching patch must not certify a mostly uncovered
                 # photograph. Check the usable central field independently.
                 ph, pw = photograph.shape[:2]
                 available = cv2.warpAffine(np.full(reference.shape, 255, np.uint8), match.matrix, (pw, ph))
-                if (available[round(ph*.08):round(ph*.93), round(pw*.05):round(pw*.95)] > 250).mean() < .85:
+                central = np.s_[round(ph*.08):round(ph*.93), round(pw*.05):round(pw*.95)]
+                covered = available[central] > 250
+                if photo_mask is not None:
+                    covered = covered[photo_mask.raster((ph, pw))[central] != 0]
+                if not covered.size or covered.mean() < .85:
                     continue
                 result = IdentificationResult(matrix, [], rms, float(match.inliers*(light+detail)), 0,
                                               'LOLA slope + cast-shadow / reference-point guided SIFT / JPL projection',
@@ -175,18 +180,18 @@ def identify_from_reference_points(image, geometry, cache, anchors, catalog, can
                     pending.append(result)
             if not solutions:
                 continue
-            result = _finish_guided_search(solutions, pending, image, geometry, dem, anchors, catalog)
+            result = _finish_guided_search(solutions, pending, image, geometry, dem, anchors, catalog, **mask_kwargs(photo_mask))
             # Refinement needs forty correspondences itself. Avoid another
             # render when the accepted retrieval has less supporting evidence.
             if refine and result.image_inliers >= 40 and result.refinement is None:
-                refined = refine_terrain_pose(image, geometry, result.matrix, dem)
+                refined = refine_terrain_pose(image, geometry, result.matrix, dem, **mask_kwargs(photo_mask))
                 if refined is not None:
                     updated_errors = reference_point_errors(refined.matrix, refined.geometry, anchors, catalog)
                     if (updated_errors <= reference_point_tolerance(image.shape, refined.rms_px)).all():
                         _adopt_refinement(result, refined)
                         result.reference_points['reference_errors_px'] = updated_errors.tolist()
             return result
-        result = _finish_guided_search([], pending, image, geometry, dem, anchors, catalog)
+        result = _finish_guided_search([], pending, image, geometry, dem, anchors, catalog, **mask_kwargs(photo_mask))
         if result is not None:
             return result
     finally:

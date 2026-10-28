@@ -46,9 +46,12 @@ class ElevationMap:
     @cached_property
     def maximum_height_km(self):
         """Exact ceiling for small read-only maps; avoid scanning large DEMs."""
-        if self.data.nbytes > 64*1024*1024:
+        data = self.data
+        if data is None:
+            raise ValueError("DEM 已关闭，请重新加载高程数据。")
+        if data.nbytes > 64*1024*1024:
             return float('inf')
-        maximum = float(np.max(np.asarray(self.data))) * self.scale
+        maximum = float(np.max(np.asarray(data))) * self.scale
         return maximum if np.isfinite(maximum) else float('inf')
 
     @classmethod
@@ -109,25 +112,38 @@ class ElevationMap:
         return cls(data, north, west, ppd, number("SCALING_FACTOR")/1000, value("PRODUCT_ID"))
 
     def close(self):
-        if isinstance(self.data, np.memmap):
-            self.data._mmap.close()
+        """Release ownership without invalidating arrays borrowed by callers.
+
+        NumPy views and exception tracebacks may still own the mapped buffer.
+        Forcing its private mmap closed leaves those arrays pointing at unmapped
+        memory, so even formatting an interrupted call can segfault. Dropping
+        our reference lets the last array owner release it, without copying the
+        DEM; an unborrowed mapping is released immediately.
+        """
+        self.data = None
+        self.__dict__.pop('maximum_height_km', None)
 
     def sample(self, latitude, longitude):
+        # Keep a local owner through the operation, including cleanup triggered
+        # while evaluating array-like inputs or formatting an interrupted call.
+        data = self.data
+        if data is None:
+            raise ValueError("DEM 已关闭，请重新加载高程数据。")
         latitude, longitude = np.broadcast_arrays(np.asarray(latitude, float), np.asarray(longitude, float))
         y = (self.north-latitude)*self.ppd-.5
         x = ((longitude-self.west) % 360)*self.ppd-.5
-        valid = np.isfinite(x) & np.isfinite(y) & (y >= -.5) & (y <= self.data.shape[0]-.5)
+        valid = np.isfinite(x) & np.isfinite(y) & (y >= -.5) & (y <= data.shape[0]-.5)
         if not self.global_longitude:
-            valid &= (x >= -.5) & (x <= self.data.shape[1]-.5)
-            x = np.clip(x, 0, self.data.shape[1]-1)
-        y = np.clip(np.nan_to_num(y), 0, self.data.shape[0]-1)
+            valid &= (x >= -.5) & (x <= data.shape[1]-.5)
+            x = np.clip(x, 0, data.shape[1]-1)
+        y = np.clip(np.nan_to_num(y), 0, data.shape[0]-1)
         x = np.nan_to_num(x)
         x0, y0 = np.floor(x).astype(np.int64), np.floor(y).astype(np.int64)
         fx, fy = x-x0, y-y0
-        x1, y1 = (x0+1) % self.data.shape[1], np.minimum(y0+1, self.data.shape[0]-1)
-        x0 %= self.data.shape[1]
-        heights = ((1-fx)*(1-fy)*self.data[y0, x0] + fx*(1-fy)*self.data[y0, x1] +
-                   (1-fx)*fy*self.data[y1, x0] + fx*fy*self.data[y1, x1])*self.scale
+        x1, y1 = (x0+1) % data.shape[1], np.minimum(y0+1, data.shape[0]-1)
+        x0 %= data.shape[1]
+        heights = ((1-fx)*(1-fy)*data[y0, x0] + fx*(1-fy)*data[y0, x1] +
+                   (1-fx)*fy*data[y1, x0] + fx*fy*data[y1, x1])*self.scale
         return np.where(valid, heights, np.nan)
 
     def normals(self, latitude, longitude):

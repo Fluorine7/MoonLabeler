@@ -75,6 +75,33 @@ def _fit(geometry, matrix, lat, lon, target, free_view, view_bound_deg=1.5):
     return params
 
 
+def propose_view(geometry, matrix, source_pixels, target_pixels, image_shape, *, max_view_offset_deg=3.):
+    """Return an UNVERIFIED retrieval seed, never an accepted registration.
+
+    A partly aligned crescent may initially match only one side. A physical
+    view/camera fit can retrieve fresh points elsewhere, but callers must
+    independently bound the seed with a long observed limb, re-extract points,
+    and pass the normal spatial holdouts and fresh-render validation afterward.
+    """
+    source, target = np.asarray(source_pixels, float), np.asarray(target_pixels, float)
+    if (source.shape != target.shape or source.ndim != 2 or source.shape[1] != 2
+            or len(source) < 40 or not np.isfinite(source).all() or not np.isfinite(target).all()):
+        return None
+    h, w = image_shape[:2]
+    if cv2.contourArea(cv2.convexHull(target.astype(np.float32)))/(h*w) < .08:
+        return None
+    inverse = np.linalg.inv(np.vstack((matrix, [0., 0., 1.])))[:2]
+    lat, lon, visible = geometry.unproject(transform_points(inverse, source))
+    if not visible.all():
+        return None
+    fit = _fit(geometry, matrix, lat, lon, target, True, max_view_offset_deg)
+    if fit is None or np.linalg.norm(fit[:2]) > max_view_offset_deg:
+        return None
+    camera = _camera(fit)
+    updated = np.column_stack((camera@matrix[:, :2], camera@matrix[:, 2]+fit[4:6]))
+    return shifted_geometry(geometry, fit[:2]), updated
+
+
 def refine_view(geometry, matrix, source_pixels, target_pixels, image_shape, *, max_view_offset_deg=1.25):
     """Return a validated six-parameter fit, or None to retain the original.
 
