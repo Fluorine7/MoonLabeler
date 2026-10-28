@@ -54,6 +54,49 @@ def _map_candidate(candidate, sx, sy, x=0, y=0):
                            candidate.support, candidate.method)
 
 
+def _lunar_surface(image):
+    """Photographic search footprint, independent of any solved lunar pose.
+
+    Use the full photograph, even for a viewport search, so zooming into a
+    caption or detached inset cannot promote it to the main lunar surface.
+    Filling the outer contour preserves enclosed black crater floors; a
+    convex hull would also admit sky across the crescent's concave boundary.
+    This mask is only for detection, not display or registration.
+    """
+    h, w = image.shape[:2]
+    factor = min(1., 800/max(h, w))
+    sample = cv2.resize(image, (max(1, round(w*factor)), max(1, round(h*factor))),
+                        interpolation=cv2.INTER_AREA) if factor < 1 else image
+    gray = cv2.cvtColor(sample, cv2.COLOR_RGB2GRAY) if sample.ndim == 3 else sample
+    threshold = max(4., float(np.percentile(gray, 99))*.08)
+    kernel = max(3, round(max(gray.shape)/180) | 1)
+    foreground = cv2.morphologyEx((gray > threshold).astype(np.uint8), cv2.MORPH_CLOSE,
+                                 np.ones((kernel, kernel), np.uint8))
+    contours, _ = cv2.findContours(foreground, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    surface = np.zeros(gray.shape, np.uint8)
+    if contours:
+        cv2.fillPoly(surface, [max(contours, key=cv2.contourArea)], 1)
+    return surface
+
+
+def _surrounded_by_surface(candidate, surface, image_shape):
+    """A crater must have surrounding terrain, not just a circular sky edge."""
+    t = np.linspace(0, 2*np.pi, 64, endpoint=False)
+    theta = math.radians(candidate.angle)
+    ct, st = math.cos(theta), math.sin(theta)
+    # Sample just beyond the fitted rim, allowing partially shadowed rims.
+    # Testing the center's brightness would discard useful shadowed craters.
+    margin = max(3., candidate.minor*.15)
+    a, b = candidate.major+margin, candidate.minor+margin
+    x = candidate.x+a*np.cos(t)*ct-b*np.sin(t)*st
+    y = candidate.y+a*np.cos(t)*st+b*np.sin(t)*ct
+    sh, sw = surface.shape
+    xx = np.rint(x*sw/image_shape[1]).astype(int)
+    yy = np.rint(y*sh/image_shape[0]).astype(int)
+    valid = (xx >= 0) & (yy >= 0) & (xx < sw) & (yy < sh)
+    return np.count_nonzero(surface[yy[valid], xx[valid]]) >= len(t)*.6
+
+
 def _large_rim_candidates(gray):
     """Low-frequency arc proposals for craters dominating a close-up.
 
@@ -154,6 +197,7 @@ def detect_crater_rims(image):
     h, w = gray.shape
     if min(h, w) < 64 or float(np.std(gray)) < 1:
         return DetectionResult([], (0, 0, w, h), 1.)
+    surface = _lunar_surface(image)
     proposals = []
     # Exclude a detached, very dark caption strip if a sharp full-width seam
     # starts it near the bottom. Letter loops must not become crater evidence.
@@ -204,6 +248,8 @@ def detect_crater_rims(image):
     # retaining every pass would falsely count one rim as several observations.
     kept = []
     for candidate in proposals:
+        if not _surrounded_by_surface(candidate, surface, image.shape):
+            continue
         duplicate = any(math.hypot(candidate.x-other.x, candidate.y-other.y) < .45*min(candidate.major, other.major)
                         and .5 < candidate.major/other.major < 2 for other in kept)
         if not duplicate:
@@ -254,6 +300,7 @@ def detect_craters(image, options=None, region=None):
     factor = min(sx, sy)
     if float(np.std(gray)) < 1:
         return DetectionResult([], (x, y, w, h), factor)
+    surface = _lunar_surface(image)
     background = cv2.GaussianBlur(gray, (0, 0), sigmaX=32., sigmaY=32.)
     high_pass = cv2.addWeighted(gray, 1., background, -1., 128.)
     equalized = cv2.createCLAHE(clipLimit=2., tileGridSize=(8, 8)).apply(high_pass)
@@ -303,12 +350,18 @@ def detect_craters(image, options=None, region=None):
                                       np.cos(t)/a*sin_t+np.sin(t)/b*cos_t))
         rim_normal /= np.linalg.norm(rim_normal, axis=1, keepdims=True)
         alignment = np.abs(np.sum(gradient[labels[yy, xx]]*rim_normal, axis=1))
-        support = float(np.mean((distance[yy, xx] <= 2.) & (alignment > .85)))
+        # A fixed two-pixel tolerance can cover much of a tiny ellipse's
+        # interior after resizing. Scale it to the minor axis, and require
+        # evidence around the rim rather than a few unrelated strong arcs.
+        tolerance = min(2., max(1., b*.12))
+        supported = (distance[yy, xx] <= tolerance) & (alignment > .85)
+        support = float(supported.mean())
         if support < .58-.16*sensitivity:
             return
+        if np.count_nonzero(supported.reshape(8, -1).mean(axis=1) >= .4) < 6:
+            return
         if radius >= min(gray.shape)*.2:
-            supported = (distance[yy, xx] <= 2.) & (alignment > .85)
-            if support < .55 or np.count_nonzero(supported.reshape(8, -1).mean(axis=1) >= .4) < 6:
+            if support < .55:
                 return
         # Transform the conic, not just the center: rounded resize dimensions
         # can have slightly different x/y factors.
@@ -346,6 +399,8 @@ def detect_craters(image, options=None, region=None):
     kept = []
     rank = (lambda c: (-c.support*(1.+.2*math.log1p(c.major/8)), -c.major, c.y, c.x)) if options.prefer_large else (lambda c: (-c.support, c.method != "ellipse", -c.major, c.y, c.x))
     for candidate in sorted(proposals, key=rank):
+        if not _surrounded_by_surface(candidate, surface, image.shape):
+            continue
         # Compare radius as well as center, regardless of angle or method.
         # This suppresses two edges of one rim without merging nested craters.
         radius = (candidate.major+candidate.minor)/2

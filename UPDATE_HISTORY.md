@@ -2,6 +2,17 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.10.3
+
+2026-10-28
+
+- 整理 `.moonlabel` 配准读取规范和地图贴图示例，供 Tsukikage 等软件接入；工程补充原图尺寸与坐标约定，保留旧文件兼容。 / Documented the project format and photo projection for map integrations; added image dimensions and coordinate metadata without changing existing fields.
+- 打开工程时核对照片尺寸，避免把原有配准套到缩放后的照片上。 / Check photo dimensions when reopening a project to avoid applying registration to a resized image.
+- 改善疑似坑筛选，排除月盘外缘、独立插图和文字带来的误检；自动识别失败后，提示单独运行辅助找坑。 / Reduced false crater candidates from the lunar limb, detached insets and captions; clarified how to run assisted detection after automatic recognition fails.
+- 修正 macOS 云端测试将等待超时计入界面卡顿的误报，仍保留 60 ms 标准。 / Fixed false macOS CI latency reports caused by test sleep overshoot, keeping the 60 ms limit.
+
+本次更新源码，安装包仍为 0.10.2。 / Source update; downloadable apps remain at 0.10.2.
+
 ## 0.10.2
 
 2026-10-26

@@ -162,18 +162,19 @@ def test_recognition_failure_keeps_nested_os_error_paths(traditional_window, mon
         ("高程参考：", PermissionError(13, "Permission denied", posix)),
     ])
     # Logs and tracebacks keep the Simplified summary with the raw causes.
-    assert str(failure).splitlines()[0] == "检测到 7 个疑似坑缘；未通过自动配准验证。"
+    assert str(failure).splitlines()[0] == "自动识别未通过配准验证；自动流程的坑缘候选为 7 个。"
     assert posix in str(failure)
     import pickle
     restored = pickle.loads(pickle.dumps(failure))
     assert str(restored) == str(failure) and restored.candidate_count == 7
     traditional_window.error(failure)
     lines = shown["text"].splitlines()
-    assert lines[0] == "偵測到 7 個疑似坑緣；未通過自動配準驗證。"
+    assert lines[0] == "自動辨識未通過配準驗證；自動流程的坑緣候選為 7 個。"
     assert lines[1] == "紋理參考：紋理對應點太少或過於集中，未採用配準。"
     assert lines[3] == "坑群參考：可用坑緣不足七處，無法獨立驗證自動辨識。"
     assert lines[4] == "高程參考：Permission denied"
     assert lines[5] == posix
+    assert '輔助找坑' in lines[-1] and '偵測疑似坑中心' in lines[-1]
 
 
 def test_background_failure_delivers_the_exception_object(traditional_window, monkeypatch):
@@ -286,7 +287,8 @@ EN_STRINGS = {
     "英语": "English",
     "请先打开照片。": "Please open a photo first.",
     "操作未完成。": "Operation not completed.",
-    "检测到 {count} 个疑似坑缘；未通过自动配准验证。": "Found {count} possible crater rims; automatic registration failed.",
+    "自动识别未通过配准验证；自动流程的坑缘候选为 {count} 个。": "Automatic recognition failed; the automatic search found {count} candidate rims.",
+    "“辅助找坑”需单独运行：点击“检测疑似坑中心”，核对后确认地名；也可直接手动补点。": "Run assisted crater finding separately: click Detect candidate crater centres, or add points manually.",
     "纹理参考：": "Texture reference: ",
     "没有可用的月盘轮廓。": "No usable lunar limb.",
 }
@@ -369,10 +371,12 @@ def test_english_error_dialog_text(english_window, monkeypatch):
 def test_english_recognition_failure_translates_the_summary_template(english_window, monkeypatch):
     from moonlabeler import app as app_module
     failure = app_module.RecognitionFailure(5, [("纹理参考：", ValueError("没有可用的月盘轮廓。"))])
-    assert str(failure).splitlines()[0] == "检测到 5 个疑似坑缘；未通过自动配准验证。"
+    assert str(failure).splitlines()[0] == "自动识别未通过配准验证；自动流程的坑缘候选为 5 个。"
     assert app_module.describe_error(failure).splitlines() == [
-        "Found 5 possible crater rims; automatic registration failed.",
+        "Automatic recognition failed; the automatic search found 5 candidate rims.",
         "Texture reference: No usable lunar limb.",
+        "",
+        "Run assisted crater finding separately: click Detect candidate crater centres, or add points manually.",
     ]
 
 

@@ -41,6 +41,12 @@ from moonlabeler.sources import read_image
     ('terrain_rims', {'42': {'source': 'missing coordinates'}}),
     ('matrix', {'unexpected': 'mapping'}),
     ('matrix', [[True, 0, 0], [0, 1, 0]]),
+    ('image_size', [0, 200]), ('image_size', [100.5, 200]),
+    ('image_size', [True, 200]), ('image_size', [100]),
+    ('image_size', [100, float('inf')]), ('image_size', '100x200'),
+    ('coordinate_system.frame', 'WGS84'),
+    ('coordinate_system.reference_radius_km', 6378.1),
+    ('coordinate_system.pixel_axes', ['right', 'up']),
 ])
 def test_project_rejects_invalid_fields_before_gui_consumes_them(tmp_path, field, value):
     path = tmp_path/'invalid.moonlabel'

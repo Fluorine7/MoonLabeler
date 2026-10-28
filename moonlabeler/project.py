@@ -39,6 +39,21 @@ TRADITIONAL_LANGUAGES = ("繁体中文", "双语（繁体）")
 FONT_WEIGHT_CHOICES = ("bold", "normal")
 DEFAULT_FONT_WEIGHT = "bold"
 
+# Additive metadata for readers outside MoonLabeler. The saved geometry and
+# matrix remain authoritative, including any image-derived view refinement.
+PROJECT_COORDINATE_SYSTEM = {
+    "body": "Moon",
+    "frame": "MOON_ME",
+    "latitude_type": "planetocentric",
+    "longitude_direction": "east",
+    "angle_unit": "degree",
+    "reference_radius_km": MOON_RADIUS_KM,
+    "projection": "finite_distance_perspective",
+    "pixel_origin": "top_left",
+    "pixel_axes": ["right", "down"],
+    "pixel_center_offset": [0.5, 0.5],
+}
+
 
 def label_font_families(language="双语", platform=None, *, art_style="standard"):
     """Ordered CJK-capable font families for label text on this platform.
@@ -121,6 +136,15 @@ def _validate_project_data(data):
     for key in ('image_path', 'utc'):
         if not isinstance(data[key], str):
             _invalid_field(key)
+    if data.get('image_size') is not None:
+        _point(data['image_size'], 'image_size')
+        for size in data['image_size']:
+            _number(size, 'image_size', 1, 2147483647, integer=True)
+    if 'coordinate_system' in data:
+        coordinates = _mapping(data['coordinate_system'], 'coordinate_system')
+        for key, value in PROJECT_COORDINATE_SYSTEM.items():
+            if coordinates.get(key) != value:
+                _invalid_field(f'coordinate_system.{key}')
     if data.get('capture_mode', 'auto') not in ('auto', 'direct', 'afocal'):
         _invalid_field('capture_mode')
     if data.get('projection_surface', 'sphere') not in ('sphere', 'terrain'):
@@ -294,9 +318,9 @@ def _portable_path(target, base):
     """
     target = Path(target).resolve()
     try:
-        return os.path.relpath(target, base)
+        return Path(os.path.relpath(target, base)).as_posix()
     except ValueError:
-        return str(target)
+        return target.as_posix()
 
 
 def _ellipse_parameters(pixels):
@@ -386,6 +410,7 @@ class Project:
     legend_position: list[float] | None = None  # Top-left in original-photo pixels.
     overview_enabled: bool = False
     overview_position: list[float] | None = None  # None uses the photo's upper-left corner.
+    image_size: tuple[int, int] | None = None  # Width, height after EXIF/FITS orientation.
 
     def photo_points(self, points):
         """Map projected lunar coordinates into untouched photograph pixels."""
@@ -472,6 +497,8 @@ class Project:
         base = path.parent.resolve()
         data = {"format": "MoonLabeler", "version": 2,
                 "image_path": _portable_path(self.image_path, base),
+                "image_size": list(self.image_size) if self.image_size is not None else None,
+                "coordinate_system": PROJECT_COORDINATE_SYSTEM,
                 "utc": self.utc, "capture_mode": self.capture_mode,
                 "geometry": self.geometry.to_dict() if self.geometry else None,
                 "matrix": self.matrix.tolist() if self.matrix is not None else None,
@@ -497,6 +524,7 @@ class Project:
         project = cls(image_path=str((path.parent / data["image_path"]).resolve()),
                       utc=data["utc"], anchors=data["anchors"], labels=data["labels"],
                       capture_mode=data.get("capture_mode", "auto"))
+        project.image_size = tuple(data['image_size']) if data.get('image_size') is not None else None
         project.latitude = data.get("observer", {}).get("latitude")
         project.longitude = data.get("observer", {}).get("longitude")
         terrain = data.get("terrain", {})

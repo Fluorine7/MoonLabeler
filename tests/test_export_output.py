@@ -3,6 +3,7 @@
 """Default names and real colour conversion through the public export workflow."""
 import base64
 import io
+import json
 import os
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -169,3 +170,51 @@ def test_failed_colour_conversion_keeps_the_current_document(window, tmp_path, k
     assert win.canvas_title.text() == title and win.dirty
     win.render_png(tmp_path/'after.png')
     assert np.array_equal(np.array(Image.open(tmp_path/'before.png')), np.array(Image.open(tmp_path/'after.png')))
+
+
+def test_gui_saves_oriented_dimensions_and_reopens_without_recognition(window, tmp_path, monkeypatch):
+    win = window
+    source = tmp_path/'侧放的月面.tif'
+    raw = np.arange(96*160*3, dtype=np.uint8).reshape(96, 160, 3)
+    exif = Image.Exif()
+    exif[274] = 6
+    Image.fromarray(raw).save(source, exif=exif)
+    win.confirm_discard = lambda: True
+    win.open_image(str(source))
+    assert win.project.image_size == (96, 160)  # EXIF rotation, not the stored raster size.
+    g = Geometry(np.array([1., 0, 0]), np.array([0., 1, 0]), np.array([0., 0, 1]),
+                 np.array([1., 0, 0]), 384400., win.project.utc)
+    win.project.geometry = g
+    win.project.matrix = np.array([[30., 0, 48.], [0, 30., 80.]])
+    win.project.labels = {'42': {'text': '手工地名', 'position': [20., 30.]}}
+    path = tmp_path/'侧放的月面.moonlabel'
+    monkeypatch.setattr(QFileDialog, 'getSaveFileName', lambda *args: (str(path), ''))
+    assert win.save_project()
+    data = json.loads(path.read_text(encoding='utf-8'))
+    assert data['image_size'] == [96, 160]
+    assert data['coordinate_system']['pixel_axes'] == ['right', 'down']
+    original_pixels = win.image.copy()
+    original_geometry = win.project.geometry.to_dict()
+    original_matrix = win.project.matrix.copy()
+    monkeypatch.setattr(win, 'run_background', lambda *args, **kwargs: pytest.fail('Reopening must not launch recognition'))
+    win.open_project(str(path))
+    assert win.project.geometry.to_dict() == original_geometry
+    np.testing.assert_array_equal(win.project.matrix, original_matrix)
+    np.testing.assert_array_equal(win.image, original_pixels)
+    assert win.project.labels['42'] == {'text': '手工地名', 'position': [20., 30.]}
+
+
+def test_opening_config_with_resized_photo_keeps_the_current_document(window, tmp_path):
+    win = window
+    win.set_image(np.zeros((96, 160, 3), np.uint8))
+    previous = win.project
+    source = tmp_path/'改过尺寸.png'
+    Image.new('RGB', (80, 48)).save(source)
+    path = tmp_path/'原工程.moonlabel'
+    Project(image_path=str(source), image_size=(160, 96)).save(path)
+    errors = []
+    win.error = errors.append
+    win.confirm_discard = lambda: True
+    win.open_project(str(path))
+    assert len(errors) == 1 and '尺寸' in str(errors[0])
+    assert win.project is previous and win.image.shape == (96, 160, 3)

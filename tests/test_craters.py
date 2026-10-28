@@ -107,3 +107,61 @@ def test_large_detection_preserves_roi_coordinates_and_radius_filter():
     result = detect_craters(image, DetectionOptions(170, 330, 100, 20), (600, 180, 950, 740))
     assert any(np.hypot(c.x-1140, c.y-570) < 10 for c in result.candidates)
     assert all(170 <= (c.major+c.minor)/2 <= 330 for c in result.candidates)
+
+
+@pytest.mark.parametrize('detect', [detect_craters, detect_crater_rims])
+@pytest.mark.parametrize('radius', [70, 130])
+def test_lunar_disk_is_not_a_crater_even_with_a_complete_circular_edge(detect, radius):
+    image = np.zeros((360, 520), np.uint8)
+    cv2.circle(image, (260, 180), radius, 160, -1)
+    assert not detect(image).candidates
+
+
+@pytest.mark.parametrize('detect', [detect_craters, detect_crater_rims])
+def test_detached_insets_and_caption_loops_are_excluded_but_shadowed_craters_remain(detect):
+    image = np.zeros((480, 720), np.uint8)
+    cv2.ellipse(image, (270, 220), (220, 190), 0, 0, 360, 100, -1)
+    # An enclosed black floor belongs to the surface; thresholding individual
+    # dark pixels would delete precisely the crater we want the user to find.
+    cv2.circle(image, (280, 220), 42, 0, -1)
+    cv2.circle(image, (280, 220), 42, 215, 3)
+    cv2.circle(image, (600, 170), 26, 200, 3)  # detached inset in the sky
+    cv2.putText(image, 'OOO', (530, 430), cv2.FONT_HERSHEY_SIMPLEX, 1.4, 230, 2)
+    original = image.copy()
+    candidates = detect(image).candidates
+    assert any(np.hypot(c.x-280, c.y-220) < 5 for c in candidates)
+    assert not any(c.x > 500 for c in candidates)
+    assert np.array_equal(image, original)
+    if detect is detect_craters:
+        # An isolated inset does not become the lunar surface when zoomed in.
+        assert not detect(image, region=(540, 110, 130, 130)).candidates
+
+
+def test_smoothed_noise_does_not_become_a_crater_after_contrast_enhancement():
+    image = cv2.GaussianBlur(np.random.default_rng(42).integers(0, 256, (360, 520), dtype=np.uint8),
+                             (0, 0), 3.)
+    assert not detect_craters(image).candidates
+    cv2.ellipse(image, (260, 180), (60, 38), 25, 0, 360, 210, 3)
+    assert any(np.hypot(c.x-260, c.y-180) < 5 for c in detect_craters(image).candidates)
+
+
+def test_iss_transit_photo_excludes_sky_insets_and_captions_when_available():
+    from pathlib import Path
+    from moonlabeler.sources import read_image
+    path = Path(__file__).resolve().parent.parent/'20250503.jpg'
+    if not path.exists():
+        pytest.skip('Local ISS transit photo unavailable')
+    image = read_image(path)
+    # Independently inspected non-lunar regions: the caption, enlarged ISS,
+    # and two detached ISS exposures against the black background.
+    excluded = [(0, 830, 1920, 1080), (1300, 630, 1450, 740),
+                (740, 50, 820, 110), (930, 310, 1000, 360)]
+    for detect in (detect_craters, detect_crater_rims):
+        candidates = detect(image).candidates
+        assert not any(x0 <= c.x <= x1 and y0 <= c.y <= y1
+                       for c in candidates for x0, y0, x1, y1 in excluded)
+        if detect is detect_craters:
+            # These visible rims are chosen from the photograph, not by a
+            # catalogue fit. Filtering everything is not a successful fix.
+            for x, y in ((409, 350), (738, 698)):
+                assert any(np.hypot(c.x-x, c.y-y) < 7 for c in candidates)

@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**0.10.2** · Fluorine Zhu · GPL-3.0-or-later
+**0.10.3** · Fluorine Zhu · GPL-3.0-or-later
 
 Register lunar photographs, edit terrain labels, and export annotated PNG or SVG images.
 为月面照片配准、标注地名并导出图片。
@@ -13,7 +13,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### 下载
 
-当前源码为 0.10.2，安装包为 0.10.2。
+当前源码为 0.10.3，安装包为 0.10.2。
 
 | 系统 | 安装包 | 打开方式 |
 | --- | --- | --- |
@@ -30,6 +30,8 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 4. 保存 `.moonlabel` 工程，或导出原尺寸 PNG / SVG。导出沿用照片文件名，PNG 转换为 sRGB。
 
 普通拖动平移画面，滚轮缩放画布或滚动面板，不会改变参数。界面和地形类别支持简体中文、繁体中文和英文。
+
+`.moonlabel` 工程本身是 JSON，保存后可直接恢复配准。供月面地图等软件读取的字段和贴图公式见[工程格式](docs/project-format.md)，分享时附上原照片。
 
 ### 功能与图层
 
@@ -59,7 +61,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### Download
 
-Source version: 0.10.2. Downloadable apps: 0.10.2.
+Source version: 0.10.3. Downloadable apps: 0.10.2.
 
 | Platform | Package | Open after extracting |
 | --- | --- | --- |
@@ -76,6 +78,8 @@ Both packages include Python, FITS support and offline ephemerides. The Mac app 
 4. Save a `.moonlabel` project or export PNG/SVG at the original image dimensions. Exports use the source filename; PNG is converted to sRGB.
 
 Ordinary dragging pans the canvas; the wheel zooms it or scrolls settings without changing parameter values. Interface text and feature types support English, Simplified Chinese and Traditional Chinese.
+
+`.moonlabel` projects are JSON files containing the saved registration. See the [format and projection reference](docs/project-format.md) for map integrations; share the original photo with the project.
 
 ### Features
 

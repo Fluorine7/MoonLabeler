@@ -308,7 +308,8 @@ CJK = re.compile(r"[㐀-鿿豈-﫿]")
 # Helpers whose literal arguments end up inside a raised message (or in a template field of one).
 MESSAGE_HELPERS = {"_eyepiece_or_raise", "_mapping", "_invalid_field"}
 # Functions whose return value is shown through tr(); every Chinese literal in them is a key.
-MESSAGE_FUNCTIONS = {("compute.py", "status"), ("sources.py", "download_error_message"), ("app.py", "summary")}
+MESSAGE_FUNCTIONS = {("compute.py", "status"), ("sources.py", "download_error_message"),
+                     ("app.py", "summary"), ("app.py", "render")}
 # Messages assembled from several pieces at run time, which the scan cannot derive.
 EXTRA_TEMPLATES = {
     "{message}\n{original_error}",  # atlas._eyepiece_or_raise
@@ -451,7 +452,8 @@ def test_scan_finds_the_known_sources():
     assert "纹理配准与照片月缘不一致，未采用配准。" in strings, "_eyepiece_or_raise message argument"
     assert "根节点" in strings, "field name inserted into a template"
     assert "CPU · GPU 加速已关闭" in strings, "compute.status() return value"
-    assert "检测到 {count} 个疑似坑缘；未通过自动配准验证。" in strings, "RecognitionFailure.summary()"
+    assert "自动识别未通过配准验证；自动流程的坑缘候选为 {count} 个。" in strings, "RecognitionFailure.summary()"
+    assert "“辅助找坑”需单独运行：点击“检测疑似坑中心”，核对后确认地名；也可直接手动补点。" in strings, "RecognitionFailure.render()"
     assert "工程字段无效：{field}。" in templates
     assert "{message}\n相机直拍模式未启用目镜畸变校正。" in templates
     assert "DEM 标签缺少 {key}。" in templates

@@ -97,3 +97,53 @@ def test_recognition_only_detects_craters_when_used_and_preserves_review(monkeyp
     finally:
         window.dirty = False
         window.close()
+
+
+def test_failed_automatic_rim_search_still_allows_separate_assisted_detection(monkeypatch):
+    from moonlabeler._opencv import cv2
+
+    application = QApplication.instance() or QApplication([])
+    window = module.MainWindow()
+    errors = []
+    window.error = errors.append
+    try:
+        image = np.full((360, 520, 3), 72, np.uint8)
+        cv2.circle(image, (260, 180), 40, (215, 215, 215), 3)
+        window.set_image(image)
+        window.project.geometry = Geometry(np.array([1., 0., 0.]), np.array([0., 1., 0.]),
+                                           np.array([0., 0., 1.]), np.array([1., 0., 0.]),
+                                           384400., '2023-05-27T11:51:00+00:00')
+        # The independent automatic matcher has no usable rims. This must
+        # not be presented as the result of the user's assisted search.
+        monkeypatch.setattr(module, 'detect_crater_rims',
+                            lambda *args: DetectionResult([], (0, 0, 520, 360), 1.))
+        def reject(*args, **kwargs):
+            raise ValueError('没有可验证的参考')
+        for name in ('identify_from_atlas', 'identify_from_limb', 'identify_from_terrain'):
+            monkeypatch.setattr(module, name, reject)
+        def synchronous(title, work, success, failure=None):
+            try:
+                value = work()
+            except ValueError as exc:
+                (failure or window.error)(exc)
+            else:
+                success(value)
+        monkeypatch.setattr(window, 'run_background', synchronous)
+
+        window.identify_button.click()
+        assert len(errors) == 1 and errors[0].candidate_count == 0
+        assert window.crater_result is None and window.crater_status.text() == '未检测'
+        assert window.project.matrix is None
+        message = window.error_text(errors[0])
+        assert '辅助找坑' in message and '检测疑似坑中心' in message
+
+        # Use the real assisted detector through its button, without relaxing
+        # automatic registration or manufacturing a named reference point.
+        window.crater_button.click()
+        assert len(window.crater_candidates) == 1
+        crater = window.crater_candidates[0]
+        assert np.hypot(crater.x-260, crater.y-180) < 5
+        assert window.project.matrix is None and not window.project.anchors
+    finally:
+        window.dirty = False
+        window.close()

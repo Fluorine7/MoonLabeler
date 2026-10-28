@@ -731,11 +731,12 @@ class RecognitionFailure(ValueError):
 
     def summary(self):
         """The summary template; :meth:`render` translates it before inserting the count."""
-        return "检测到 {count} 个疑似坑缘；未通过自动配准验证。"
+        return "自动识别未通过配准验证；自动流程的坑缘候选为 {count} 个。"
 
     def render(self, translate, describe=str):
         lines = [translate(self.summary()).format(count=self.candidate_count)]
         lines += [translate(label) + describe(cause) for label, cause in self.causes]
+        lines += ["", translate("“辅助找坑”需单独运行：点击“检测疑似坑中心”，核对后确认地名；也可直接手动补点。")]
         return "\n".join(lines)
 
 
@@ -1411,6 +1412,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.clear_crater_candidates()
         self.image = image
         self.display_image = display_image
+        self.project.image_size = (image.shape[1], image.shape[0])
         self.project.update_font_size(image.shape)
         self.update_font_hint()
         self.annotation_items = []
@@ -1470,6 +1472,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                     return
                 project.image_path = str(Path(replacement).resolve())
             image = read_image(project.image_path)
+            if project.image_size is not None and project.image_size != (image.shape[1], image.shape[0]):
+                raise ValueError(tr("照片尺寸与工程不一致，请选择保存工程时的原图。"))
             display_image = display_srgb(image, project.image_path)
             self.project = project
             self.project.update_font_size(image.shape)
@@ -2112,7 +2116,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
                               geometry=self.terrain_geometry, matrix=self.terrain_reference.matrix,
                               latitude=self.project.latitude, longitude=self.project.longitude,
                               terrain_path=self.dem_path, terrain_settings=self.terrain_parameters(), min_diameter=5,
-                              language=default_name_language())
+                              language=default_name_language(),
+                              image_size=(self.terrain_reference.image.shape[1], self.terrain_reference.image.shape[0]))
             project.save(path.with_suffix(".moonlabel"))
             self.statusBar().showMessage(trf("已保存 {name} 和对应参考工程。", name=path.name))
         except Exception as exc:
