@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**0.11.0** · Fluorine Zhu · GPL-3.0-or-later
+**0.11.1** · Fluorine Zhu · GPL-3.0-or-later
 
 Register lunar photographs, edit terrain labels, and export annotated PNG or SVG images.
 为月面照片配准、标注地名并导出图片。
@@ -13,7 +13,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### 下载
 
-当前源码与安装包版本均为 0.11.0。
+当前源码版本为 0.11.1，已发布安装包仍为 0.11.0。
 
 | 系统 | 安装包 | 打开方式 |
 | --- | --- | --- |
@@ -31,6 +31,8 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 普通拖动平移画面，滚轮缩放画布或滚动面板，不会改变参数。界面和地形类别支持简体中文、繁体中文和英文。
 
+工具栏的 **“界面语言 / Language”** 可切换界面语言，颜色选择框使用同一语言。后台下载或处理时，可点状态栏的 **“中止当前任务”**；下载期间关闭窗口也会取消下载。
+
 `.moonlabel` 工程本身是 JSON，保存后可直接恢复配准。供月面地图等软件读取的字段和贴图公式见[工程格式](docs/project-format.md)，分享时附上原照片。
 
 ### 功能与图层
@@ -40,7 +42,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 - 地形类别可多选，支持地名编辑、自动避让、分档字号，以及阿波罗 / 嫦娥着陆点。
 - 可选中世纪风、旷野地形图、蓝晒星图、铜版图录、水墨朱砂、红警地形图；支持经纬网、高程着色、等高线与晨昏线。
 - 照片区域示意图标出当前覆盖范围，外观随艺术样式变化，支持 Cmd / Ctrl 拖动、保存位置并导出。
-- 不透明度和受光阈值实时调整，支持滑块及数字输入；原图、配准和手工编辑保留。
+- 文字不透明度由普通与艺术标注共用，随工程保存并用于 PNG / SVG。文字、地图图层不透明度和受光阈值均可实时调整，支持滑块及数字输入；原图、配准和手工编辑保留。
 
 艺术主题使用去色后的显示底图；切回“原始标注”会关闭地图图层，点击“重新生成标注”即可恢复。具体操作见[中文指南](README.zh-CN.md)。
 
@@ -62,7 +64,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### Download
 
-Source and downloadable app version: 0.11.0.
+Source version: 0.11.1. Published app downloads remain at 0.11.0.
 
 | Platform | Package | Open after extracting |
 | --- | --- | --- |
@@ -80,6 +82,8 @@ Both packages include Python, FITS support and offline ephemerides. The Mac app 
 
 Ordinary dragging pans the canvas; the wheel zooms it or scrolls settings without changing parameter values. Interface text and feature types support English, Simplified Chinese and Traditional Chinese.
 
+Use **Language / 中文** in the toolbar to switch the interface language; colour pickers follow that choice. Use **Cancel task** in the status bar to stop background work. Closing the window during a download also cancels it.
+
 `.moonlabel` projects are JSON files containing the saved registration. See the [format and projection reference](docs/project-format.md) for map integrations; share the original photo with the project.
 
 ### Features
@@ -89,7 +93,7 @@ Ordinary dragging pans the canvas; the wheel zooms it or scrolls settings withou
 - Select multiple terrain types, edit names and use collision-aware placement, relative font sizes and optional Apollo/Chang’e landing locations.
 - Optional **medieval**, **wilderness topographic**, **cyanotype**, **copperplate**, **ink/cinnabar** and **Red Alert terrain** themes, with lunar grids, elevation colours, contours and terminators.
 - Optional lunar locator showing the registered photo footprint, styled to match the art theme, with Cmd/Ctrl dragging and a saved position shared by PNG/SVG exports.
-- Live opacity and photo-lit coverage controls. Sliders also accept numeric input; press Enter or leave the field to apply it.
+- Live text opacity shared by standard and artistic labels, saved with the project and applied to PNG/SVG. Map opacity and photo-lit coverage also update live. Sliders accept numeric input; press Enter or leave the field to apply it.
 
 Art themes use a desaturated display copy. Switching to Original annotations turns off map layers; click Regenerate annotations to restore the original appearance. The original image, calibration and manual edits stay intact. See the [art-layer guide](README.zh-CN.md#可选艺术样式与地图图层).
 

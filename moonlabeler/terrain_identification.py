@@ -10,6 +10,7 @@ and competing poses validate a result; catalogue labels share its map pose.
 """
 import math
 
+from .tasks import check_cancelled
 from .recognition_mask import mask_kwargs
 from ._opencv import cv2
 import numpy as np
@@ -32,6 +33,7 @@ def _render_terrain_atlas_cpu(dem, geometry, size=4000):
     scale, center = size*.47, (size-1)/2
     reference = np.zeros((size, size), np.uint8)
     for first in range(0, size, 64):
+        check_cancelled()
         x, y = np.meshgrid(np.arange(size), np.arange(first, min(size, first+64)))
         points = np.column_stack(((x.ravel()-center)/scale, (y.ravel()-center)/scale))
         lat, lon, disk = geometry.unproject(points)
@@ -177,6 +179,7 @@ def identify_from_terrain(image, geometry, cache, *, atlas_size=4000, tile_size=
     pending = []
     for y in starts:
         for x in starts:
+            check_cancelled()
             tile = reference[y:y+tile_size, x:x+tile_size]
             if np.std(tile) < 8:
                 continue

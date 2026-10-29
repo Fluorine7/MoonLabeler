@@ -2,6 +2,7 @@
 # Copyright (c) 2026 Fluorine Zhu
 """Public data downloads, cached locally; photographs never leave the machine."""
 from datetime import datetime, timezone
+from contextlib import closing
 from functools import lru_cache
 from html.parser import HTMLParser
 from pathlib import Path
@@ -15,6 +16,8 @@ import mmap
 import re
 import ssl
 import zipfile
+from queue import Queue, Empty, Full
+from threading import Event, Thread
 
 import certifi
 from ._opencv import cv2
@@ -23,6 +26,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from .zh_variant import to_traditional
+from .tasks import cancellation_event, check_cancelled
 
 USGS_URL = "https://asc-planetarynames-data.s3.us-west-2.amazonaws.com/MOON_nomenclature_center_pts.zip"
 NASA_2026 = "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005587/"
@@ -151,7 +155,65 @@ def download_error_message(url, error):
     return message
 
 
+def _http_stream(request):
+    """Yield headers then chunks; the transport thread never writes to disk.
+
+    A stalled DNS/connect/read can outlive cancellation until its timeout, but
+    cannot hold up the UI, keep the process alive or commit a cancelled file.
+    Cached downloads and non-GUI callers incur no thread or polling overhead.
+    """
+    def read():
+        with urlopen(request, timeout=15, context=ssl.create_default_context(cafile=certifi.where())) as source:
+            yield source.headers
+            reader = getattr(source, 'read1', source.read)
+            while chunk := reader(64*1024):
+                yield chunk
+
+    cancel = cancellation_event()
+    if cancel is None:
+        yield from read()
+        return
+    queue, stopped = Queue(maxsize=2), Event()
+
+    def send(value):
+        while not stopped.is_set() and not cancel.is_set():
+            try:
+                queue.put(value, timeout=.05)
+                return True
+            except Full:
+                pass
+        return False
+
+    def receive():
+        try:
+            with closing(read()) as chunks:
+                for chunk in chunks:
+                    if not send(chunk):
+                        return
+        except Exception as exc:
+            send(exc)
+        finally:
+            send(None)
+
+    Thread(target=receive, name='MoonLabeler download', daemon=True).start()
+    try:
+        while True:
+            check_cancelled()
+            try:
+                item = queue.get(timeout=.05)
+            except Empty:
+                continue
+            if isinstance(item, Exception):
+                raise item
+            if item is None:
+                return
+            yield item
+    finally:
+        stopped.set()
+
+
 def download(url, destination, force=False):
+    check_cancelled()
     destination = Path(destination)
     if destination.exists() and not force:
         return destination
@@ -159,22 +221,25 @@ def download(url, destination, force=False):
     temporary = destination.with_suffix(destination.suffix + ".part")
     try:
         request = Request(url, headers={"User-Agent": "MoonLabeler/0.3 (lunar photo annotation)"})
-        with urlopen(request, timeout=15, context=ssl.create_default_context(cafile=certifi.where())) as source:
+        with closing(_http_stream(request)) as stream:
+            headers = next(stream)
             try:
-                expected = int(source.headers.get("Content-Length", ""))
+                expected = int(headers.get("Content-Length", ""))
             except (TypeError, ValueError):
                 expected = None
             if expected is not None and expected < 0:
                 expected = None
             received = 0
             with temporary.open("wb") as target:
-                while chunk := source.read(1024 * 1024):
+                for chunk in stream:
+                    check_cancelled()
                     target.write(chunk)
                     received += len(chunk)
             if expected is not None and received != expected:
                 host = urlparse(url).hostname or "数据服务"
                 raise DataDownloadError(f"无法下载 {host} 的参考数据：数据不完整"
                                         f"（收到 {received} 字节，应为 {expected} 字节）。请重试。")
+        check_cancelled()
         temporary.replace(destination)
     except (URLError, TimeoutError, ssl.SSLError) as exc:
         raise DataDownloadError(download_error_message(url, exc)) from exc

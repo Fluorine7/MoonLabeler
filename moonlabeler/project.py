@@ -240,7 +240,7 @@ def _validate_project_data(data):
         _number(style['contour_interval'], 'style.contour_interval', .25, 2)
         if style['contour_interval'] not in CONTOUR_INTERVALS:
             _invalid_field('style.contour_interval')
-    for key in ('grid_opacity', 'elevation_opacity', 'contour_opacity', 'terminator_opacity'):
+    for key in ('label_opacity', 'grid_opacity', 'elevation_opacity', 'contour_opacity', 'terminator_opacity'):
         if key in style:
             _number(style[key], f'style.{key}', 0, 1)
     if style.get('terminator_source', 'photo') not in ('photo', 'ephemeris'):
@@ -397,6 +397,7 @@ class Project:
     font_percent: float | None = DEFAULT_FONT_PERCENT
     font_step_percent: float = DEFAULT_FONT_STEP_PERCENT
     font_weight: str = DEFAULT_FONT_WEIGHT
+    label_opacity: float = 1.
     color: str = "#f5f5f2"
     show_landing_sites: bool = False
     landing_color: str = DEFAULT_LANDING_COLOR
@@ -538,7 +539,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": _portable_path(self.terrain_path, base) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "label_opacity", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position")}}
         write_json(path, data)
 
     @classmethod
@@ -573,7 +574,7 @@ class Project:
         project.font_percent = None  # Older projects only store a pixel size.
         project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position"):
+            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "label_opacity", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
@@ -884,9 +885,10 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None, disp
         lines.extend([
                       leader,
                       marker,
+                      f'<g class="caption" opacity="{project.label_opacity:.6f}">',
                       svg_caption(text, x, y+font_size, font_size,
                                   color, style.halo, style.halo_width(font_size), f'label-text-{index}',
-                                  face_width=style.face_width(font_size), typography=typography)])
+                                  face_width=style.face_width(font_size), typography=typography), '</g>'])
         lines.append('</g>')
     lines.append('</g>')
     lines.append(overview_svg(project, image.shape, overview))

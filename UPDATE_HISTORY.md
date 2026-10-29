@@ -2,6 +2,17 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.11.1
+
+2026-10-29
+
+- 文字颜色和着陆点颜色选择框跟随简体中文、繁体中文或英文界面，修正 Windows 中文界面中颜色框仍显示英文的问题。 / Colour pickers follow the application language, including Chinese interfaces on Windows.
+- 新增普通与艺术标注共用的文字不透明度滑块，文字与描边实时更新，保留位置和文字缓存；随工程保存，PNG / SVG 同步应用。旧工程默认完全不透明。 / Added live text opacity shared by standard and artistic labels, preserving layout and caches, with project persistence and PNG/SVG export. Older projects remain fully opaque.
+- 状态栏新增“中止当前任务”。下载连接或读取停滞时可以取消并关闭窗口，取消后保留完整缓存并清理临时文件；缺失星历统一使用可取消的下载流程。修复此前下载缺少取消通道、忙碌状态拒绝关闭窗口的问题。 / Added Cancel task. Stalled downloads can be cancelled and the window closed while keeping complete caches and removing partial files. Missing ephemerides use the same cancellable downloader, fixing uninterruptible downloads and blocked window closure.
+- 语言入口增加双语提示“界面语言 / Language”及“Language / 中文”，方便不同语言用户找到切换入口。 / Added bilingual language-switch captions so users can find the language settings.
+
+本次更新源码，安装包仍为 0.11.0。 / Source update; downloadable apps remain at 0.11.0.
+
 ## 0.11.0
 
 2026-10-28

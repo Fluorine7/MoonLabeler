@@ -382,7 +382,7 @@ class WindowUiMixin:
         self.toolbar.addSeparator()
         action(tr("打开示例"), self.open_example)
         action(tr("计算设置"), self.compute_settings_dialog)
-        action(tr("界面语言"), self.choose_ui_language)
+        action(tr("界面语言 / Language"), self.choose_ui_language)
         action(tr("帮助"), self.help_dialog)
         action(tr("致谢"), self.about_dialog)
         delete = QAction(tr("隐藏所选名称"), self)
@@ -1084,6 +1084,12 @@ class WindowUiMixin:
         self.color_button = QPushButton(tr("选择文字与引线颜色"))
         self.color_button.clicked.connect(self.choose_color)
         form.addRow(self.color_button)
+        self.label_opacity, self.label_opacity_value, opacity_row = self.ui_percent_slider(
+            round(self.project.label_opacity*100), tr('文字不透明度'))
+        for control in (self.label_opacity, self.label_opacity_value):
+            control.setToolTip(tr('普通与艺术标注共用；文字和描边实时调整，引线、坑缘和地图保持不变。'))
+        self.label_opacity.valueChanged.connect(self.label_opacity_changed)
+        form.addRow(tr('文字不透明度'), opacity_row)
         labels_layout.addWidget(group)
         self.art_style.currentIndexChanged.connect(self.select_art_style)
         self.overview_toggle.toggled.connect(self.toggle_photo_overview)

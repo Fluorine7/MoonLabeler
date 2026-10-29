@@ -3,6 +3,7 @@
 """Manual similarity fitting and conservative local feature matching."""
 from dataclasses import dataclass
 
+from .tasks import check_cancelled
 from ._opencv import cv2
 import numpy as np
 
@@ -156,6 +157,7 @@ def registration_candidates(reference, photograph, *, ratio_threshold=.75,
     pk, pd = prepared.keypoints, prepared.descriptors
     candidates = []
     for mirrored in (False, True):
+        check_cancelled()
         current = cv2.flip(ref, 1) if mirrored else ref
         rk, rd = sift.detectAndCompute(current, None)
         if rd is None:

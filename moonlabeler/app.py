@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
     QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsLineItem, QGraphicsEllipseItem, QGraphicsPathItem, QGraphicsRectItem,
     QPushButton, QLabel,
-    QFileDialog, QMessageBox, QColorDialog, QTableWidgetItem,
+    QFileDialog, QMessageBox, QTableWidgetItem,
     QListWidgetItem, QInputDialog,
     QDialog,
 )
@@ -48,6 +48,8 @@ from .map_layers import (MapLayers, grid_lines, sample_elevation, colorize_eleva
                          elevation_alpha, contour_lines, resolved_contour_interval, build_terminator, legend_rect,
                          photo_lightness)
 from .ui.compute import ComputeDialog
+from .ui.color import ColorDialog
+from .tasks import TaskCancelled, cancellable_task, check_cancelled
 from . import compute
 from .craters import DetectionOptions, detect_craters, detect_crater_rims
 from .identification import identify_from_candidates
@@ -109,14 +111,19 @@ class WorkerSignals(QObject):
 
 
 class Worker(QRunnable):
-    def __init__(self, function):
+    def __init__(self, function, cancel=None):
         super().__init__()
         self.function = function
         self.signals = WorkerSignals()
+        self.cancel = cancel
 
     def run(self):
         try:
-            self.signals.result.emit(self.function())
+            with cancellable_task(self.cancel):
+                result = self.function()
+            self.signals.result.emit(result)
+        except TaskCancelled:
+            pass
         except Exception as exc:
             traceback.print_exc()
             self.signals.error.emit(exc)
@@ -448,6 +455,7 @@ class Annotation(ModifierDragItem):
         super().__init__()
         self.feature, self.anchor, self.text = feature, QPointF(*anchor), text
         self.project, self.moved, self.edit = project, moved, edit
+        self.setOpacity(project.label_opacity)
         self.font_size = project.font_size if font_size is None else font_size
         self.color = project.label_color(feature)
         self.appearance = appearance(project, landing=is_landing_site(feature))
@@ -837,6 +845,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.dem_path = str(basic) if basic.exists() and basic.with_suffix(".IMG").exists() else ""
         self.dirty = False
         self.busy = False
+        self._task_cancel = None
+        self._close_after_task = False
         self.restart_requested = False
         self.project_path = None
         self.rebuilding = False
@@ -851,6 +861,10 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.canvas.image_dropped.connect(self.open_image)
         self.build_toolbar()
         self.build_sidebar()
+        self.cancel_task_button = QPushButton(tr('中止当前任务'))
+        self.cancel_task_button.clicked.connect(self.cancel_background)
+        self.cancel_task_button.hide()
+        self.statusBar().addPermanentWidget(self.cancel_task_button)
         self.mask_editor.changed.connect(self.recognition_mask_changed)
         self.mask_editor.mode_changed.connect(self.update_mask_controls)
         self.mask_editor.too_complex.connect(lambda: self.error(tr("排除区域过于复杂，请撤销部分区域后重试。")))
@@ -998,6 +1012,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             cached_geometry = None
         def work():
             geometry = cached_geometry or compute_geometry(utc, CACHE / "ephemeris", lat, lon)
+            check_cancelled()
             detection = None
             if known:
                 detection = detect_crater_rims(image, **mask_kwargs(photo_mask))
@@ -1007,9 +1022,11 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 try:
                     recognition = identify_from_atlas(image, geometry, allow_eyepiece=allow_eyepiece, **mask_kwargs(photo_mask))
                 except ValueError as atlas_error:
+                    check_cancelled()
                     try:
                         recognition = identify_from_limb(image, geometry, cache=CACHE, **mask_kwargs(photo_mask))
                     except ValueError as limb_error:
+                        check_cancelled()
                         detection = detect_crater_rims(image, **mask_kwargs(photo_mask))
                         try:
                             recognition = identify_from_candidates(detection.candidates, catalog, geometry, image.shape,
@@ -1017,6 +1034,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                             recognition = refine_crater_identification(recognition, image, geometry, CACHE, catalog,
                                                                        **mask_kwargs(photo_mask))
                         except ValueError as exc:
+                            check_cancelled()
                             try:
                                 recognition = identify_from_terrain(image, geometry, CACHE, catalog=catalog, **mask_kwargs(photo_mask))
                             except (ValueError, OSError) as terrain_error:
@@ -1024,6 +1042,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                     ("纹理参考：", atlas_error), ("轮廓参考：", limb_error),
                                     ("坑群参考：", exc), ("高程参考：", terrain_error)]) from terrain_error
             if recognition.projection_surface == 'terrain':
+                check_cancelled()
                 # The accepted automatic relief fit used the basic LOLA map,
                 # not an unrelated map currently selected in the preview UI.
                 recognition.annotation_relief = prepare_annotation_relief(
@@ -1331,23 +1350,47 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.toolbar.setEnabled(False)
         self.canvas.setEnabled(allow_canvas)
         self.statusBar().showMessage(title)
-        worker = Worker(function)
+        cancel = self._task_cancel = Event()
+        self.cancel_task_button.setEnabled(True)
+        self.cancel_task_button.show()
+        worker = Worker(function, cancel)
         self.workers.add(worker)
-        worker.signals.result.connect(success)
-        worker.signals.error.connect(failure or self.error)
+        worker.signals.result.connect(lambda result: success(result) if not cancel.is_set() else None)
+        worker.signals.error.connect(lambda error: (failure or self.error)(error) if not cancel.is_set() else None)
         def finished():
             self.busy = False
             self.sidebar.setEnabled(True)
             self.toolbar.setEnabled(True)
             self.canvas.setEnabled(True)
             self.workers.discard(worker)
-            if self._map_layers_pending:
+            self._task_cancel = None
+            self.cancel_task_button.hide()
+            if cancel.is_set():
+                self._map_layers_pending = self._outlines_pending = False
+                self._map_display_key = None
+                self._outline_attempt_key = None
+                self.statusBar().showMessage(tr('任务已中止，已有结果保留。'))
+                for label in (self.map_layer_status, self.outline_status):
+                    if label.text().endswith('…'):
+                        label.setText(tr('任务已中止，可重新生成。'))
+                if self.identification_status.text() in (tr('正在识别…'), tr('正在按参考点配准…')):
+                    self.identification_status.setText(tr('识别已中止'))
+            if self._close_after_task:
+                self._close_after_task = False
+                QTimer.singleShot(0, self.close)
+            elif self._map_layers_pending:
                 self._map_layers_pending = False
                 QTimer.singleShot(0, self.refresh_annotations)
             elif self._outlines_pending:
                 QTimer.singleShot(0, self.refresh_crater_outlines)
         worker.signals.finished.connect(finished)
         QThreadPool.globalInstance().start(worker)
+
+    def cancel_background(self):
+        if self._task_cancel is not None:
+            self._task_cancel.set()
+            self.cancel_task_button.setEnabled(False)
+            self.statusBar().showMessage(tr('正在中止当前任务…'))
 
     def choose_ui_language(self):
         if self.busy:
@@ -1654,6 +1697,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.crater_outlines.setChecked(self.project.crater_outlines)
         self.crater_outline_shape.setCurrentIndex(self.crater_outline_shape.findData(self.project.crater_outline_shape))
         self.font_weight.setCurrentIndex(max(0, self.font_weight.findData(self.project.font_weight)))
+        self.label_opacity.setValue(round(self.project.label_opacity*100))
         self.art_style.setCurrentIndex(max(0, self.art_style.findData(self.project.art_style)))
         self.overview_toggle.setChecked(self.project.overview_enabled)
         self.grid_spacing.setCurrentIndex(self.grid_spacing.findData(self.project.grid_spacing))
@@ -2343,6 +2387,15 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.settings_status.setText(tr("设置已改，需重新生成") if self.style_pending else tr("已更新"))
         self.settings_status.setVisible(self.style_pending)
 
+    def label_opacity_changed(self, value):
+        if self.rebuilding:
+            return
+        self.project.label_opacity = value/100
+        for item in self.annotation_items:
+            item.setOpacity(self.project.label_opacity)
+        if self.image is not None:
+            self.dirty = True
+
     def map_opacity_changed(self, field, value):
         if self.rebuilding:
             return
@@ -2491,14 +2544,14 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.dirty = True
 
     def choose_color(self):
-        color = QColorDialog.getColor(QColor(self.pending_color), self)
+        color = ColorDialog.choose(self.pending_color, self)
         if color.isValid():
             self.pending_color = color.name()
             self.color_button.setText(trf("文字与引线颜色：{color}", color=self.pending_color))
             self.style_changed()
 
     def choose_landing_color(self):
-        color = QColorDialog.getColor(QColor(self.pending_landing_color), self)
+        color = ColorDialog.choose(self.pending_landing_color, self)
         if color.isValid():
             self.pending_landing_color = color.name()
             self.landing_color_button.setToolTip(trf("着陆点颜色：{color}；使用小档字号", color=self.pending_landing_color))
@@ -3027,8 +3080,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
 
     def closeEvent(self, event):
         if self.busy:
-            self.statusBar().showMessage(tr("处理完成后可关闭"))
-            self.restart_requested = False
+            self._close_after_task = True
+            self.cancel_background()
             event.ignore()
         elif self.confirm_discard():
             if self.restart_requested:

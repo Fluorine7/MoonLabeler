@@ -51,7 +51,7 @@ def test_widgets_show_traditional_text(traditional_window):
     titles = [action.text() for action in window.toolbar.actions()]
     assert "開啟照片" in titles
     assert "儲存專案" in titles
-    assert "介面語言" in titles
+    assert "介面語言 / Language" in titles
     zoom_actions = {action.text(): action for action in window.actions
                     if action.text() in {"原始大小", "適合視窗", "+", "−"}}
     assert list(zoom_actions) == ["原始大小", "適合視窗", "+", "−"]

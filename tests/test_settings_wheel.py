@@ -73,7 +73,7 @@ def test_feature_type_checklist_wheel_scrolls_panel_without_changing_selection(w
     assert selector.selection() == '全部' and bar.value() > 0
 
 
-@pytest.mark.parametrize("field", ["font_size", "ui_font_step", "grid_opacity", "elevation_opacity",
+@pytest.mark.parametrize("field", ["font_size", "ui_font_step", "label_opacity", "label_opacity_value", "grid_opacity", "elevation_opacity",
                                    "diameter", "maximum", "art_style", "grid_spacing",
                                    "elevation_palette", "contour_interval", "contour_opacity", "terminator_opacity", "terminator_source", "map_light_threshold", "language", "font_weight",
                                    "grid_opacity_value", "elevation_opacity_value", "contour_opacity_value", "terminator_opacity_value", "map_light_readout"])
@@ -131,6 +131,7 @@ def test_wheel_over_parameter_scrolls_outer_panel(window, field, editor):
 
 
 @pytest.mark.parametrize("field,readout", [
+    ("label_opacity", "label_opacity_value"),
     ("grid_opacity", "grid_opacity_value"), ("elevation_opacity", "elevation_opacity_value"),
     ("contour_opacity", "contour_opacity_value"), ("terminator_opacity", "terminator_opacity_value"),
     ("map_light_threshold", "map_light_readout"),

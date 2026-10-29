@@ -8,6 +8,7 @@ data/moon_albedo_2k.provenance.json and THIRD_PARTY_NOTICES.md.
 """
 from pathlib import Path
 
+from .tasks import check_cancelled
 from ._opencv import cv2
 import numpy as np
 from PIL import Image
@@ -25,6 +26,7 @@ def render_atlas(geometry, size=1600):
     scale, center = size*.47, (size-1)/2
     reference = np.zeros((size, size, 3), np.uint8)
     for first in range(0, size, 64):
+        check_cancelled()
         x, y = np.meshgrid(np.arange(size), np.arange(first, min(size, first+64)))
         points = np.column_stack(((x.ravel()-center)/scale, (y.ravel()-center)/scale))
         lat, lon, disk = geometry.unproject(points)

@@ -9,6 +9,7 @@ Short polar arcs, weak textures, and competing orientations are rejected.
 """
 import math
 
+from .tasks import check_cancelled
 from ._opencv import cv2
 import numpy as np
 
@@ -43,6 +44,8 @@ def fit_lunar_limb(image, *, photo_mask=None):
     best = None
     h, w = small.shape
     for _ in range(3500):
+        if _ % 64 == 0:
+            check_cancelled()
         p = points[rng.choice(len(points), 3, replace=False)]
         design = 2*(p[1:]-p[0])
         if abs(np.linalg.det(design)) < 50:

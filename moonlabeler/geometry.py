@@ -106,10 +106,19 @@ def compute_geometry(utc: datetime, cache: Path, latitude=None, longitude=None):
     convention. Does not model local lunar relief or atmospheric refraction.
     """
     from skyfield.api import Loader, PlanetaryConstants, wgs84
+    from .sources import download
+    from .tasks import check_cancelled
 
     if utc.tzinfo is None:
         raise ValueError("拍摄时间必须包含时区。")
     load = Loader(str(cache), verbose=False)
+    # Route missing kernels through the same cancellable, atomic downloader as
+    # terrain/NASA data, instead of Skyfield's independent blocking downloader.
+    for filename in ('de421.bsp', 'moon_080317.tf', 'pck00008.tpc', 'moon_pa_de421_1900-2050.bpc'):
+        check_cancelled()
+        destination = Path(cache)/filename
+        if not destination.exists():
+            download(load.build_url(filename), destination)
     t = load.timescale(builtin=True).from_datetime(utc.astimezone(timezone.utc))
     eph = load("de421.bsp")
     try:
