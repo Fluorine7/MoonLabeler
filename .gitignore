@@ -34,6 +34,7 @@ dist/
 /native-verification.json
 
 # Local development notes, screenshots and archived build reports.
+/output/
 /REPOSITORY_RESEARCH.md
 /TSUKIKAGE_RESEARCH.md
 /UI_HANDOFF.txt
