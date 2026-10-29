@@ -51,6 +51,8 @@ QToolButton {{ background: transparent; border: 0; border-radius: 6px;
 QToolButton:hover {{ background: #242f3e; color: #eef3f9; }}
 QToolButton:pressed {{ background: #2b3748; }}
 QToolButton:disabled {{ color: {DISABLED_TEXT}; background: transparent; }}
+/* Qt's fixed-width overflow button cannot fit the ordinary horizontal padding. */
+QToolButton#qt_toolbar_ext_button {{ padding: 0; }}
 QToolButton[primary="true"] {{ background: {ACCENT}; color: {ACCENT_TEXT};
                               font-weight: 600; padding: 6px 14px; }}
 QToolButton[primary="true"]:hover {{ background: {ACCENT_HI}; }}

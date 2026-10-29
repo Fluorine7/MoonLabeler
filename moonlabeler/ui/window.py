@@ -353,6 +353,9 @@ class WindowUiMixin:
             return a
         primary = action(tr("打开照片"), lambda: self.open_image(), "Ctrl+O")
         self.toolbar.widgetForAction(primary).setProperty("primary", True)
+        # Keep the way back to another language ahead of the translated file
+        # actions, which can overflow at narrow widths or with larger fonts.
+        self.ui_language_action = action(tr("界面语言 / Language"), self.choose_ui_language, "Ctrl+Shift+L")
         action(tr("打开工程"), lambda: self.open_project(), "Ctrl+Shift+O")
         action(tr("保存工程"), self.save_project, "Ctrl+S")
         self.toolbar.addSeparator()
@@ -382,9 +385,12 @@ class WindowUiMixin:
         self.toolbar.addSeparator()
         action(tr("打开示例"), self.open_example)
         action(tr("计算设置"), self.compute_settings_dialog)
-        action(tr("界面语言 / Language"), self.choose_ui_language)
         action(tr("帮助"), self.help_dialog)
         action(tr("致谢"), self.about_dialog)
+        extension = self.toolbar.findChild(QToolButton, 'qt_toolbar_ext_button')
+        if extension is not None:
+            extension.setToolTip(tr('更多操作'))
+            extension.setAccessibleName(tr('更多操作'))
         delete = QAction(tr("隐藏所选名称"), self)
         delete.setShortcut(QKeySequence("Backspace"))
         delete.triggered.connect(self.hide_selected)
