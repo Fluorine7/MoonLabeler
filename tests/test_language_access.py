@@ -34,10 +34,13 @@ def test_language_switch_is_visible_and_can_return_to_chinese(tmp_path, monkeypa
         assert button.isVisible(), 'The language switch must stay visible when the toolbar overflows'
         assert button.mapTo(window, button.rect().center()).x() > window.width()/2
         assert window.toolbar.geometry().right() < window.settings_toolbar.geometry().left()
-        settings = window.settings_toolbar.actions()
+        settings = [item for item in window.settings_toolbar.actions() if item.text()]
         assert [item.text() for item in settings] == [i18n.tr(text) for text in
             ('打开示例', '计算设置', '界面语言 / Language', '帮助', '致谢')]
         assert all(window.settings_toolbar.widgetForAction(item).isVisible() for item in settings)
+        last_button = window.settings_toolbar.widgetForAction(settings[-1])
+        right_margin = window.width()-1-last_button.mapTo(window, last_button.rect().bottomRight()).x()
+        assert 0 <= right_margin <= 24, 'Only the normal toolbar padding may follow the final settings button'
         assert window.rect().contains(button.mapTo(window, QPoint(0, 0)))
         assert window.rect().contains(button.mapTo(window, button.rect().bottomRight()))
         selected = []

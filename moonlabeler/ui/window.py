@@ -382,16 +382,20 @@ class WindowUiMixin:
         self.show_mask.setToolTip(tr("仅切换红色蒙版的显示；隐藏后排除区域仍用于识别。"))
         self.show_mask.toggled.connect(self.update_mask_preview)
         self.toolbar.addWidget(self.show_mask)
+        settings_spacer = QWidget()
+        settings_spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.settings_toolbar.addWidget(settings_spacer)
         action(tr("打开示例"), self.open_example, toolbar=self.settings_toolbar)
         action(tr("计算设置"), self.compute_settings_dialog, toolbar=self.settings_toolbar)
         self.ui_language_action = action(tr("界面语言 / Language"), self.choose_ui_language, "Ctrl+Shift+L",
                                          toolbar=self.settings_toolbar)
         action(tr("帮助"), self.help_dialog, toolbar=self.settings_toolbar)
         action(tr("致谢"), self.about_dialog, toolbar=self.settings_toolbar)
-        # Reserve the complete settings group on the right. The file toolbar
-        # can overflow without hiding the way back to another UI language.
+        # Reserve enough space for settings but let the toolbar fill the row.
+        # Its leading spacer keeps buttons aligned to the right; a fixed width
+        # leaves an unpainted gap when QMainWindow has extra space to allocate.
         self.settings_toolbar.ensurePolished()
-        self.settings_toolbar.setFixedWidth(self.settings_toolbar.sizeHint().width())
+        self.settings_toolbar.setMinimumWidth(self.settings_toolbar.sizeHint().width())
         extension = self.toolbar.findChild(QToolButton, 'qt_toolbar_ext_button')
         if extension is not None:
             extension.setToolTip(tr('更多操作'))
