@@ -584,7 +584,11 @@
     "任务已中止，已有结果保留。": "Task cancelled. Existing results are preserved.",
     "任务已中止，可重新生成。": "Task cancelled. Generate again to retry.",
     "识别已中止": "Recognition cancelled",
-    "软件设置": "Application settings"
+    "软件设置": "Application settings",
+    "正在启动新窗口，启动成功后将关闭当前窗口…": "Starting the new window. This window will close once it is ready…",
+    "新窗口没有应用所选语言，已保留原窗口。": "The new window did not apply the selected language. The original window is still open.",
+    "新窗口启动失败（退出代码 {code}）。启动日志：{path}": "The new window failed to start (exit code {code}). Startup log: {path}",
+    "等待新窗口启动超时，已保留原窗口。启动日志：{path}": "Startup timed out. The original window is still open. Startup log: {path}"
   },
   "templates": {
     "{message}\n相机直拍模式未启用目镜畸变校正。": "{message}\nEyepiece distortion correction is not enabled in Direct camera mode.",

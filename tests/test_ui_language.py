@@ -239,7 +239,7 @@ def test_restart_failure_keeps_the_window_open(traditional_window, monkeypatch):
     from moonlabeler import app as app_module
     from PySide6.QtGui import QCloseEvent
     shown = {}
-    monkeypatch.setattr(app_module.QProcess, "startDetached", staticmethod(lambda *args: (False, 0)))
+    monkeypatch.setattr(app_module.RestartHandoff, "start", lambda self: False)
     monkeypatch.setattr(app_module.QMessageBox, "warning", lambda parent, title, text: shown.update(text=text))
     window = traditional_window
     window.confirm_discard = lambda: True
@@ -255,7 +255,10 @@ def test_restart_relaunches_module_from_repository_root(traditional_window, monk
     from moonlabeler import app as app_module
     from PySide6.QtGui import QCloseEvent
     calls = []
-    monkeypatch.setattr(app_module.QProcess, "startDetached", staticmethod(lambda *args: (calls.append(args), (True, 4242))[1]))
+    def started(handoff):
+        calls.append((handoff.program, handoff.arguments, handoff.cwd))
+        return True
+    monkeypatch.setattr(app_module.RestartHandoff, "start", started)
     photo = tmp_path / "moon.png"
     photo.write_bytes(b"")
     monkeypatch.chdir(tmp_path)
@@ -265,12 +268,13 @@ def test_restart_relaunches_module_from_repository_root(traditional_window, monk
     window.restart_requested = True
     event = QCloseEvent()
     window.closeEvent(event)
-    assert event.isAccepted()
+    assert not event.isAccepted(), 'The existing window stays until the new one acknowledges startup'
     program, arguments, cwd = calls[0]
     assert program == app_module.sys.executable
     assert arguments[:2] == ["-m", "moonlabeler"]
     assert arguments[2] == str(photo.resolve()), "relative photo path is made absolute before the cwd changes"
     assert cwd == str(app_module.ROOT)
+    window._restart_handoff.ready.emit()
 
 
 # Injected so the English tests do not depend on the state of ui_en.json.

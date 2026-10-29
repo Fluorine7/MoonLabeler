@@ -16,7 +16,7 @@ import sys
 import traceback
 
 import numpy as np
-from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QObject, Signal, QRunnable, QThreadPool, QTimer, QSettings, QProcess
+from PySide6.QtCore import Qt, QPointF, QRectF, QDateTime, QObject, Signal, QRunnable, QThreadPool, QTimer, QSettings
 from PySide6.QtGui import QColor, QFont, QImage, QPixmap, QPixmapCache, QPainter, QPen, QPainterPath, QPainterPathStroker, QTransform
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
@@ -50,6 +50,7 @@ from .map_layers import (MapLayers, grid_lines, sample_elevation, colorize_eleva
 from .ui.compute import ComputeDialog
 from .ui.color import ColorDialog
 from .tasks import TaskCancelled, cancellable_task, check_cancelled
+from .restart import RestartHandoff, READY_ENV, acknowledge_startup
 from . import compute
 from .craters import DetectionOptions, detect_craters, detect_crater_rims
 from .identification import identify_from_candidates
@@ -848,6 +849,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self._task_cancel = None
         self._close_after_task = False
         self.restart_requested = False
+        self._restart_handoff = None
+        self._restart_closing = False
         self.project_path = None
         self.rebuilding = False
         self.workers = set()
@@ -3082,18 +3085,27 @@ class MainWindow(WindowUiMixin, QMainWindow):
             "坑缘圈是目录投影参考，可能偏离实际坑缘。拟合残差只表示一致性；模型和数据来源详见 README。", hint=label_drag_hint()))
 
     def closeEvent(self, event):
-        if self.busy:
+        if self._restart_closing:
+            self.clear_terrain_preview()
+            event.accept()
+        elif self._restart_handoff is not None:
+            self._restart_handoff.cancel()
+            self._restart_handoff.deleteLater()
+            self._restart_handoff = None
+            self.clear_terrain_preview()
+            event.accept()
+        elif self.busy:
             self._close_after_task = True
             self.cancel_background()
             event.ignore()
         elif self.confirm_discard():
             if self.restart_requested:
                 self.restart_requested = False
+                event.ignore()
                 if not self.restart_application():
                     # Keep the window: the preference is saved, the user can reopen manually.
-                    event.ignore()
                     self.error(tr("无法自动重新启动 MoonLabeler，请手动重新打开。界面语言设置已保存。"))
-                    return
+                return
             self.clear_terrain_preview()
             event.accept()
         else:
@@ -3112,12 +3124,35 @@ class MainWindow(WindowUiMixin, QMainWindow):
             program, cwd = sys.executable, os.getcwd()
         else:
             program, arguments, cwd = sys.executable, ["-m", "moonlabeler", *arguments], str(ROOT)
-        result = QProcess.startDetached(program, arguments, cwd)
-        started = result[0] if isinstance(result, tuple) else result
-        return bool(started)
+        language = i18n.normalize(self.compute_preferences.value(i18n.PREFERENCE_KEY)) or i18n.current_language()
+        handoff = RestartHandoff(program, arguments, cwd, CACHE, language, self)
+
+        def ready():
+            self._restart_handoff = None
+            handoff.deleteLater()
+            self._restart_closing = True
+            self.close()
+
+        def failed(problem):
+            self._restart_handoff = None
+            handoff.deleteLater()
+            self.setEnabled(True)
+            self.error(tr("无法自动重新启动 MoonLabeler，请手动重新打开。界面语言设置已保存。")
+                       +'\n\n'+self.error_text(problem))
+
+        handoff.ready.connect(ready)
+        handoff.failed.connect(failed)
+        if not handoff.start():
+            handoff.deleteLater()
+            return False
+        self._restart_handoff = handoff
+        self.setEnabled(False)
+        self.statusBar().showMessage(tr('正在启动新窗口，启动成功后将关闭当前窗口…'))
+        return True
 
 
 def main():
+    restart_marker = os.environ.pop(READY_ENV, None)
     prepare_cache()
     application = QApplication.instance() or QApplication(sys.argv)
     application.setApplicationName("MoonLabeler")
@@ -3132,4 +3167,6 @@ def main():
             window.open_project(str(path))
         else:
             window.open_image(str(path))
+    if restart_marker:
+        QTimer.singleShot(0, lambda: acknowledge_startup(restart_marker, window))
     sys.exit(application.exec())

@@ -10,6 +10,7 @@
 - 新增普通与艺术标注共用的文字不透明度滑块，文字与描边实时更新，保留位置和文字缓存；随工程保存，PNG / SVG 同步应用。旧工程默认完全不透明。 / Added live text opacity shared by standard and artistic labels, preserving layout and caches, with project persistence and PNG/SVG export. Older projects remain fully opaque.
 - 状态栏新增“中止当前任务”。下载连接或读取停滞时可以取消并关闭窗口，取消后保留完整缓存并清理临时文件；缺失星历统一使用可取消的下载流程。修复此前下载缺少取消通道、忙碌状态拒绝关闭窗口的问题。 / Added Cancel task. Stalled downloads can be cancelled and the window closed while keeping complete caches and removing partial files. Missing ephemerides use the same cancellable downloader, fixing uninterruptible downloads and blocked window closure.
 - 语言入口增加双语提示“界面语言 / Language”及“Language / 中文”，与计算设置、帮助等保留在工具栏右侧，支持 Cmd / Ctrl + Shift + L；窄窗口为设置区保留宽度，工程操作可从“更多操作”进入。修复“更多操作”箭头被内边距遮住的问题。 / Added a bilingual language switch beside compute settings and help on the right, with Cmd / Ctrl + Shift + L. Narrow windows reserve space for settings and keep project actions in the More actions menu. Fixed padding hiding the overflow arrow.
+- 语言重启等待新窗口确认就绪后才关闭旧窗口；新进程异常退出、超时或未应用所选语言时保留旧窗口并报告启动日志，避免启动命令返回成功后程序仍消失。 / Language restarts wait for the replacement window to acknowledge readiness. Failed, timed-out or incorrectly localized replacements leave the original window open and report the startup log.
 
 本次更新源码，安装包仍为 0.11.0。 / Source update; downloadable apps remain at 0.11.0.
 
