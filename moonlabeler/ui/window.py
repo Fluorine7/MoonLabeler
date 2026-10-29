@@ -342,20 +342,20 @@ class WindowUiMixin:
         self.toolbar = self.addToolBar(tr("文件与导出"))
         self.toolbar.setObjectName("mainToolbar")
         self.toolbar.setMovable(False)
+        self.settings_toolbar = self.addToolBar(tr("软件设置"))
+        self.settings_toolbar.setObjectName("settingsToolbar")
+        self.settings_toolbar.setMovable(False)
         self.actions = []
-        def action(text, callback, shortcut=None):
+        def action(text, callback, shortcut=None, *, toolbar=None):
             a = QAction(text, self)
             a.triggered.connect(lambda checked=False: callback())
             if shortcut:
                 a.setShortcut(QKeySequence(shortcut))
-            self.toolbar.addAction(a)
+            (self.toolbar if toolbar is None else toolbar).addAction(a)
             self.actions.append(a)
             return a
         primary = action(tr("打开照片"), lambda: self.open_image(), "Ctrl+O")
         self.toolbar.widgetForAction(primary).setProperty("primary", True)
-        # Keep the way back to another language ahead of the translated file
-        # actions, which can overflow at narrow widths or with larger fonts.
-        self.ui_language_action = action(tr("界面语言 / Language"), self.choose_ui_language, "Ctrl+Shift+L")
         action(tr("打开工程"), lambda: self.open_project(), "Ctrl+Shift+O")
         action(tr("保存工程"), self.save_project, "Ctrl+S")
         self.toolbar.addSeparator()
@@ -382,11 +382,16 @@ class WindowUiMixin:
         self.show_mask.setToolTip(tr("仅切换红色蒙版的显示；隐藏后排除区域仍用于识别。"))
         self.show_mask.toggled.connect(self.update_mask_preview)
         self.toolbar.addWidget(self.show_mask)
-        self.toolbar.addSeparator()
-        action(tr("打开示例"), self.open_example)
-        action(tr("计算设置"), self.compute_settings_dialog)
-        action(tr("帮助"), self.help_dialog)
-        action(tr("致谢"), self.about_dialog)
+        action(tr("打开示例"), self.open_example, toolbar=self.settings_toolbar)
+        action(tr("计算设置"), self.compute_settings_dialog, toolbar=self.settings_toolbar)
+        self.ui_language_action = action(tr("界面语言 / Language"), self.choose_ui_language, "Ctrl+Shift+L",
+                                         toolbar=self.settings_toolbar)
+        action(tr("帮助"), self.help_dialog, toolbar=self.settings_toolbar)
+        action(tr("致谢"), self.about_dialog, toolbar=self.settings_toolbar)
+        # Reserve the complete settings group on the right. The file toolbar
+        # can overflow without hiding the way back to another UI language.
+        self.settings_toolbar.ensurePolished()
+        self.settings_toolbar.setFixedWidth(self.settings_toolbar.sizeHint().width())
         extension = self.toolbar.findChild(QToolButton, 'qt_toolbar_ext_button')
         if extension is not None:
             extension.setToolTip(tr('更多操作'))

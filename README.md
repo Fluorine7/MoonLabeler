@@ -31,7 +31,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 普通拖动平移画面，滚轮缩放画布或滚动面板，不会改变参数。界面和地形类别支持简体中文、繁体中文和英文。
 
-工具栏左侧的 **“界面语言 / Language”** 可切换界面语言，也可按 **Cmd / Ctrl + Shift + L** 打开；颜色选择框使用同一语言。后台下载或处理时，可点状态栏的 **“中止当前任务”**；下载期间关闭窗口也会取消下载。
+工具栏右侧设置区的 **“界面语言 / Language”** 可切换界面语言，也可按 **Cmd / Ctrl + Shift + L** 打开；窗口变窄时设置区保持可见，工程操作可从左侧工具栏的“更多操作”进入。颜色选择框使用同一语言。后台下载或处理时，可点状态栏的 **“中止当前任务”**；下载期间关闭窗口也会取消下载。
 
 `.moonlabel` 工程本身是 JSON，保存后可直接恢复配准。供月面地图等软件读取的字段和贴图公式见[工程格式](docs/project-format.md)，分享时附上原照片。
 
@@ -82,7 +82,7 @@ Both packages include Python, FITS support and offline ephemerides. The Mac app 
 
 Ordinary dragging pans the canvas; the wheel zooms it or scrolls settings without changing parameter values. Interface text and feature types support English, Simplified Chinese and Traditional Chinese.
 
-Use **Language / 中文** at the left of the toolbar, or **Cmd / Ctrl + Shift + L**, to switch the interface language; colour pickers follow that choice. Use **Cancel task** in the status bar to stop background work. Closing the window during a download also cancels it.
+Use **Language / 中文** in the settings group on the right, or **Cmd / Ctrl + Shift + L**, to switch the interface language. Settings stay visible in narrow windows; project actions remain available through the left toolbar's More actions menu. Colour pickers follow the interface language. Use **Cancel task** in the status bar to stop background work. Closing the window during a download also cancels it.
 
 `.moonlabel` projects are JSON files containing the saved registration. See the [format and projection reference](docs/project-format.md) for map integrations; share the original photo with the project.
 

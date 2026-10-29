@@ -8,6 +8,8 @@ import pytest
 from PySide6.QtCore import Qt, QPoint, QTimer
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QToolButton
+from time import monotonic
 from moonlabeler import app as app_module, i18n
 
 
@@ -27,9 +29,15 @@ def test_language_switch_is_visible_and_can_return_to_chinese(tmp_path, monkeypa
     window.setFocus()
     app.processEvents()
     try:
-        action = next(action for action in window.toolbar.actions() if 'Language' in action.text())
-        button = window.toolbar.widgetForAction(action)
+        action = window.ui_language_action
+        button = window.settings_toolbar.widgetForAction(action)
         assert button.isVisible(), 'The language switch must stay visible when the toolbar overflows'
+        assert button.mapTo(window, button.rect().center()).x() > window.width()/2
+        assert window.toolbar.geometry().right() < window.settings_toolbar.geometry().left()
+        settings = window.settings_toolbar.actions()
+        assert [item.text() for item in settings] == [i18n.tr(text) for text in
+            ('打开示例', '计算设置', '界面语言 / Language', '帮助', '致谢')]
+        assert all(window.settings_toolbar.widgetForAction(item).isVisible() for item in settings)
         assert window.rect().contains(button.mapTo(window, QPoint(0, 0)))
         assert window.rect().contains(button.mapTo(window, button.rect().bottomRight()))
         selected = []
@@ -47,6 +55,36 @@ def test_language_switch_is_visible_and_can_return_to_chinese(tmp_path, monkeypa
             QTest.mouseClick(button, Qt.MouseButton.LeftButton)
         assert selected == [i18n.SIMPLIFIED]
         assert window.compute_preferences.value(i18n.PREFERENCE_KEY) == i18n.SIMPLIFIED
+    finally:
+        window.dirty = False
+        window.close()
+        i18n._language, i18n._explicit = previous
+
+
+def test_narrow_project_toolbar_expands_to_reveal_exports_and_preview_toggles(tmp_path, monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    previous = i18n._language, i18n._explicit
+    i18n.set_language(i18n.ENGLISH)
+    monkeypatch.setattr(app_module, 'CACHE', tmp_path)
+    window = app_module.MainWindow()
+    window.resize(1100, 860)
+    window.show()
+    app.processEvents()
+    try:
+        extension = window.toolbar.findChild(QToolButton, 'qt_toolbar_ext_button')
+        assert extension.isVisible()
+        QTest.mouseClick(extension, Qt.MouseButton.LeftButton)
+        deadline = monotonic()+2
+        while not window.show_mask.isVisible() and monotonic() < deadline:
+            QTest.qWait(10)
+        assert window.show_annotations.isVisible() and window.show_mask.isVisible()
+        for action in window.actions:
+            if action.text() in ('Export PNG', 'Export SVG', 'Fit to window', '+', '−'):
+                assert window.toolbar.widgetForAction(action).isVisible()
+        language = window.settings_toolbar.widgetForAction(window.ui_language_action)
+        assert language.isVisible()
+        QTest.mouseClick(window.show_mask, Qt.MouseButton.LeftButton)
+        assert window.show_mask.isChecked()
     finally:
         window.dirty = False
         window.close()

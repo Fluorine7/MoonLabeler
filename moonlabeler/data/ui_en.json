@@ -583,7 +583,8 @@
     "正在中止当前任务…": "Cancelling the current task…",
     "任务已中止，已有结果保留。": "Task cancelled. Existing results are preserved.",
     "任务已中止，可重新生成。": "Task cancelled. Generate again to retry.",
-    "识别已中止": "Recognition cancelled"
+    "识别已中止": "Recognition cancelled",
+    "软件设置": "Application settings"
   },
   "templates": {
     "{message}\n相机直拍模式未启用目镜畸变校正。": "{message}\nEyepiece distortion correction is not enabled in Direct camera mode.",

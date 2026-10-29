@@ -1348,6 +1348,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.busy = True
         self.sidebar.setEnabled(False)
         self.toolbar.setEnabled(False)
+        self.settings_toolbar.setEnabled(False)
         self.canvas.setEnabled(allow_canvas)
         self.statusBar().showMessage(title)
         cancel = self._task_cancel = Event()
@@ -1361,6 +1362,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             self.busy = False
             self.sidebar.setEnabled(True)
             self.toolbar.setEnabled(True)
+            self.settings_toolbar.setEnabled(True)
             self.canvas.setEnabled(True)
             self.workers.discard(worker)
             self._task_cancel = None

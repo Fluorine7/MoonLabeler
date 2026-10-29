@@ -28,7 +28,7 @@ def test_color_dialog_and_language_entry(tmp_path, monkeypatch, language, basic,
         assert basic in labels and confirm in buttons
         assert dialog.currentColor().name() == '#abcdef'
         assert '&Basic colors' not in labels and '&Pick Screen Color' not in buttons
-        actions = [action for action in win.toolbar.actions() if 'Language' in action.text()]
+        actions = [action for action in win.settings_toolbar.actions() if 'Language' in action.text()]
         assert len(actions) == 1 and actions[0].isEnabled()
     finally:
         dialog.close()

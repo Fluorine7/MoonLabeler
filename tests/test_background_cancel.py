@@ -102,7 +102,7 @@ def test_cancel_button_preserves_cache_and_allows_retry(tmp_path, monkeypatch, s
         assert target.read_bytes() == b'previous complete data'
         assert not target.with_suffix('.img.part').exists()
         assert not accepted and not errors
-        assert window.toolbar.isEnabled() and window.sidebar.isEnabled()
+        assert window.toolbar.isEnabled() and window.settings_toolbar.isEnabled() and window.sidebar.isEnabled()
         fresh = BytesIO(b'new')
         fresh.headers = {'Content-Length': '3'}
         monkeypatch.setattr(sources, 'urlopen', lambda *args, **kwargs: fresh)

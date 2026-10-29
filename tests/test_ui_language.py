@@ -48,7 +48,7 @@ def test_widgets_show_traditional_text(traditional_window):
     assert window.generate_labels_button.text() == "重新產生標註"
     assert window.identification_status.text() == "未辨識"
     assert window.workspace_tabs.tabText(0) == "校準"
-    titles = [action.text() for action in window.toolbar.actions()]
+    titles = [action.text() for action in window.actions]
     assert "開啟照片" in titles
     assert "儲存專案" in titles
     assert "介面語言 / Language" in titles
