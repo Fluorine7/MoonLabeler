@@ -2323,13 +2323,14 @@ class MainWindow(WindowUiMixin, QMainWindow):
                           "作者：Fluorine Zhu\n开源许可：GNU GPL v3.0 或更新版本\n\n"
                           "致敬 Jim Mosher 与 Henrik Bondo 创建的 Lunar Terminator Visualization Tool。"
                           "本程序参考其地形点校准与 DEM 光照思路，使用 Python / Qt 独立实现。\n\n"
-                          "感谢樊仕达（10deg）提供 moonlib 代码参考及 LPND 中文地名资料。\n\n"
+                          "感谢樊仕达（{ten_deg}）提供 moonlib 代码参考及 LPND 中文地名资料。\n\n"
                           "感谢蔡明翰（{evan_tsai}）贡献繁体中文支持及 Windows 部分问题修复。\n\n"
                           "感谢 {sothic} 贡献工具栏缩放、原始大小按钮及快捷键。\n\n"
                           "地名：USGS / IAU；中文译名优先采用 LPND，补录来源单独保留。\n"
                           "月面高程：LRO / LOLA；星历：JPL DE421；着陆点：NASA NSSDCA / LROC。\n"
                           "疑似坑检测改编自 Ram Maruboina 的 Lunar Crater Detector（MIT）。\n"
                           "来源和模型限制见项目目录的 ACKNOWLEDGEMENTS.md 与 README.md。", version=__version__,
+                          ten_deg='<a href="https://github.com/10deg/tsukikage">10deg</a>',
                           evan_tsai='<a href="https://www.facebook.com/mjrt.mj">Evan Tsai</a>',
                           sothic='<a href="https://github.com/sothic">sothic</a>')
         QMessageBox.about(self, tr("关于 MoonLabeler"), text.replace("\n", "<br>"))
