@@ -67,7 +67,10 @@ class RestartHandoff(QObject):
             except (OSError, ValueError) as exc:
                 self.fail(exc)
                 return
-            if result != {'pid': self.process.pid, 'language': self.language}:
+            # A Windows venv python.exe is a redirector that runs the real interpreter as its
+            # child, so the acknowledging process may be one level below the spawned one.
+            spawned = isinstance(result, dict) and self.process.pid in (result.get('pid'), result.get('parent'))
+            if not spawned or result.get('language') != self.language:
                 self.fail(ValueError(tr('新窗口没有应用所选语言，已保留原窗口。')))
                 return
             self.cleanup()
@@ -101,7 +104,8 @@ def acknowledge_startup(marker, window):
         if not window.isVisible():
             raise OSError('Replacement window is not visible')
         temporary = path.with_suffix('.part')
-        temporary.write_text(json.dumps({'pid': os.getpid(), 'language': i18n.current_language()}), encoding='utf-8')
+        temporary.write_text(json.dumps({'pid': os.getpid(), 'parent': os.getppid(),
+                                         'language': i18n.current_language()}), encoding='utf-8')
         temporary.replace(path)
     except OSError:
         # A timed-out/cancelled replacement must not appear later as a duplicate.
