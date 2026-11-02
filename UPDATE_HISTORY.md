@@ -2,6 +2,15 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.11.2
+
+2026-11-02
+
+- 合并蔡明翰（Evan Tsai）的 [PR #18](https://github.com/Fluorine7/MoonLabeler/pull/18)：兼容 Windows venv 启动器与实际解释器的父子进程关系，避免新窗口已经启动却被误判失败或超时；继续校验交接归属和所选语言。 / Merged Evan Tsai's PR #18 to accept Windows venv interpreter acknowledgements through their launcher parent, while retaining process ownership and language validation.
+- 增加普通解释器也能运行的“仅父 PID 匹配”和非字典交接数据回归测试；将虚拟环境、重启交接及 Windows UTF-8 兼容要求写入 Agent 规则。 / Added platform-independent regression cases for parent-only PID matches and non-dictionary markers, and documented the compatibility requirements in the Agent rules.
+
+本次更新源码，安装包仍为 0.11.0。 / Source update; downloadable apps remain at 0.11.0.
+
 ## 0.11.1
 
 2026-10-29
