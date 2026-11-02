@@ -43,9 +43,10 @@ def test_failed_child_startup_keeps_the_old_window(tmp_path, monkeypatch):
         window.close()
 
 
-@pytest.mark.parametrize('mode', ['ready', 'wrong_language', 'timeout'])
+@pytest.mark.parametrize('mode', ['ready', 'wrong_language', 'stranger', 'timeout'])
 def test_real_child_readiness_and_failure_handling(tmp_path, mode):
     app = QApplication.instance() or QApplication([])
+    # sys.executable may be a Windows venv redirector whose child writes the marker.
     script = '''
 import json, os, time
 from pathlib import Path
@@ -55,7 +56,9 @@ mode = {mode!r}
 if mode != 'timeout':
     path = Path(os.environ['MOONLABELER_RESTART_READY'])
     temporary = path.with_suffix('.part')
-    temporary.write_text(json.dumps({{'pid': os.getpid(), 'language': language if mode == 'ready' else 'zh-CN'}}), encoding='utf-8')
+    owner = {{'pid': 0, 'parent': 0}} if mode == 'stranger' else {{'pid': os.getpid(), 'parent': os.getppid()}}
+    owner['language'] = 'zh-CN' if mode == 'wrong_language' else language
+    temporary.write_text(json.dumps(owner), encoding='utf-8')
     temporary.replace(path)
 time.sleep(10)
 '''.format(mode=mode)
