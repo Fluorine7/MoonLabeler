@@ -3,7 +3,9 @@
 """A spawned process is not evidence that a replacement window is ready."""
 import os
 import sys
+import json
 from time import monotonic
+from types import SimpleNamespace
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 import pytest
@@ -11,6 +13,28 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 from moonlabeler import app as app_module
 from moonlabeler.restart import RestartHandoff
+
+
+@pytest.mark.parametrize('payload,accepted', [
+    ({'pid': 4243, 'parent': 4242, 'language': 'en'}, True),
+    (['pid', 4243, 'parent', 4242, 'language', 'en'], False),
+], ids=['parent_only', 'non_dict'])
+def test_forwarding_launcher_acknowledgement(tmp_path, payload, accepted):
+    app = QApplication.instance() or QApplication([])
+    handoff = RestartHandoff('launcher', [], str(tmp_path), tmp_path, 'en')
+    # Model the Windows venv relationship on every platform: the launched
+    # redirector and the interpreter that acknowledges startup have different PIDs.
+    handoff.process = SimpleNamespace(pid=4242, poll=lambda: None, terminate=lambda: None)
+    handoff.marker = tmp_path/'ready.json'
+    handoff.marker.write_text(json.dumps(payload), encoding='utf-8')
+    handoff.log = tmp_path/'restart.log'
+    ready, errors = [], []
+    handoff.ready.connect(lambda: ready.append(True))
+    handoff.failed.connect(errors.append)
+    handoff.poll()
+    assert bool(ready) == accepted
+    assert bool(errors) == (not accepted)
+    assert not handoff.timer.isActive()
 
 
 def test_failed_child_startup_keeps_the_old_window(tmp_path, monkeypatch):

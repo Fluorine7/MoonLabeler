@@ -1,5 +1,17 @@
 # 项目 Agent 规则
 
+## 跨平台启动与重启兼容
+
+修改启动脚本、重启交接或打包入口时，保留以下长期约束，避免反复修复同类兼容问题（背景：[PR #18](https://github.com/Fluorine7/MoonLabeler/pull/18)）：
+
+- Windows venv 的 `python.exe` 可能只是启动真实解释器的转送器，`Popen.pid` 与新窗口的 `os.getpid()` 可以不同。同一次交接的 marker 必须是字典且语言相符；进程归属同时支持 marker 的 `pid` 或 `parent` 匹配启动进程，不能退回只比较 PID 或只比较语言。
+- 源码重启沿用当前虚拟环境，打包程序保留独立的 frozen 重启处理；不要为绕开转送器直接切换到基础解释器，以免丢失虚拟环境依赖。
+- 新窗口确认就绪后才关闭旧窗口。异常、超时、语言不符或取消时，保留旧窗口或按用户关闭意图退出，并检查没有遗留替代窗口；启动命令返回成功不等于界面已启动。
+- 回归必须显式覆盖“PID 相同”和“PID 不同、仅父 PID 匹配”两条成功路径，以及错误语言、无关进程、非字典 marker 和超时。父子进程路径应可在普通解释器上模拟；setup-python 的三平台 CI 不能代替 Windows venv 验证。区分实际 venv/frozen 实测、进程模拟和已有 CI 结果。
+- Windows 文本文件及 `subprocess` 文本读写显式指定 UTF-8；在默认编码警告开启时验证，兼顾 cp950 等系统编码。
+
+相关改动运行当前环境的 `python -X warn_default_encoding -m pytest -q tests/test_restart_handoff.py tests/test_ui_language.py tests/test_language_access.py tests/test_launcher.py tests/test_minimal_launcher.py`；无桌面环境时设置 `QT_QPA_PLATFORM=offscreen`。
+
 ## 必须保留的滚轮交互
 
 这是用户明确要求的长期交互约束，修改界面或新增功能时必须保留：
