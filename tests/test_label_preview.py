@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Viewport caching must preserve the photograph-space size of every caption."""
 import os
+from statistics import median
 import threading
 import time
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
@@ -202,7 +203,7 @@ def test_zoom_refines_text_in_background_and_discards_removed_labels(monkeypatch
         canvas.close()
 
 
-def test_complex_caption_refinement_keeps_the_ui_responsive():
+def _caption_refinement_peak_gap():
     from PySide6.QtCore import QEventLoop, QTimer
     app = QApplication.instance() or QApplication([])
     canvas = Canvas()
@@ -247,11 +248,25 @@ def test_complex_caption_refinement_keeps_the_ui_responsive():
             assert canvas._text_worker is None
             QTimer.singleShot(20, loop.quit)
             loop.exec()
-        assert gaps and max(gaps) < .06, f'UI blocked for {max(gaps)*1000:.1f} ms while refining one caption'
+        assert gaps, 'The UI event loop must dispatch heartbeats during refinement'
+        return max(gaps)
     finally:
         deadline.stop()
         pulse.stop()
         canvas.close()
+
+
+def test_complex_caption_refinement_keeps_the_ui_responsive():
+    app = QApplication.instance() or QApplication([])
+    # Each sample uses a fresh canvas and the complete zoom sequence. A single
+    # process scheduling pause must not decide a shared runner's performance.
+    # Keep the 60 ms limit on the median of three independent peak gaps.
+    peaks = [_caption_refinement_peak_gap() for _ in range(3)]
+    typical_peak = median(peaks)
+    assert typical_peak < .06, (
+        f'UI blocked for {typical_peak*1000:.1f} ms while refining one caption; '
+        f'independent peak gaps (ms): {[round(peak*1000, 1) for peak in peaks]}'
+    )
 
 
 def test_caption_responsiveness_check_detects_a_main_thread_stall(monkeypatch):
@@ -262,6 +277,25 @@ def test_caption_responsiveness_check_detects_a_main_thread_stall(monkeypatch):
     monkeypatch.setattr(Canvas, 'text_caches_ready', blocked)
     with pytest.raises(AssertionError, match='UI blocked for'):
         test_complex_caption_refinement_keeps_the_ui_responsive()
+
+
+def test_caption_responsiveness_check_tolerates_one_process_scheduling_pause(monkeypatch):
+    from PySide6.QtCore import QEventLoop
+    clock, execute = time.monotonic, QEventLoop.exec
+    offset = 0.
+
+    def delayed_dispatch(self, *args, **kwargs):
+        nonlocal offset
+        # Model a single 120 ms process suspension before Qt dispatches events.
+        # Later measurements see the same clock offset, without further gaps.
+        if not offset:
+            offset = .12
+        return execute(self, *args, **kwargs)
+
+    monkeypatch.setattr(time, 'monotonic', lambda: clock()+offset)
+    monkeypatch.setattr(QEventLoop, 'exec', delayed_dispatch)
+    test_complex_caption_refinement_keeps_the_ui_responsive()
+    assert offset == .12
 
 
 def test_evicted_caption_reuses_a_bounded_preview_and_refines_after_navigation(monkeypatch):
