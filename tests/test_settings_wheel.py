@@ -20,7 +20,9 @@ def window():
     application = QApplication.instance() or QApplication([])
     win = MainWindow()
     win.workspace_tabs.setCurrentIndex(1)
-    win.map_styles_toggle.setChecked(True)
+    for toggle in (win.ui_filter_toggle, win.ui_text_style_toggle, win.ui_layout_toggle,
+                   win.map_styles_toggle, win.ui_label_list_toggle):
+        toggle.setChecked(True)
     win.grid_spacing.setCurrentIndex(win.grid_spacing.findData(15))
     win.elevation_toggle.setChecked(True)
     win.contour_toggle.setChecked(True)

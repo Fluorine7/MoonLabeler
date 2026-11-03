@@ -3,11 +3,13 @@
 """Layout-contract tests for the rebuilt inspector (moonlabeler/ui only)."""
 import os
 from pathlib import Path
+import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Qt, QTime
+from PySide6.QtCore import QPoint, QRect, Qt, QTime
 from PySide6.QtWidgets import QApplication, QPushButton, QToolButton
 
+from moonlabeler import i18n
 from moonlabeler.app import MainWindow
 
 
@@ -193,6 +195,49 @@ def test_every_business_consumed_widget_exists():
     finally:
         window.dirty = False
         window.close()
+
+
+@pytest.mark.parametrize('language', i18n.LANGUAGES)
+@pytest.mark.parametrize('pending', [False, True])
+def test_annotation_common_controls_fit_the_viewport(language, pending):
+    previous = i18n._language, i18n._explicit
+    i18n.set_language(language)
+    window, application = make_window()
+    try:
+        window.resize(1100, 720)
+        window.workspace_tabs.setCurrentIndex(1)
+        if pending:
+            window.open_project(str(Path(__file__).parents[1]/'examples/demo.moonlabel'))
+            window.font_size.stepUp()
+            assert window.settings_status.isVisible()
+        application.processEvents()
+        folds = (window.ui_filter_toggle, window.ui_text_style_toggle, window.ui_layout_toggle,
+                 window.map_styles_toggle, window.ui_label_list_toggle)
+        assert not any(toggle.isChecked() for toggle in folds)
+        # Scrollbars and spare margins vary with fonts and platform styles.
+        # Actual controls, including their arrows and Auto button, must fit.
+        for expanded in (False, True):
+            for toggle in folds:
+                toggle.setChecked(expanded)
+            application.processEvents()
+            application.processEvents()
+            viewport = window.annotation_scroll.viewport()
+            for name in ('art_style', 'language', 'font_size', 'maximum',
+                         'map_light_threshold', 'map_light_readout', 'map_light_auto',
+                         'lit', 'map_light_toggle', 'overview_toggle'):
+                control = getattr(window, name)
+                rect = QRect(control.mapTo(viewport, QPoint()), control.size())
+                assert control.isVisible() and viewport.rect().contains(rect), (
+                    language, pending, expanded, name, rect, viewport.rect())
+            page = window.workspace_tabs.currentWidget()
+            for control in (window.generate_labels_button, window.follow_feature_paths):
+                rect = QRect(control.mapTo(page, QPoint()), control.size())
+                assert control.isVisible() and page.rect().contains(rect)
+        assert window.elevation_toggle.isVisible()
+    finally:
+        window.dirty = False
+        window.close()
+        i18n._language, i18n._explicit = previous
 
 
 def test_enter_prefills_first_search_hit_and_escape_leaves_pick_mode():

@@ -75,9 +75,14 @@ QPushButton[primary="true"]:pressed {{ background: {ACCENT_DOWN}; border-color: 
 QPushButton[primary="true"]:disabled {{ background: #453f32; border-color: #453f32; color: #8b8172; }}
 
 /* ---- flat sections ------------------------------------------------------ */
-QGroupBox {{ border: 0; margin-top: 16px; padding: 1px 0 0 0; }}
+/* Groups and top-level folds share one heading style above a hairline. */
+QGroupBox {{ border: 0; border-top: 1px solid {LINE}; margin-top: 22px; padding: 8px 0 0 0; }}
 QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left;
-                   left: 1px; padding: 0; color: {TEXT_2}; font-weight: 600; }}
+                   left: 0; padding: 0 0 4px 0; color: {TEXT_2}; font-weight: 600; }}
+QFrame#sectionRule {{ border: 0; border-bottom: 1px solid {LINE}; }}
+QToolButton#sectionHeader {{ padding: 2px 0 4px 0; color: {TEXT_2}; font-weight: 600; }}
+QToolButton#sectionHeader:hover {{ background: transparent; color: {TEXT}; }}
+QLabel#subheading {{ color: {TEXT}; font-weight: 600; font-size: 12px; padding-top: 2px; }}
 QWidget#confirmPanel {{ background: {SURFACE_HI}; border-top: 1px solid {LINE_HI}; }}
 QLabel#reviewSelection {{ color: #eef3f9; font-weight: 600; }}
 

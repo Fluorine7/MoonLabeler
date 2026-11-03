@@ -67,6 +67,7 @@ def window(tmp_path):
     win.sync_controls()
     win.refresh_annotations()
     win.workspace_tabs.setCurrentIndex(1)
+    win.ui_filter_toggle.setChecked(True)
     win.show()
     application.processEvents()
     yield win, application

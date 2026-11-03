@@ -25,7 +25,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QDate, QDateTime, QEvent, QTimer, QTime, QTimeZone
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
+    QWidget, QFrame, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
     QPushButton, QToolButton, QLabel, QLineEdit, QComboBox, QSpinBox,
     QDoubleSpinBox, QCheckBox, QDateTimeEdit, QTimeEdit, QGroupBox, QScrollArea,
     QSplitter, QTableWidget, QHeaderView, QListWidget, QAbstractItemView,
@@ -163,6 +163,7 @@ class WindowUiMixin:
         if not hasattr(self, 'crater_action_panel'):
             return  # The detector controls are constructed before the footer.
         self.ui_size_review_list(self.crater_list, 3)
+        self.ui_crater_review_block.setVisible(bool(self.crater_candidates))
         self.ui_crater_tools_toggle.setVisible(bool(self.crater_candidates))
         self.ui_crater_tools_block.setVisible(bool(self.crater_candidates) and self.ui_crater_tools_toggle.isChecked())
         index = self.crater_list.currentRow()
@@ -316,6 +317,23 @@ class WindowUiMixin:
         toggle.toggled.connect(sync)
         sync(expanded)
         return toggle, block, layout
+
+    def ui_section_header(self, toggle):
+        """Promote a collapsible toggle to a top-level section heading that
+        shares the group boxes' hairline, so folds and groups read as peers."""
+        toggle.setObjectName("sectionHeader")
+        rule = QFrame()
+        rule.setObjectName("sectionRule")
+        row = QHBoxLayout(rule)
+        row.setContentsMargins(0, 0, 0, 1)
+        row.addWidget(toggle)
+        row.addStretch()
+        return rule
+
+    def ui_subheading(self, text):
+        label = QLabel(text)
+        label.setObjectName("subheading")
+        return label
 
     # Pure-UI conveniences: select the first search hit on Enter, and let
     # Escape leave the canvas pick mode. They only change selection state and
@@ -480,9 +498,6 @@ class WindowUiMixin:
         outer = QVBoxLayout(self.sidebar)
         outer.setContentsMargins(14, 12, 12, 12)
         outer.setSpacing(10)
-        title = QLabel("MoonLabeler")
-        title.setObjectName("title")
-        outer.addWidget(title)
 
         self.workspace_tabs = QTabWidget()
         self.workspace_tabs.setObjectName("workspaceTabs")
@@ -614,10 +629,16 @@ class WindowUiMixin:
         show_location(False)
         layout.addWidget(group)
 
-        # -------------------------------------------------- 校准 · 可选识别排除区域
+        # -------------------------------------------------- 校准 · 自动识别
+        # The optional exclusion mask is an identification input, so it sits
+        # inside this group, just above the button it affects.
+        group = QGroupBox(tr("自动识别"))
+        auto_layout = QVBoxLayout(group)
+        auto_layout.setContentsMargins(0, 4, 0, 0)
+        auto_layout.setSpacing(8)
         self.mask_section_toggle, self.mask_section_block, mask_box = self.ui_collapsible(tr("排除干扰区域（可选）"))
-        layout.addWidget(self.mask_section_toggle)
-        layout.addWidget(self.mask_section_block)
+        auto_layout.addWidget(self.mask_section_toggle)
+        auto_layout.addWidget(self.mask_section_block)
         self.mask_enabled = QCheckBox(tr("启用排除区域"))
         self.mask_enabled.setChecked(True)
         self.mask_enabled.toggled.connect(self.mask_editor.set_enabled)
@@ -662,11 +683,6 @@ class WindowUiMixin:
         mask_box.addWidget(self.ui_note(tr("红色区域不参与识别和辅助找坑；原图与导出保持不变。拖动涂抹，空格加拖动平移，滚轮缩放，Esc 取消。")))
         self.mask_section_toggle.toggled.connect(lambda checked: None if checked else self.mask_editor.finish())
 
-        # -------------------------------------------------- 校准 · 自动识别
-        group = QGroupBox(tr("自动识别"))
-        auto_layout = QVBoxLayout(group)
-        auto_layout.setContentsMargins(0, 4, 0, 0)
-        auto_layout.setSpacing(8)
         self.identify_button = QPushButton(tr("自动识别并标注"))
         self.identify_button.setToolTip(tr("按上方拍摄日期识别。首次需下载星历和高程数据，之后可离线使用。"))
         self.identify_button.setProperty("primary", True)
@@ -684,7 +700,8 @@ class WindowUiMixin:
         # identification fails. The toggle below stays visible as the entry point.
         self.manual_section_toggle, self.manual_section_block, group_box = \
             self.ui_collapsible(tr("辅助找坑与参考点"))
-        layout.addWidget(self.manual_section_toggle)
+        self.manual_section_toggle.setToolTip(tr("自动识别失败或结果不准时，用候选坑、手动补点和参考点完成校准。"))
+        layout.addWidget(self.ui_section_header(self.manual_section_toggle))
         layout.addWidget(self.manual_section_block)
         self.registration_tabs = QTabWidget()
         self.registration_tabs.setObjectName("subTabs")
@@ -707,6 +724,7 @@ class WindowUiMixin:
         self.reference_tabs.tabBar().setDrawBase(False)
         self.reference_tabs.addTab(automatic, tr("影像匹配"))
         self.reference_tabs.addTab(terrain, tr("DEM 模拟"))
+        reference_layout.addWidget(self.ui_note(tr("校准页的自动识别不理想时，可在此用参考影像自动配准，或生成 DEM 模拟图核对地形。")))
         reference_layout.addWidget(self.reference_tabs, 1)
         reference_layout.addStretch()
         group_box.addWidget(self.registration_tabs)
@@ -820,8 +838,11 @@ class WindowUiMixin:
         self.build_crater_controls(craters)
         crater_box = craters.layout()
         crater_box.takeAt(crater_box.count()-1)  # Replace the trailing stretch.
-        for widget in (self.ui_reference_toggle, self.ui_reference_block,
-                       self.ui_manual_pick_toggle, self.ui_manual_pick_block):
+        crater_box.insertWidget(0, self.ui_subheading(tr("辅助找坑")))
+        # Point sources first (detected craters, manual picks), then the
+        # reference list that solves the calibration from them.
+        for widget in (self.ui_manual_pick_toggle, self.ui_manual_pick_block,
+                       self.ui_reference_toggle, self.ui_reference_block):
             crater_box.addWidget(widget)
         crater_box.addStretch()
         for toggle in (self.ui_reference_toggle, self.ui_manual_pick_toggle):
@@ -906,47 +927,49 @@ class WindowUiMixin:
         self.follow_feature_paths.setChecked(self.project.follow_feature_paths)
         self.follow_feature_paths.setToolTip(tr("月溪、山脉等沿地形走向排字，普通与艺术样式共用。路径过短、弯折过急或资料不足时保留普通标注；字号最多缩小 35%。修改后点击重新生成标注。"))
         self.follow_feature_paths.toggled.connect(self.style_changed)
-        annotation_actions.addWidget(self.follow_feature_paths)
         # Keep one application action for both annotations and optional maps.
         self.apply_map_styles_button = self.generate_labels_button
         self.settings_status = QLabel("")
         self.settings_status.setWordWrap(True)
         self.settings_status.setObjectName("statusLabel")
+        self.settings_status.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.settings_status.hide()
-        annotation_actions.addWidget(self.settings_status)
-        self.overview_group = QGroupBox(tr("辅助图示"))
-        overview_form = self.ui_form(self.overview_group)
+        pinned_row = QHBoxLayout()
+        pinned_row.setContentsMargins(0, 0, 0, 0)
+        pinned_row.addWidget(self.follow_feature_paths)
+        pinned_row.addWidget(self.settings_status, 1)
+        annotation_actions.addLayout(pinned_row)
+        # Everyday choices stay above the optional folds. Folds start closed;
+        # font metrics and window height determine when the page needs scrolling.
+        common_group = QWidget()
+        self.overview_group = common_group
+        common_form = self.ui_form(common_group)
+        common_form.setContentsMargins(0, 4, 0, 4)
+        labels_layout.addWidget(common_group)
+
+        def fold(title):
+            toggle, block, box = self.ui_collapsible(title)
+            labels_layout.addWidget(self.ui_section_header(toggle))
+            labels_layout.addWidget(block)
+            return toggle, block, box
+
+        self.ui_filter_toggle, self.ui_filter_block, filter_box = fold(tr("筛选 · 类别、直径、着陆点"))
+        self.ui_text_style_toggle, self.ui_text_style_block, text_box = fold(tr("文字样式 · 字重、颜色、透明度"))
+        self.ui_layout_toggle, self.ui_layout_block, option_box = fold(tr("排版 · 避让、坑缘圈"))
+        self.map_styles_toggle, self.map_styles_block, map_styles_box = fold(tr("地图图层 · 高程、等高线、经纬网"))
+        self.ui_label_list_toggle, self.ui_label_list_block, apply_box = fold(tr("标签列表 · 隐藏、改名、重排"))
+
         self.overview_toggle = QCheckBox(tr("照片区域示意图"))
         self.overview_toggle.setToolTip(tr("勾选立即显示；按住 Cmd / Ctrl 拖动图示，位置随工程保存。"))
-        overview_form.addRow(self.overview_toggle)
-        labels_layout.addWidget(self.overview_group)
-
-        self.map_styles_toggle, self.map_styles_block, map_styles_box = self.ui_collapsible(tr("艺术与地图图层（可选）"))
-        form = self.ui_form()
-        map_styles_box.addLayout(form)
         self.art_style = self.ui_combo()
         self.art_style.addItem(tr("原始标注"), "standard")
         for key, preset in ART_PRESETS.items():
             self.art_style.addItem(tr(preset.title), key)
-        form.addRow(tr("艺术样式"), self.art_style)
-        self.grid_spacing = self.ui_combo()
-        self.grid_spacing.addItem(tr("关闭"), 0)
-        for degrees in (10, 15, 30):
-            self.grid_spacing.addItem(f"{degrees}°", degrees)
-        form.addRow(tr("月面经纬网"), self.grid_spacing)
-        self.grid_opacity, self.grid_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.grid_opacity*100), tr("网格不透明度"))
-        form.addRow(tr("网格不透明度"), opacity_row)
-        self.terminator_toggle = QCheckBox(tr("叠加晨昏线"))
-        form.addRow(self.terminator_toggle)
-        self.terminator_source = self.ui_combo()
-        self.terminator_source.addItem(tr("照片估计"), "photo")
-        self.terminator_source.addItem(tr("工程时间（理论）"), "ephemeris")
-        form.addRow(tr("晨昏线依据"), self.terminator_source)
-        self.terminator_opacity, self.terminator_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.terminator_opacity*100), tr("晨昏线不透明度"))
-        form.addRow(tr("晨昏线不透明度"), opacity_row)
-        self.terminator_status = self.ui_note("")
-        self.terminator_status.hide()
-        form.addRow(self.terminator_status)
+        self.art_style.setToolTip(tr("艺术样式会同时打开高程着色和等高线，细节在“地图图层”中调整。"))
+
+        # ---- 地图图层
+        form = self.ui_form()
+        map_styles_box.addLayout(form)
         self.elevation_toggle = QCheckBox(tr("叠加高程着色"))
         form.addRow(self.elevation_toggle)
         self.elevation_palette = self.ui_combo()
@@ -983,8 +1006,28 @@ class WindowUiMixin:
         self.map_layer_status = self.ui_note("")
         self.map_layer_status.hide()
         form.addRow(self.map_layer_status)
-        group = QGroupBox(tr("标注内容"))
-        form = self.ui_form(group)
+        self.grid_spacing = self.ui_combo()
+        self.grid_spacing.addItem(tr("关闭"), 0)
+        for degrees in (10, 15, 30):
+            self.grid_spacing.addItem(f"{degrees}°", degrees)
+        form.addRow(tr("月面经纬网"), self.grid_spacing)
+        self.grid_opacity, self.grid_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.grid_opacity*100), tr("网格不透明度"))
+        form.addRow(tr("网格不透明度"), opacity_row)
+        self.terminator_toggle = QCheckBox(tr("叠加晨昏线"))
+        form.addRow(self.terminator_toggle)
+        self.terminator_source = self.ui_combo()
+        self.terminator_source.addItem(tr("照片估计"), "photo")
+        self.terminator_source.addItem(tr("工程时间（理论）"), "ephemeris")
+        form.addRow(tr("晨昏线依据"), self.terminator_source)
+        self.terminator_opacity, self.terminator_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.terminator_opacity*100), tr("晨昏线不透明度"))
+        form.addRow(tr("晨昏线不透明度"), opacity_row)
+        self.terminator_status = self.ui_note("")
+        self.terminator_status.hide()
+        form.addRow(self.terminator_status)
+
+        # ---- 筛选
+        form = self.ui_form()
+        filter_box.addLayout(form)
         kind_labels = {
             "Albedo Feature": tr("反照率特征"),
             "Astronaut-named features": tr("宇航员命名地形"),
@@ -1015,31 +1058,6 @@ class WindowUiMixin:
         self.diameter.setValue(40)
         self.diameter.valueChanged.connect(self.style_changed)
         form.addRow(tr("最小直径"), self.diameter)
-        self.maximum = QSpinBox()
-        self.maximum.setRange(1, 1000)
-        self.maximum.setValue(self.project.max_labels)
-        self.maximum.valueChanged.connect(self.style_changed)
-        form.addRow(tr("最多显示"), self.maximum)
-        self.lit = QCheckBox(tr("仅标注受光地形"))
-        self.lit.setToolTip(tr("检查照片上的坑体与坑缘明暗，保留亮坑缘、暗坑底；避免日期计算误删可见地形。"))
-        self.lit.setChecked(True)
-        self.lit.toggled.connect(self.apply_label_light_controls)
-        form.addRow(self.lit)
-        self.map_light_toggle = QCheckBox(tr("地图仅覆盖受光区域"))
-        self.map_light_toggle.setChecked(self.project.map_light_mask)
-        form.addRow(self.map_light_toggle)
-        self.pending_map_light_threshold = self.project.map_light_threshold
-        value = 1 if self.pending_map_light_threshold == "auto" else self.pending_map_light_threshold
-        self.map_light_threshold, self.map_light_readout, threshold_row = self.ui_numeric_slider(value, tr("受光阈值"), 255)
-        for control in (self.map_light_threshold, self.map_light_readout):
-            control.setToolTip(tr("地名与地图共用照片亮度阈值；调高减少受光范围，调低扩大。拖动只切换显隐，保留标签位置。"))
-        self.map_light_auto = QPushButton(tr("自动"))
-        self.map_light_auto.setCheckable(True)
-        self.map_light_auto.setChecked(self.project.map_light_threshold == "auto")
-        self.map_light_auto.setFixedWidth(52)
-        self.map_light_auto.setToolTip(tr("重新使用照片自动估计的受光阈值。"))
-        threshold_row.addWidget(self.map_light_auto)
-        form.addRow(tr("受光阈值"), threshold_row)
         landing_row = QHBoxLayout()
         self.landing_sites_toggle = QCheckBox(tr("着陆点（阿波罗 / 嫦娥）"))
         self.landing_sites_toggle.setToolTip(tr("按公开坐标标注，使用小档字号。勾选后点击重新生成标注。"))
@@ -1052,12 +1070,31 @@ class WindowUiMixin:
         landing_row.addStretch()
         landing_row.addWidget(self.landing_color_button)
         form.addRow(landing_row)
-        labels_layout.addWidget(group)
-        labels_layout.addWidget(self.map_styles_toggle)
-        labels_layout.addWidget(self.map_styles_block)
 
-        group = QGroupBox(tr("名称与文字"))
-        form = self.ui_form(group)
+        # ---- 常用：最多显示与共用受光阈值（地名筛选和地图覆盖共用，不放进地图图层）
+        self.maximum = QSpinBox()
+        self.maximum.setRange(1, 1000)
+        self.maximum.setValue(self.project.max_labels)
+        self.maximum.valueChanged.connect(self.style_changed)
+        self.lit = QCheckBox(tr("仅标注受光地形"))
+        self.lit.setToolTip(tr("检查照片上的坑体与坑缘明暗，保留亮坑缘、暗坑底；避免日期计算误删可见地形。"))
+        self.lit.setChecked(True)
+        self.lit.toggled.connect(self.apply_label_light_controls)
+        self.map_light_toggle = QCheckBox(tr("地图仅覆盖受光区域"))
+        self.map_light_toggle.setChecked(self.project.map_light_mask)
+        self.pending_map_light_threshold = self.project.map_light_threshold
+        value = 1 if self.pending_map_light_threshold == "auto" else self.pending_map_light_threshold
+        self.map_light_threshold, self.map_light_readout, threshold_row = self.ui_numeric_slider(value, tr("受光阈值"), 255)
+        for control in (self.map_light_threshold, self.map_light_readout):
+            control.setToolTip(tr("地名与地图共用照片亮度阈值；调高减少受光范围，调低扩大。拖动只切换显隐，保留标签位置。"))
+        self.map_light_auto = QPushButton(tr("自动"))
+        self.map_light_auto.setCheckable(True)
+        self.map_light_auto.setChecked(self.project.map_light_threshold == "auto")
+        self.map_light_auto.setFixedWidth(52)
+        self.map_light_auto.setToolTip(tr("重新使用照片自动估计的受光阈值。"))
+        threshold_row.addWidget(self.map_light_auto)
+
+        # ---- 常用：名称语言与字号；文字样式
         self.language = self.ui_combo()
         language_labels = {
             "双语": tr("双语（简体）"),
@@ -1070,7 +1107,6 @@ class WindowUiMixin:
             self.language.addItem(language_labels[choice], choice)
         self.language.setCurrentIndex(max(0, self.language.findData(self.project.language)))
         self.language.currentTextChanged.connect(self.style_changed)
-        form.addRow(tr("名称语言"), self.language)
         self.font_size = QDoubleSpinBox()
         self.font_size.setRange(.05, 8.)
         self.font_size.setDecimals(2)
@@ -1079,7 +1115,8 @@ class WindowUiMixin:
         self.font_size.setValue(self.project.font_percent)
         self.font_size.setToolTip(tr("最大字号按照片短边计算；递减为 0 时所有目标使用此字号。调整后点击重新生成标注。"))
         self.font_size.valueChanged.connect(self.style_changed)
-        form.addRow(tr("字号（短边比例）"), self.font_size)
+        form = self.ui_form()
+        text_box.addLayout(form)
         self.ui_font_step = QDoubleSpinBox()
         self.ui_font_step.setRange(0., 8.)
         self.ui_font_step.setDecimals(2)
@@ -1091,16 +1128,16 @@ class WindowUiMixin:
                                     "设为 0 则统一字号；最低 6 原图像素。调整后点击重新生成标注。"))
         self.ui_font_step.valueChanged.connect(self.style_changed)
         form.addRow(tr("字号递减"), self.ui_font_step)
+        self.font_pixels_hint = QLabel("")
+        self.font_pixels_hint.setObjectName("statusLabel")
+        self.font_pixels_hint.setWordWrap(True)
+        form.addRow(self.font_pixels_hint)
         self.font_weight = self.ui_combo()
         self.font_weight.addItem(tr("粗体"), "bold")
         self.font_weight.addItem(tr("常规"), "normal")
         self.font_weight.setToolTip(tr("标注文字的粗细。粗体在手机屏幕和深色描边下更清晰；调整后点击重新生成标注。"))
         self.font_weight.currentIndexChanged.connect(self.style_changed)
         form.addRow(tr("字重"), self.font_weight)
-        self.font_pixels_hint = QLabel("")
-        self.font_pixels_hint.setObjectName("statusLabel")
-        self.font_pixels_hint.setWordWrap(True)
-        form.addRow(self.font_pixels_hint)
         self.color_button = QPushButton(tr("选择文字与引线颜色"))
         self.color_button.clicked.connect(self.choose_color)
         form.addRow(self.color_button)
@@ -1110,7 +1147,16 @@ class WindowUiMixin:
             control.setToolTip(tr('普通与艺术标注共用；文字和描边实时调整，引线、坑缘和地图保持不变。'))
         self.label_opacity.valueChanged.connect(self.label_opacity_changed)
         form.addRow(tr('文字不透明度'), opacity_row)
-        labels_layout.addWidget(group)
+
+        common_form.addRow(tr("艺术样式"), self.art_style)
+        common_form.addRow(tr("名称语言"), self.language)
+        common_form.addRow(tr("字号（短边比例）"), self.font_size)
+        common_form.addRow(tr("最多显示"), self.maximum)
+        common_form.addRow(tr("受光阈值"), threshold_row)
+        common_form.addRow(self.lit)
+        common_form.addRow(self.map_light_toggle)
+        common_form.addRow(self.overview_toggle)
+
         self.art_style.currentIndexChanged.connect(self.select_art_style)
         self.overview_toggle.toggled.connect(self.toggle_photo_overview)
         for control in (self.grid_spacing, self.elevation_palette, self.contour_interval, self.terminator_source):
@@ -1128,10 +1174,8 @@ class WindowUiMixin:
         for control in (self.elevation_toggle, self.contour_toggle, self.terminator_toggle):
             control.toggled.connect(self.update_map_controls)
             control.toggled.connect(self.style_changed)
-        group = QGroupBox(tr("排版选项"))
-        option_box = QVBoxLayout(group)
-        option_box.setContentsMargins(0, 4, 0, 0)
-        option_box.setSpacing(8)
+
+        # ---- 排版
         self.optimize_layout = QCheckBox(tr("自动避让"))
         self.optimize_layout.setToolTip(tr("重要地形先排，普通标注让位；避让标签、中心和引线。保留手动拖动的位置。"))
         self.optimize_layout.setChecked(True)
@@ -1154,12 +1198,8 @@ class WindowUiMixin:
         self.outline_status.hide()
         outline_form.addRow(self.outline_status)
         option_box.addLayout(outline_form)
-        labels_layout.addWidget(group)
 
-        group = QGroupBox(tr("标签管理"))
-        apply_box = QVBoxLayout(group)
-        apply_box.setContentsMargins(0, 4, 0, 0)
-        apply_box.setSpacing(8)
+        # ---- 标签列表
         self.layout_status = QLabel("")
         self.layout_status.setWordWrap(True)
         self.layout_status.setObjectName("statusLabel")
@@ -1167,7 +1207,6 @@ class WindowUiMixin:
         reflow = QPushButton(tr("重新自动排布标签"))
         reflow.setToolTip(tr("重排当前标注的位置，保留改名和隐藏状态；其他待修改设置不生效。"))
         reflow.clicked.connect(self.reflow_labels)
-        apply_box.addWidget(reflow)
         self.names = QListWidget()
         self.names.itemChanged.connect(self.label_visibility_changed)
         self.names.itemDoubleClicked.connect(lambda item: self.edit_label(self.catalog_by_id[item.data(Qt.ItemDataRole.UserRole)]))
@@ -1176,13 +1215,12 @@ class WindowUiMixin:
         restore = QPushButton(tr("重置手工编辑"))
         restore.setToolTip(tr("恢复地名、默认位置和可见性，清除手工编辑。"))
         restore.clicked.connect(self.reset_labels)
+        apply_box.addWidget(reflow)
         apply_box.addWidget(restore)
-        self.language.setToolTip(tr("中文译名未收录时显示官方原名。繁体选项由简体译名经 OpenCC 转换。"))
-        # The label list absorbs any surplus page height on tall windows.
-        labels_layout.addWidget(group, 1)
         self.catalog_button = QPushButton(trf("更新 USGS 地名（现有 {count:,} 项）", count=len(self.catalog)))
         self.catalog_button.clicked.connect(self.update_catalog)
-        labels_layout.addWidget(self.catalog_button)
+        apply_box.addWidget(self.catalog_button)
+        self.language.setToolTip(tr("中文译名未收录时显示官方原名。繁体选项由简体译名经 OpenCC 转换。"))
         labels_layout.addStretch()
         self._annotation_ui_ready = True
         self.update_map_controls()
@@ -1295,6 +1333,13 @@ class WindowUiMixin:
         self.crater_status.setWordWrap(True)
         self.crater_status.setObjectName("statusLabel")
         box.addWidget(self.crater_status)
+        # Candidate and name steps only appear once detection has results.
+        self.ui_crater_review_block = QWidget()
+        review_box = QVBoxLayout(self.ui_crater_review_block)
+        review_box.setContentsMargins(0, 0, 0, 0)
+        review_box.setSpacing(8)
+        box.addWidget(self.ui_crater_review_block)
+        outer_box, box = box, review_box
         candidate_heading = QHBoxLayout()
         candidate_heading.addWidget(QLabel(tr("1  选择候选坑")))
         candidate_heading.addStretch()
@@ -1336,6 +1381,7 @@ class WindowUiMixin:
         self.crater_feature.currentItemChanged.connect(self.update_crater_buttons)
         self.crater_feature.hide()
         box.addWidget(self.crater_feature)
+        box = outer_box
         self.crater_anchor_button = QPushButton(tr("确认地名，加入参考点"))
         self.crater_anchor_button.clicked.connect(self.use_crater_candidate)
         box.addWidget(self.crater_anchor_button)

@@ -2,6 +2,17 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.12.1
+
+2026-11-03
+
+- 整理侧栏层级：常用的艺术样式、名称语言、字号、数量、受光阈值和示意图集中在顶部；筛选、文字样式、排版、地图图层和标签列表默认折叠。重新生成、沿地形开关和待应用提示固定在滚动区上方，分组统一使用标题与分隔线。 / Reorganized the sidebar with common settings at the top and collapsible filters, text, layout, maps and label lists. Regeneration, landform placement and pending-setting feedback stay above the scroll area, with consistent section headings and dividers.
+- 识别蒙版放入自动识别分组，辅助找坑的候选与地名步骤按检测结果显隐，手动补点和参考点入口保留；补充参考页的用途提示。 / Grouped recognition masks with automatic recognition and show crater candidate/name steps when results exist, retaining manual points and references. Added guidance on the reference page.
+- 修正英文侧栏中输入框、下拉箭头和受光阈值 Auto 按钮被裁切的问题，收紧三处英文文案；回归按实际控件边界验证简中、繁中和英文的待应用、折叠及展开状态，避免依赖字体的零滚动像素断言。 / Fixed clipped English inputs, arrows and the light-threshold Auto button with concise captions. Regression checks validate actual control bounds across three languages, pending settings and collapsed/expanded sections, replacing the font-dependent zero-scroll assertion.
+- 完善跨平台测试：文字分簇允许平台字体差异，同时校验原文、字符边界与字距；响应测试保留 60 ms 标准和主线程阻塞反例，以三次独立峰值的中位数降低单次调度暂停造成的误判。 / Hardened cross-platform tests: shaping checks allow font-backend cluster differences while retaining text, boundary and advance validation. Responsiveness keeps the 60 ms limit and blocking control, using the median of three independent peak gaps to tolerate one scheduling pause.
+
+本次更新源码，安装包仍为 0.11.0。 / Source update; downloadable apps remain at 0.11.0.
+
 ## 0.12.0
 
 2026-11-03

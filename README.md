@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**源码 / Source 0.12.0** · Fluorine Zhu · GPL-3.0-or-later
+**源码 / Source 0.12.1** · Fluorine Zhu · GPL-3.0-or-later
 
 为月面照片配准、编辑地名，并导出 PNG / SVG。
 
@@ -12,12 +12,13 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## 中文
 
-### 0.12.0 更新
+### 0.12.1 更新
 
-- **沿地形排列名称**：月溪、山脉等名称沿地形走向排列，双语名称分为中文主行和较小的英文副行。开关固定在标注页顶部、“重新生成标注”下方。
-- 随仓库提供 **206 处地形的离线标注路径**，约 0.17 MB。保留整行字距、连字和组合音标；路径不适合排字时使用普通标注。新工程默认启用，旧工程保持原布局。
+- **重新整理侧栏**：艺术样式、名称语言、字号、数量、受光阈值和示意图放在顶部；筛选、文字、排版、地图和标签列表按需展开。“重新生成标注”和“沿地形排列名称”固定在滚动区上方。
+- 统一分组标题与分隔线，识别蒙版归入自动识别，检测到候选后再显示候选确认步骤；修正英文侧栏的按钮和输入框裁切。
+- 保留 **沿地形排列名称**：206 处离线地形路径约 0.17 MB，支持中文主行与较小的英文副行；新工程默认启用，旧工程保持原布局。
 
-完整变化见[更新记录](UPDATE_HISTORY.md#0120)，设置方法见[沿地形排列名称](README.zh-CN.md#沿地形排列名称)。当前功能使用 0.12.0 源码；已发布应用的下载入口在[下方](#下载应用--app-downloads)。
+完整变化见[更新记录](UPDATE_HISTORY.md#0121)，沿地形标注设置见[使用说明](README.zh-CN.md#沿地形排列名称)。当前源码版本为 0.12.1；已发布应用的下载入口在[下方](#下载应用--app-downloads)。
 
 ### 快速开始
 
@@ -66,12 +67,13 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## English
 
-### New in 0.12.0
+### New in 0.12.1
 
-- **Follow landform shapes** places rille and mountain-range names along their terrain. Bilingual labels use a Chinese primary row and a smaller English row. The switch stays below **Regenerate annotations** at the top of the annotation tab.
-- **206 offline landform paths**, about 0.17 MB, are included in the repository. Full-line shaping preserves kerning, ligatures and combining marks; unsuitable paths use ordinary labels. New projects enable the option, while older projects retain their layout.
+- **Reorganized sidebar**: art style, name language, font size, count, light threshold and locator stay at the top. Filters, text, layout, maps and the label list expand on demand. Regenerate annotations and Follow landform shapes remain above the scroll area.
+- Consistent section headings and dividers, recognition masks grouped with automatic recognition, and candidate confirmation steps shown after detection. English sidebar buttons and inputs now fit without clipping.
+- **Follow landform shapes** retains 206 offline paths, about 0.17 MB, with a Chinese primary row and a smaller English row. New projects enable it, while older projects retain their layout.
 
-See the [release notes](UPDATE_HISTORY.md#0120) and [cartographic design notes](docs/cartographic-labeling.md). These features use the 0.12.0 source; published app downloads are listed [below](#下载应用--app-downloads).
+See the [release notes](UPDATE_HISTORY.md#0121) and [cartographic design notes](docs/cartographic-labeling.md). The source version is 0.12.1; published app downloads are listed [below](#下载应用--app-downloads).
 
 ### Quick start
 
@@ -136,9 +138,9 @@ Recognition can fail with inaccurate times, shadows, blur or distortion. Basic L
 
 ## 下载应用 / App downloads
 
-以下为已发布的 **0.11.0** 应用包；体验 0.12.0 的沿地形标注请使用上方源码。
+以下为已发布的 **0.11.0** 应用包；体验 0.12.1 的新界面与沿地形标注请使用上方源码。
 
-These published apps are **0.11.0**; use the source above for the 0.12.0 landform labels.
+These published apps are **0.11.0**; use the source above for the 0.12.1 interface and landform labels.
 
 | 系统 / Platform | 下载 / Download | 打开方式 / Start |
 | --- | --- | --- |
