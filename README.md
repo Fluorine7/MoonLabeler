@@ -61,7 +61,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### 从源码运行
 
-需要 **Python 3.12+** 和 C++ 编译器。macOS 安装 Xcode Command Line Tools 后可运行 `./start-mac.command`；Windows / Linux 的安装命令、可选组件及更新方法见下方[源码安装](#source-installation)。
+目前维护 **macOS 和 Windows**，GitHub 测试矩阵覆盖这两个平台。需要 **Python 3.12+** 和 C++ 编译器。macOS 安装 Xcode Command Line Tools 后可运行 `./start-mac.command`；Windows 安装命令、可选组件及更新方法见下方[源码安装](#source-installation)。
 
 识别可能受时间、阴影、模糊和畸变影响。基础高程采样约 1.9 km，坑缘圈和晨昏线仅供参考；拟合残差不等于绝对定位精度，着陆点不是航天器检测结果。照片在本机处理，主页示例为合成图。
 
@@ -79,7 +79,7 @@ See the [release notes](UPDATE_HISTORY.md#0121) and [cartographic design notes](
 
 1. Open a photo and check its capture date and **UTC time**. The initial default is 15:00 UTC; observing location is optional.
 2. Click **Identify and annotate**. If recognition fails, confirm one or two known features for assisted registration, or use at least three distributed points for manual calibration.
-3. Adjust content and appearance, then click **Regenerate annotations**. Hold **Cmd** on macOS or **Ctrl** on Windows/Linux while dragging labels; double-click to rename them.
+3. Adjust content and appearance, then click **Regenerate annotations**. Hold **Cmd** on macOS or **Ctrl** on Windows while dragging labels; double-click to rename them.
 4. Save a `.moonlabel` project or export PNG/editable SVG at the original dimensions. Share the original photo with the project.
 
 The wheel zooms the canvas or scrolls settings without changing parameter values. Use **Language / 中文** on the right or **Cmd / Ctrl + Shift + L** to switch between English, Simplified Chinese and Traditional Chinese. **Cancel task** in the status bar stops background work.
@@ -116,7 +116,7 @@ Ephemerides and LOLA elevation are separate: source installs download about 20 M
 
 ### Source installation
 
-Requires **Python 3.12+** and a C++ compiler: Xcode Command Line Tools on macOS, Visual Studio Build Tools with **Desktop development with C++** on Windows, or `build-essential` on Linux. CMake and Ninja are installed by the build environment.
+Maintained platforms are **macOS and Windows**, both covered by the GitHub test matrix. Requires **Python 3.12+** and a C++ compiler: Xcode Command Line Tools on macOS or Visual Studio Build Tools with **Desktop development with C++** on Windows. CMake and Ninja are installed by the build environment.
 
 ```bash
 git clone https://github.com/Fluorine7/MoonLabeler.git
@@ -130,7 +130,7 @@ python -m pip install .
 python -m moonlabeler
 ```
 
-On macOS, `./start-mac.command` handles environment setup and launch. Linux also needs Qt runtime libraries and CJK fonts, for example `libegl1 libopengl0 libgl1 fonts-noto-cjk` on Ubuntu/Debian. To update an existing checkout, activate its environment, run `git pull --ff-only`, then `python -m pip install .` and restart the app.
+On macOS, `./start-mac.command` handles environment setup and launch. To update an existing checkout, activate its environment, run `git pull --ff-only`, then `python -m pip install .` and restart the app.
 
 Optional extras: `python -m pip install ".[fits]"` for FITS or `".[gpu]"` for GPU terrain shading (`".[apple-gpu]"` for Apple MLX). **Compute settings** selects Auto or CPU-only; unavailable GPUs fall back to CPU. For migration from upstream OpenCV wheels, see the [0.8.0 notes](UPDATE_HISTORY.md#080).
 
