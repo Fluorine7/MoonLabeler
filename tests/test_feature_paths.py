@@ -90,7 +90,13 @@ def test_path_clusters_and_advances_match_complete_qt_shaping_with_kerning_and_c
     for run in layout.glyphRuns(0, -1, QTextLayout.GlyphRunRetrievalFlag.RetrieveAll):
         for index, point in zip(run.stringIndexes(), run.positions()):
             positions[index] = min(positions.get(index, point.x()), point.x())
-    assert ''.join(units) == text and 'A\u0308' in units
+    assert ''.join(units) == text
+    # Qt's font backends may keep A + diaeresis and following letters in one
+    # cluster (Windows). Require intact graphemes, not identical segmentation.
+    boundary = 0
+    for unit in units:
+        boundary += len(unit.encode('utf-16-le'))//2
+        assert layout.isValidCursorPosition(boundary)
     assert len(units) == len(positions)
     assert np.cumsum([0., *widths[:-1]]) == pytest.approx([positions[i] for i in sorted(positions)], abs=.001)
     assert sum(widths) == pytest.approx(line.horizontalAdvance(), abs=.001)
