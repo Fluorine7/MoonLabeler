@@ -52,10 +52,15 @@ def test_regenerate_stays_above_the_scroll_area_and_applies_from_the_bottom(wind
     assert win.style_pending
     application.processEvents()
     top = button.mapToGlobal(QPoint())
+    toggle = win.follow_feature_paths
+    toggle_top = toggle.mapToGlobal(QPoint())
+    assert not scroll.widget().isAncestorOf(toggle)
+    assert top.y()+button.height() <= toggle_top.y()
     scroll.verticalScrollBar().setValue(scroll.verticalScrollBar().maximum())
     application.processEvents()
     assert scroll.verticalScrollBar().value() > 0
     assert button.isVisible() and button.mapToGlobal(QPoint()) == top
+    assert toggle.isVisible() and toggle.mapToGlobal(QPoint()) == toggle_top
     button.click()
     assert win.project.max_labels == 180 and not win.style_pending
     assert win.project.labels == edits

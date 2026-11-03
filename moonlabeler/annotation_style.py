@@ -2,6 +2,7 @@
 # Copyright (c) 2026 Fluorine Zhu
 """Optional presentation presets; never overwrite the underlying label settings."""
 from dataclasses import dataclass, replace
+from functools import lru_cache
 import math
 import unicodedata
 from xml.sax.saxutils import escape
@@ -113,6 +114,11 @@ class CaptionTypography:
     region: bool = False
     scale: float = 1.
     positioned: bool = False  # Explicit baselines for an arc flattened outside the disk.
+    glyphs: tuple = ()  # Shared native/SVG baselines for a real landform path.
+    origin: tuple | None = None  # Preferred caption position in photograph pixels.
+    glyph_scales: tuple = ()  # Secondary-language text is smaller.
+    glyph_advances: tuple = ()  # Actual shaped-cluster advances, in pixels.
+    glyph_families: tuple = ()  # Resolved fallback faces, shared with SVG.
 
 
 def caption_typography(project, feature):
@@ -185,8 +191,100 @@ def caption_span(text, typography):
     return sum(glyph_advance(character) for character in text)+typography.tracking*max(0, len(text)-1)
 
 
+def caption_font(pixel_size, project=None, feature=None):
+    """One font definition for native painting, path measurement and export."""
+    from PySide6.QtGui import QFont
+    from .project import label_font_families
+    font = QFont()
+    font.setFamilies(label_font_families(project.language if project else "双语",
+                                       art_style=project.art_style if project else "standard"))
+    font.setPixelSize(pixel_size)
+    font.setWeight(QFont.Weight.Normal if project is not None and appearance(project).weight == "normal" else QFont.Weight.Bold)
+    if project is not None and feature is not None:
+        typography = caption_typography(project, feature)
+        font.setItalic(typography.italic)
+        font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, typography.tracking*pixel_size)
+    return font
+
+
+def _path_units(text):
+    """Fallback units for geometry-only consumers without an active Qt GUI."""
+    result, word = [], ""
+    for character in text:
+        if character.isspace() or unicodedata.east_asian_width(character) in ("W", "F"):
+            if word:
+                result.append(word)
+                word = ""
+            result.append(character)
+        else:
+            word += character
+    if word:
+        result.append(word)
+    return tuple(result)
+
+
+@lru_cache(maxsize=1024)
+def _shape_row(text, size, families, weight, italic, tracking):
+    from PySide6.QtGui import QFont, QFontInfo, QFontMetricsF, QTextLayout
+    font = QFont()
+    font.setFamilies(list(families))
+    font.setPixelSize(size)
+    font.setWeight(QFont.Weight.Normal if weight == "normal" else QFont.Weight.Bold)
+    font.setItalic(italic)
+    font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, tracking*size)
+    layout = QTextLayout(text, font)
+    layout.beginLayout()
+    line = layout.createLine()
+    line.setLineWidth(1e6)
+    layout.endLayout()
+    clusters = {}
+    for run in layout.glyphRuns(0, -1, QTextLayout.GlyphRunRetrievalFlag.RetrieveAll):
+        for index, position in zip(run.stringIndexes(), run.positions()):
+            previous = clusters.get(index)
+            if previous is None or position.x() < previous[0]:
+                clusters[index] = (position.x(), run.rawFont().familyName())
+    starts = sorted(clusters)
+    positions = [clusters[index][0] for index in starts]
+    if (not starts or any(b < a for a, b in zip(positions, positions[1:]))
+            or any(unicodedata.bidirectional(c) in ('R', 'AL') for c in text)):
+        # Context-dependent right-to-left scripts retain their complete run.
+        return (text,), (QFontMetricsF(font).horizontalAdvance(text),), (QFontInfo(font).family(),)
+    utf16 = text.encode('utf-16-le')
+    ends = starts[1:]+[len(utf16)//2]
+    units = tuple(utf16[start*2:end*2].decode('utf-16-le') for start, end in zip(starts, ends))
+    widths = tuple(b-a for a, b in zip(positions, positions[1:]+[line.horizontalAdvance()]))
+    return units, widths, tuple(clusters[index][1] for index in starts)
+
+
+def path_caption_rows(project, feature, text, size):
+    from PySide6.QtGui import QGuiApplication
+    from .project import label_font_families
+    typography = caption_typography(project, feature)
+    bilingual = (project.language in ("双语", "双语（繁体）") and feature.get("name_zh")
+                 and "text" not in project.labels.get(feature['id'], {}) and " · " in text)
+    parts = text.split(" · ", 1) if bilingual else [text]
+    rows = []
+    families = tuple(label_font_families(project.language, art_style=project.art_style))
+    for index, part in enumerate(parts):
+        row_size = max(6, round(size*.82)) if index else size
+        if QGuiApplication.instance() is not None:
+            units, widths, resolved = _shape_row(part, row_size, families, appearance(project).weight,
+                                                typography.italic, typography.tracking)
+        else:
+            # Geometry-only consumers need no GUI. Actual GUI/Qt SVG exports
+            # measure the selected system font and share those measurements.
+            units = _path_units(part)
+            widths = tuple((sum(glyph_advance(c) for c in unit)+typography.tracking*len(unit))*row_size for unit in units)
+            resolved = (families[0],)*len(units)
+        offset = (-.22*size if index == 0 else .98*size) if bilingual else .15*size
+        rows.append((units, row_size, widths, offset, resolved))
+    return tuple(rows)
+
+
 def caption_glyphs(text, size, typography):
     """Explicit baselines for curved captions and their straight counterparts."""
+    if typography.glyphs:
+        return typography.glyphs
     if not (typography.arc or typography.positioned) or len(text) < 2:
         return []
     width = caption_span(text, typography)*size
@@ -203,6 +301,27 @@ def caption_glyphs(text, size, typography):
     return result
 
 
+def path_caption_typography(project, feature, text, size):
+    """Bind a caption to a projected landform without changing its text/style."""
+    typography = caption_typography(project, feature)
+    if len(text) < 2 or not project.follow_feature_paths:
+        return typography
+    from .feature_paths import caption_on_path, PATH_KINDS
+    if feature.get("kind", "").split(",")[0] not in PATH_KINDS:
+        return typography
+    rows = path_caption_rows(project, feature, text, size)
+    placed = caption_on_path(project, feature, [(widths, row_size, offset) for _, row_size, widths, offset, _ in rows])
+    if placed is None:
+        return typography
+    origin, coordinates = placed
+    units = [unit for row, _, _, _, _ in rows for unit in row]
+    return replace(typography, arc=0., positioned=True, region=True, origin=origin,
+                   glyphs=tuple((unit, *position) for unit, position in zip(units, coordinates)),
+                   glyph_scales=tuple(row_size/size for row, row_size, _, _, _ in rows for _ in row),
+                   glyph_advances=tuple(width for _, _, widths, _, _ in rows for width in widths),
+                   glyph_families=tuple(family for _, _, _, _, resolved in rows for family in resolved))
+
+
 def placed_caption_typography(project, feature, text, size, position):
     """Keep an arc only when its whole caption fits on the registered disk.
 
@@ -211,7 +330,7 @@ def placed_caption_typography(project, feature, text, size, position):
     glyphs, including labels dragged by the user. Without registration there
     is no limb to test, so retain the requested typography.
     """
-    typography = caption_typography(project, feature)
+    typography = path_caption_typography(project, feature, text, size)
     glyphs = caption_glyphs(text, size, typography)
     if not glyphs or project.geometry is None or project.matrix is None:
         return typography
@@ -222,18 +341,21 @@ def placed_caption_typography(project, feature, text, size, position):
 
     footprint = []
     padding = appearance(project).halo_width(size)/2
-    for character, x, y, angle in glyphs:
+    for index, (character, x, y, angle) in enumerate(glyphs):
         if character.isspace():
             continue
         cosine, sine = math.cos(math.radians(angle)), math.sin(math.radians(angle))
-        for dx in (-padding, glyph_advance(character)*size+padding):
-            for dy in (-size-padding, size*.25+padding):
+        scale = typography.glyph_scales[index] if typography.glyph_scales else 1.
+        advance = typography.glyph_advances[index] if typography.glyph_advances else glyph_advance(character)*size
+        for dx in (-padding, advance+padding):
+            for dy in (-size*scale-padding, size*scale*.25+padding):
                 footprint.append((position[0]+x+dx*cosine-dy*sine,
                                   position[1]+y+dx*sine+dy*cosine))
     if not footprint:
         return typography
     _, _, on_disk = project.geometry.unproject(photo_coordinates(project, np.asarray(footprint)))
-    return typography if on_disk.all() else replace(typography, arc=0., positioned=True)
+    return typography if on_disk.all() else replace(typography, arc=0., positioned=True, glyphs=(), origin=None,
+                                                    glyph_scales=(), glyph_advances=(), glyph_families=())
 
 
 def svg_segments(segments):
@@ -253,10 +375,13 @@ def svg_caption(text, x, y, size, color, halo, halo_width, element_id, *, face_w
     if glyphs:
         label = escape(text, {'"': '&quot;'})
         parts = [f'<g id="{element_id}" aria-label="{label}">']
-        flat = replace(typography, arc=0., tracking=0., positioned=False)
+        flat = replace(typography, arc=0., tracking=typography.tracking if typography.glyph_advances else 0.,
+                       positioned=False, glyphs=(), origin=None, glyph_scales=(), glyph_advances=(), glyph_families=())
         for index, (character, gx, gy, angle) in enumerate(glyphs):
-            parts.append(f'<g transform="translate({x+gx:.3f} {y-size+gy:.3f}) rotate({angle:.3f})">')
-            parts.append(svg_caption(character, 0., 0., size, color, halo, halo_width,
+            glyph_size = size*(typography.glyph_scales[index] if typography.glyph_scales else 1.)
+            family = (' font-family="'+escape(typography.glyph_families[index], {'"': '&quot;'})+'"') if typography.glyph_families else ''
+            parts.append(f'<g{family} transform="translate({x+gx:.3f} {y-size+gy:.3f}) rotate({angle:.3f})">')
+            parts.append(svg_caption(character, 0., 0., glyph_size, color, halo, halo_width,
                                      f'{element_id}-glyph-{index}', face_width=face_width, typography=flat))
             parts.append('</g>')
         parts.append('</g>')

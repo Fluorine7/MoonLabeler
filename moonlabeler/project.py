@@ -26,7 +26,7 @@ from .annotation_relief import catalogue_rim, contour_center, MIN_OUTLINE_DIAMET
 from .zh_variant import to_traditional
 from .annotation_style import (ART_STYLES, ART_PRESETS, SERIF_STYLES, HIERARCHICAL_STYLES, appearance, manuscript_fonts,
                                svg_caption, caption_typography, placed_caption_typography,
-                               caption_text, caption_span, svg_serif_family, photo_for_style)
+                               caption_text, caption_span, path_caption_typography, path_caption_rows, svg_serif_family, photo_for_style)
 from .map_layers import GRID_SPACINGS, CONTOUR_INTERVALS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg, photo_lightness
 from .photo_overview import overview_svg
 
@@ -220,7 +220,8 @@ def _validate_project_data(data):
     if 'font_step_percent' in style:
         _number(style['font_step_percent'], 'style.font_step_percent', 0, 100)
     for key in ('illuminated_only', 'optimize_layout', 'crater_outlines', 'show_landing_sites',
-                'elevation_enabled', 'contour_enabled', 'terminator_enabled', 'map_light_mask', 'overview_enabled'):
+                'elevation_enabled', 'contour_enabled', 'terminator_enabled', 'map_light_mask', 'overview_enabled',
+                'follow_feature_paths'):
         if key in style and type(style[key]) is not bool:
             _invalid_field(f'style.{key}')
     if 'kind' in style:
@@ -398,6 +399,7 @@ class Project:
     font_step_percent: float = DEFAULT_FONT_STEP_PERCENT
     font_weight: str = DEFAULT_FONT_WEIGHT
     label_opacity: float = 1.
+    follow_feature_paths: bool = True
     color: str = "#f5f5f2"
     show_landing_sites: bool = False
     landing_color: str = DEFAULT_LANDING_COLOR
@@ -458,6 +460,21 @@ class Project:
                      for percent in font_tier_percentages(self.font_percent, self.font_step_percent))
 
     def label_font_sizes(self, features, shape):
+        sizes = self._base_label_font_sizes(features, shape)
+        if self.follow_feature_paths and self.geometry is not None and self.matrix is not None:
+            from .feature_paths import fitted_path_size, PATH_KINDS
+            for feature in features:
+                if feature.get('kind', '').split(',')[0] not in PATH_KINDS:
+                    continue
+                size = sizes[feature['id']]
+                rows = path_caption_rows(self, feature, caption_text(self, feature), size)
+                span = max(sum(widths) for _, _, widths, _, _ in rows)/size
+                fitted = fitted_path_size(self, feature, size, span)
+                if fitted != size and path_caption_typography(self, feature, caption_text(self, feature), fitted).glyphs:
+                    sizes[feature['id']] = fitted
+        return sizes
+
+    def _base_label_font_sizes(self, features, shape):
         """Assign three sizes using the projected equivalent-area diameter.
 
         The local sphere-to-photo Jacobian includes limb foreshortening,
@@ -539,7 +556,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": _portable_path(self.terrain_path, base) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "label_opacity", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "label_opacity", "follow_feature_paths", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position")}}
         write_json(path, data)
 
     @classmethod
@@ -573,8 +590,9 @@ class Project:
             project.matrix = matrix
         project.font_percent = None  # Older projects only store a pixel size.
         project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
+        project.follow_feature_paths = False  # Existing projects retain their original layout.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "label_opacity", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position"):
+            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "label_opacity", "follow_feature_paths", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
@@ -879,7 +897,7 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None, disp
         else:
             marker = '' if outline else f'<circle cx="{ax:.3f}" cy="{ay:.3f}" r="{max(2.5, font_size*.06):.3f}" fill="{color}"/>'
         leader = f'<path d="M {line[0]:.3f},{line[1]:.3f} L {line[2]:.3f},{line[3]:.3f}" stroke="{line_color}" stroke-width="{max(1.2, font_size*.035):.3f}" fill="none"/>'
-        if style.map_style and not is_landing_site(feature):
+        if (style.map_style or typography.glyphs) and not is_landing_site(feature):
             marker = ''
             leader = ''
         lines.extend([

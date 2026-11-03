@@ -2,6 +2,17 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.12.0
+
+2026-11-03
+
+- 新增“沿地形排列名称”：月溪、山脉、山脊、月谷、月崖和坑链可沿地形走向排字，普通与艺术样式共用。开关固定在标注页顶部、“重新生成标注”按钮下方；新工程默认启用，旧工程保持原布局。 / Added Follow landform shapes for rilles, mountain ranges, ridges, valleys, scarps and crater chains in all styles. The switch stays below Regenerate annotations; new projects enable it, while older projects retain their layout.
+- 完成整行字体排版后按文字簇沿曲线放置，保留真实字距、连字和组合音标。双语名称采用中文主行与较小的英文副行，两行各自按偏移基线的弧长排列，减少弯曲内侧挤字。 / Text is shaped as a complete line before its clusters follow the curve, preserving kerning, ligatures and combining marks. Bilingual names use a Chinese primary row and a smaller English row, each laid out by the arc length of its own offset baseline.
+- 排字基线采用受约束的局部平滑与多段候选，保留大弯，限制相邻文字突变和倒置；资料不足、路径过短或无法合理排放时保留普通标注。手动位置、改名、不透明度和 PNG / SVG 共用同一套文字位置。 / Bounded local smoothing and candidate spans preserve broad bends while limiting abrupt turns and inverted text. Unavailable or unsuitable paths use ordinary labels. Edits, opacity, PNG and editable SVG share the same placements.
+- 随软件提供约 0.17 MB 的离线路径，来源为樊仕达（10deg）整理的 USGS / IAU 月面地貌数据；区域边界仅生成代表性排字走向，不作为精测山脊。路径按已配准视角投影，支持天平动、旋转、镜像和镜头畸变，按需缓存，不参与识别计算。 / Bundled about 0.17 MB of offline paths derived from USGS/IAU geometry supplied by 10deg. Area-derived axes are representative label routes, not surveyed crests. Projection follows the registered view, libration, rotation, reflection and lens distortion; cached paths do not enter recognition.
+
+本次更新源码，安装包仍为 0.11.0。 / Source update; downloadable apps remain at 0.11.0.
+
 ## 0.11.2
 
 2026-11-02

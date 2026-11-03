@@ -902,6 +902,11 @@ class WindowUiMixin:
         self.generate_labels_button.setToolTip(tr("应用本页的标注与地图设置，保留手工修改的名称和位置。"))
         self.generate_labels_button.clicked.connect(self.apply_label_settings)
         annotation_actions.addWidget(self.generate_labels_button)
+        self.follow_feature_paths = QCheckBox(tr("沿地形排列名称"))
+        self.follow_feature_paths.setChecked(self.project.follow_feature_paths)
+        self.follow_feature_paths.setToolTip(tr("月溪、山脉等沿地形走向排字，普通与艺术样式共用。路径过短、弯折过急或资料不足时保留普通标注；字号最多缩小 35%。修改后点击重新生成标注。"))
+        self.follow_feature_paths.toggled.connect(self.style_changed)
+        annotation_actions.addWidget(self.follow_feature_paths)
         # Keep one application action for both annotations and optional maps.
         self.apply_map_styles_button = self.generate_labels_button
         self.settings_status = QLabel("")

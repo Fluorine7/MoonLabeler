@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**0.11.2** · Fluorine Zhu · GPL-3.0-or-later
+**0.12.0** · Fluorine Zhu · GPL-3.0-or-later
 
 Register lunar photographs, edit terrain labels, and export annotated PNG or SVG images.
 为月面照片配准、标注地名并导出图片。
@@ -13,7 +13,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### 下载
 
-当前源码版本为 0.11.2，已发布安装包仍为 0.11.0。
+当前源码版本为 0.12.0，已发布安装包仍为 0.11.0。
 
 | 系统 | 安装包 | 打开方式 |
 | --- | --- | --- |
@@ -40,6 +40,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 - 自动、参考点辅助和手动配准，支持旋转、镜像及目镜后照片。
 - 用画笔排除识别干扰，滑块调整直径，支持橡皮擦、撤销及工程保存；顶部可独立显示或隐藏标注和蒙版。
 - 地形类别可多选，支持地名编辑、自动避让、分档字号，以及阿波罗 / 嫦娥着陆点。
+- 标注页顶部可启用沿月溪、山脉等地形排字，支持双语分行、真实字距和可编辑 SVG；随工程保存，路径数据离线提供。
 - 可选中世纪风、旷野地形图、蓝晒星图、铜版图录、水墨朱砂、红警地形图；支持经纬网、高程着色、等高线与晨昏线。
 - 照片区域示意图标出当前覆盖范围，外观随艺术样式变化，支持 Cmd / Ctrl 拖动、保存位置并导出。
 - 文字不透明度由普通与艺术标注共用，随工程保存并用于 PNG / SVG。文字、地图图层不透明度和受光阈值均可实时调整，支持滑块及数字输入；原图、配准和手工编辑保留。
@@ -64,7 +65,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ### Download
 
-Source version: 0.11.2. Published app downloads remain at 0.11.0.
+Source version: 0.12.0. Published app downloads remain at 0.11.0.
 
 | Platform | Package | Open after extracting |
 | --- | --- | --- |
@@ -94,6 +95,7 @@ Use **Language / 中文** in the settings group on the right, or **Cmd / Ctrl + 
 - Optional **medieval**, **wilderness topographic**, **cyanotype**, **copperplate**, **ink/cinnabar** and **Red Alert terrain** themes, with lunar grids, elevation colours, contours and terminators.
 - Optional lunar locator showing the registered photo footprint, styled to match the art theme, with Cmd/Ctrl dragging and a saved position shared by PNG/SVG exports.
 - Live text opacity shared by standard and artistic labels, saved with the project and applied to PNG/SVG. Map opacity and photo-lit coverage also update live. Sliders accept numeric input; press Enter or leave the field to apply it.
+- **Follow landform shapes**, pinned below Regenerate annotations, places rille and mountain-range names along gentle offline lunar paths in all styles. Bilingual labels use a Chinese primary row and a smaller English row. Each complete line is shaped before its glyph clusters follow an offset curve, retaining kerning and ligatures. Enable it and regenerate annotations; new projects default to enabled, while older projects keep their layout. Projection follows the registered view, libration, reflection and lens distortion. Area-derived mountain axes are representative label routes, not surveyed crests. Short, sharply bending or unavailable paths retain ordinary labels; text may shrink by up to 35%. Edits, dragging, opacity and editable SVG remain supported. Path data does not enter recognition.
 
 Art themes use a desaturated display copy. Switching to Original annotations turns off map layers; click Regenerate annotations to restore the original appearance. The original image, calibration and manual edits stay intact. See the [art-layer guide](README.zh-CN.md#可选艺术样式与地图图层).
 

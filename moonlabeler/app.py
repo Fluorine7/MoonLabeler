@@ -41,8 +41,8 @@ from .recognition_mask import PhotoMask, mask_kwargs
 from .photo_overview import build_overview, overview_key, overview_rect
 from .ui.map_layers import (add_map_layers, path_from_segments, GridCaption, ContourLayer, GridLayer,
                             MapCoverage, update_map_coverage, update_map_opacity, prepare_contour_preview)
-from .annotation_style import (appearance, caption_typography, placed_caption_typography,
-                               caption_text, caption_glyphs, photo_for_style)
+from .annotation_style import (appearance, caption_typography, path_caption_typography, placed_caption_typography,
+                               caption_text, caption_glyphs, caption_font as label_font, photo_for_style)
 from .color_management import display_srgb, srgb_color_space, srgb_profile_bytes
 from .map_layers import (MapLayers, grid_lines, sample_elevation, colorize_elevation,
                          elevation_alpha, contour_lines, resolved_contour_interval, build_terminator, legend_rect,
@@ -324,20 +324,6 @@ def default_name_language():
     return "双语（繁体）" if i18n.is_traditional() else "双语"
 
 
-def label_font(pixel_size, project=None, feature=None):
-    """CJK-capable label font; bold unless the project asks for normal weight."""
-    font = QFont()
-    font.setFamilies(label_font_families(project.language if project else "双语",
-                                       art_style=project.art_style if project else "standard"))
-    font.setPixelSize(pixel_size)
-    font.setWeight(QFont.Weight.Normal if project is not None and appearance(project).weight == "normal" else QFont.Weight.Bold)
-    if project is not None and feature is not None:
-        typography = caption_typography(project, feature)
-        font.setItalic(typography.italic)
-        font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, typography.tracking*pixel_size)
-    return font
-
-
 def paint_caption(painter, path, halo, halo_width, color, face_width, *, stroke_paths=None, fill_paths=None, cancel=None):
     for ink, width in ((halo, halo_width), (color, face_width)):
         if width:
@@ -440,9 +426,14 @@ def caption_path(text, size, font, typography):
     path = QPainterPath()
     glyphs = caption_glyphs(text, size, typography)
     if glyphs:
-        for character, x, y, angle in glyphs:
+        for index, (character, x, y, angle) in enumerate(glyphs):
+            glyph_font = font
+            if typography.glyph_scales:
+                glyph_font = QFont(font)
+                glyph_font.setPixelSize(round(size*typography.glyph_scales[index]))
+                glyph_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, typography.tracking*glyph_font.pixelSize())
             glyph = QPainterPath()
-            glyph.addText(0, 0, font, character)
+            glyph.addText(0, 0, glyph_font, character)
             path.addPath(QTransform().translate(x, y).rotate(angle).map(glyph))
     else:
         path.addText(0, size, font, text)
@@ -464,14 +455,16 @@ class Annotation(ModifierDragItem):
         self.outline_item = None
         self.lightness = None
         self.font = label_font(self.font_size, project, feature)
-        self.typography = caption_typography(project, feature)
+        self.typography = path_caption_typography(project, feature, text, self.font_size)
+        self.preferred_position = self.typography.origin
         self.path = caption_path(text, self.font_size, self.font, self.typography)
         if project.art_style in ("topographic", "manuscript"):
             self.path.setFillRule(Qt.FillRule.WindingFill)
         self._curved_path = self._flat_path = self.path
-        if self.typography.arc:
+        if self.typography.arc or self.typography.glyphs:
             self._flat_path = caption_path(text, self.font_size, self.font,
-                                           replace(self.typography, arc=0., positioned=True))
+                                           replace(self.typography, arc=0., positioned=True, glyphs=(), origin=None,
+                                                   glyph_scales=(), glyph_advances=(), glyph_families=()))
             self._flat_path.setFillRule(self.path.fillRule())
         # Reserve both shapes before collision layout. Flattening at the limb
         # must not expand into a neighboring caption or move a user pin.
@@ -541,7 +534,7 @@ class Annotation(ModifierDragItem):
     def update_map_leader(self):
         # A saved position is an edit, not a change of cartographic style.
         # Art captions only expose their ordinary locator during a drag.
-        permanent = not self.appearance.map_style or is_landing_site(self.feature)
+        permanent = (not self.appearance.map_style and not self.typography.glyphs) or is_landing_site(self.feature)
         dragging = self._drag_offset is not None and not self._export_mode
         self.line.setVisible(self.isVisibleTo(self.parentItem()) and (permanent or dragging))
 
@@ -562,7 +555,7 @@ class Annotation(ModifierDragItem):
             return
         self.prepareGeometryChange()
         self.typography = typography
-        self.path = self._curved_path if typography.arc else self._flat_path
+        self.path = self._curved_path if typography.arc or typography.glyphs else self._flat_path
         self._text_revision += 1
         QPixmapCache.remove(self._preview_key)
         self._preview_size = None
@@ -1703,6 +1696,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.crater_outline_shape.setCurrentIndex(self.crater_outline_shape.findData(self.project.crater_outline_shape))
         self.font_weight.setCurrentIndex(max(0, self.font_weight.findData(self.project.font_weight)))
         self.label_opacity.setValue(round(self.project.label_opacity*100))
+        self.follow_feature_paths.setChecked(self.project.follow_feature_paths)
         self.art_style.setCurrentIndex(max(0, self.art_style.findData(self.project.art_style)))
         self.overview_toggle.setChecked(self.project.overview_enabled)
         self.grid_spacing.setCurrentIndex(self.grid_spacing.findData(self.project.grid_spacing))
@@ -2365,6 +2359,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
             "show_landing_sites": self.landing_sites_toggle.isChecked(),
             "landing_color": self.pending_landing_color,
             "optimize_layout": self.optimize_layout.isChecked(),
+            "follow_feature_paths": self.follow_feature_paths.isChecked(),
             "crater_outlines": self.crater_outlines.isChecked(),
             "crater_outline_shape": self.crater_outline_shape.currentData(), "color": self.pending_color,
         }
@@ -2872,6 +2867,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 if outline:
                     item.set_crater_outline(outline)
                 bounds = item.layout_bounds()
+                preferred = (item.preferred_position[0]+bounds.x(), item.preferred_position[1]+bounds.y()) if item.preferred_position else None
                 fixed = (data["position"][0]+bounds.x(), data["position"][1]+bounds.y()) if "position" in data else None
                 if feature["kind"] in ("Crater, craters", "Satellite Feature"):
                     radius = min(min(self.image.shape[:2])*.12, max(4., feature["diameter"]*scale/(2*MOON_RADIUS_KM)))
@@ -2884,8 +2880,9 @@ class MainWindow(WindowUiMixin, QMainWindow):
                 objects[fid] = item
                 yield LabelBox(fid, tuple(xy), bounds.width(), bounds.height(), radius, fixed,
                                data.get("force", False), item.outline_segments,
-                               important=feature['name'] in COMMON_FEATURES or is_landing_site(feature),
-                               region=self.project.art_style == "topographic" or caption_typography(self.project, feature).region)
+                               important=preferred is not None or feature['name'] in COMMON_FEATURES or is_landing_site(feature),
+                               region=preferred is not None or self.project.art_style == "topographic" or caption_typography(self.project, feature).region,
+                               preferred=preferred)
         h, w = self.image.shape[:2]
         obstacles = []
         if (self.project.elevation_enabled or self.project.contour_enabled) and (self.project.terrain_path or self.dem_path):
@@ -2897,7 +2894,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                                           max_labels=self.project.max_labels,
                                                           obstacles=obstacles)
         else:
-            placements = {request.key: (*(request.fixed or (request.anchor[0]+request.radius+8, request.anchor[1]-request.height/2)),
+            placements = {request.key: (*(request.fixed or request.preferred or (request.anchor[0]+request.radius+8, request.anchor[1]-request.height/2)),
                                         request.width, request.height) for request in islice(requests(), self.project.max_labels)}
         for feature, xy in candidates:
             fid = feature["id"]

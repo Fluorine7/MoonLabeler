@@ -21,6 +21,7 @@ class LabelBox:
     outline: list | None = None
     important: bool = False  # Reserve space before ordinary automatic labels.
     region: bool = False  # Cartographic place names may sit on their own formation.
+    preferred: tuple | None = None  # Bounding-box origin for a landform baseline.
 
 
 def rect_intersects(first, second, padding=0.):
@@ -100,6 +101,12 @@ def segments_cross(first, second):
 def candidate_boxes(label, gap, *, extended=False):
     """Sixteen directions at each of three local distances."""
     ax, ay = label.anchor
+    if label.preferred is not None:
+        # A terrain caption must stay aligned with its formation. Ordinary
+        # radial relocation would detach the letters from the source shape.
+        x, y = label.preferred
+        yield (x, y, label.width, label.height)
+        return
     if label.region and not extended:
         yield (ax-label.width/2, ay-label.height/2, label.width, label.height)
     # Begin with diagonals for compact captions, then cardinal directions.
@@ -206,7 +213,8 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None, obstacles=
     for label in labels:
         if label.fixed is not None:
             rect = (*label.fixed, label.width, label.height)
-            place(label, rect, leader_segment(label.anchor, rect, outline=label.outline))
+            line = (*label.anchor, *label.anchor) if label.preferred is not None else leader_segment(label.anchor, rect, outline=label.outline)
+            place(label, rect, line)
 
     def best_position(label, *, extended=False):
         candidates = []
@@ -214,7 +222,7 @@ def arrange_labels(labels, width, height, gap=8., *, max_labels=None, obstacles=
             x, y, w, h = rect
             if x < gap or y < gap or x+w > width-gap or y+h > height-gap:
                 continue
-            line = ((*label.anchor, *label.anchor) if label.region and x <= label.anchor[0] <= x+w and y <= label.anchor[1] <= y+h
+            line = ((*label.anchor, *label.anchor) if label.preferred is not None or (label.region and x <= label.anchor[0] <= x+w and y <= label.anchor[1] <= y+h)
                     else leader_segment(label.anchor, rect, outline=label.outline))
             lx, ly, lw, lh = _line_bounds(line)
             # All intersections and the capped clearance reward lie inside
