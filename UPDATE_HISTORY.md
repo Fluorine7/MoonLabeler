@@ -10,7 +10,7 @@
 - 移除 Earth 标记，保留取景范围和取景中心坐标；N/S 极点及背面方向箭头跟随月轴倾斜。 / Removed the Earth marker while retaining the footprint and field-centre coordinates. Pole markers and hidden-pole arrows follow the projected lunar axis.
 - 所有样式的示意图底板统一为半透明中性黑，月面与图线保留艺术主题配色；沿用拖动缓存、工程位置保存及一致的 PNG / SVG 导出。 / All locator styles use a translucent neutral-black panel, retaining the themed Moon and lines, cached dragging, saved project positions and matching PNG / SVG exports.
 
-本次更新源码，安装包仍为 0.11.0。 / Source update; downloadable apps remain at 0.11.0.
+提供本地构建的 macOS 14.4+ Apple Silicon 兼容应用包及云端构建的 Windows x64 应用包，内置运行环境、FITS 支持和离线星历。 / App packages include a locally built macOS 14.4+ Apple Silicon compatibility build and a cloud-built Windows x64 build, with the runtime, FITS support and offline ephemerides bundled.
 
 ## 0.12.1
 

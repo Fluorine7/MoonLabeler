@@ -8,12 +8,12 @@
 
 ## 下载与打开
 
-当前源码版本为 0.12.2，已发布安装包仍为 0.11.0。
+源码与应用包版本均为 0.12.2，无需安装 Python 即可使用应用包。
 
 | 系统 | 下载 | 打开方式 |
 | --- | --- | --- |
-| macOS 14.4+，Apple Silicon（M1 或更新） | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.11.0/MoonLabeler-0.11.0-macos-arm64.zip) | 解压后打开 `MoonLabeler.app`，也可拖入“应用程序” |
-| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.11.0/MoonLabeler-0.11.0-windows-x64.zip) | 完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹 |
+| macOS 14.4+，Apple Silicon（M1 或更新） | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.2/MoonLabeler-0.12.2-macos-arm64.zip) | 解压后打开 `MoonLabeler.app`，也可拖入“应用程序” |
+| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.2/MoonLabeler-0.12.2-windows-x64.zip) | 完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹 |
 
 安装包自带运行环境、FITS 支持和离线星历。Mac 包采用临时签名，首次打开若被拦截，可在“系统设置 → 隐私与安全性”中允许运行；不支持 Intel Mac。
 
