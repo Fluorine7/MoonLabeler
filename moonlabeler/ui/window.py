@@ -960,7 +960,7 @@ class WindowUiMixin:
         self.ui_label_list_toggle, self.ui_label_list_block, apply_box = fold(tr("标签列表 · 隐藏、改名、重排"))
 
         self.overview_toggle = QCheckBox(tr("照片区域示意图"))
-        self.overview_toggle.setToolTip(tr("勾选立即显示；按住 Cmd / Ctrl 拖动图示，位置随工程保存。"))
+        self.overview_toggle.setToolTip(tr("按工程的月相、天平动和月轴方向显示整月，边框表示取景范围；按住 Cmd / Ctrl 拖动，位置随工程保存。"))
         self.art_style = self.ui_combo()
         self.art_style.addItem(tr("原始标注"), "standard")
         for key, preset in ART_PRESETS.items():

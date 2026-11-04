@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**源码 / Source 0.12.1** · Fluorine Zhu · GPL-3.0-or-later
+**源码 / Source 0.12.2** · Fluorine Zhu · GPL-3.0-or-later
 
 为月面照片配准、编辑地名，并导出 PNG / SVG。
 
@@ -12,13 +12,13 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## 中文
 
-### 0.12.1 更新
+### 0.12.2 更新
 
-- **重新整理侧栏**：艺术样式、名称语言、字号、数量、受光阈值和示意图放在顶部；筛选、文字、排版、地图和标签列表按需展开。“重新生成标注”和“沿地形排列名称”固定在滚动区上方。
-- 统一分组标题与分隔线，识别蒙版归入自动识别，检测到候选后再显示候选确认步骤；修正英文侧栏的按钮和输入框裁切。
-- 保留 **沿地形排列名称**：206 处离线地形路径约 0.17 MB，支持中文主行与较小的英文副行；新工程默认启用，旧工程保持原布局。
+- **照片区域示意图使用实际观测视角**：按工程的月相、天平动和月轴倾角显示整月，局部取景不再改变小图月相。
+- 移除 Earth 标记，保留取景范围、中心坐标及随月轴倾斜的 N/S 极点提示。
+- 底板统一为半透明中性黑，月面、边框和图线保留艺术主题配色；拖动、工程保存及 PNG / SVG 导出保持一致。
 
-完整变化见[更新记录](UPDATE_HISTORY.md#0121)，沿地形标注设置见[使用说明](README.zh-CN.md#沿地形排列名称)。当前源码版本为 0.12.1；已发布应用的下载入口在[下方](#下载应用--app-downloads)。
+完整变化见[更新记录](UPDATE_HISTORY.md#0122)，沿地形标注设置见[使用说明](README.zh-CN.md#沿地形排列名称)。当前源码版本为 0.12.2；已发布应用的下载入口在[下方](#下载应用--app-downloads)。
 
 ### 快速开始
 
@@ -37,7 +37,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 | 识别蒙版 | 半透明红色画笔、直径滑块、橡皮擦、撤销 / 重做；自动识别和辅助找坑共用，随工程保存 |
 | 地名标注 | 地形多选、名称编辑、分档字号、自动避让、沿地形排字、阿波罗 / 嫦娥着陆点 |
 | 艺术与地图 | 中世纪、旷野地形图、蓝晒、铜版、水墨朱砂、红警地形图；经纬网、高程、等高线、晨昏线 |
-| 对照与调节 | 独立显示标注和蒙版；照片区域示意图；文字不透明度、地图不透明度及受光阈值实时调节 |
+| 对照与调节 | 独立显示标注和蒙版；实际观测月相与中性黑底的照片区域示意图；文字不透明度、地图不透明度及受光阈值实时调节 |
 | 保存与导出 | 工程保存配准和手工编辑；PNG 转换为 sRGB，SVG 保留可编辑文字与图线 |
 
 蒙版仅影响识别，不影响标注或导出。艺术主题使用去色后的显示底图，切回“原始标注”可恢复；原图和配准保留。操作细节见[中文指南](README.zh-CN.md)。
@@ -67,13 +67,13 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## English
 
-### New in 0.12.1
+### New in 0.12.2
 
-- **Reorganized sidebar**: art style, name language, font size, count, light threshold and locator stay at the top. Filters, text, layout, maps and the label list expand on demand. Regenerate annotations and Follow landform shapes remain above the scroll area.
-- Consistent section headings and dividers, recognition masks grouped with automatic recognition, and candidate confirmation steps shown after detection. English sidebar buttons and inputs now fit without clipping.
-- **Follow landform shapes** retains 206 offline paths, about 0.17 MB, with a Chinese primary row and a smaller English row. New projects enable it, while older projects retain their layout.
+- **The lunar locator uses the actual observing geometry**: phase, libration and lunar-axis tilt follow the project, so a cropped field no longer changes the apparent phase.
+- Removed the Earth marker while retaining the footprint, field-centre coordinates and N/S pole cues aligned with the lunar axis.
+- A translucent neutral-black panel suits lunar photos while preserving the themed Moon, border and grid colours. Dragging, project persistence and matching PNG / SVG exports are retained.
 
-See the [release notes](UPDATE_HISTORY.md#0121) and [cartographic design notes](docs/cartographic-labeling.md). The source version is 0.12.1; published app downloads are listed [below](#下载应用--app-downloads).
+See the [release notes](UPDATE_HISTORY.md#0122) and [cartographic design notes](docs/cartographic-labeling.md). The source version is 0.12.2; published app downloads are listed [below](#下载应用--app-downloads).
 
 ### Quick start
 
@@ -92,7 +92,7 @@ The wheel zooms the canvas or scrolls settings without changing parameter values
 | Recognition mask | Translucent red brush, diameter slider, eraser, undo/redo; shared by recognition and assisted crater detection, saved with the project |
 | Labels | Multiple terrain types, editable names, relative font sizes, collision avoidance, landform paths and Apollo/Chang’e landing sites |
 | Art and maps | Medieval, wilderness topographic, cyanotype, copperplate, ink/cinnabar and Red Alert terrain themes; grids, elevation, contours and terminators |
-| Live controls | Independent label/mask previews, lunar locator, text/map opacity and photo-lit coverage |
+| Live controls | Independent label/mask previews, lunar locator with the observed phase and a neutral black panel, text/map opacity and photo-lit coverage |
 | Projects and exports | Saved registration and manual edits; sRGB PNG and SVG with editable text and lines |
 
 Masks affect recognition only. Art themes use a desaturated display copy; switching to Original annotations restores the original appearance after regeneration. The original image and registration are preserved. The [project format](docs/project-format.md) documents saved geometry and map integrations.
@@ -138,9 +138,9 @@ Recognition can fail with inaccurate times, shadows, blur or distortion. Basic L
 
 ## 下载应用 / App downloads
 
-以下为已发布的 **0.11.0** 应用包；体验 0.12.1 的新界面与沿地形标注请使用上方源码。
+以下为已发布的 **0.11.0** 应用包；体验 0.12.2 的新界面、沿地形标注与月相示意图请使用上方源码。
 
-These published apps are **0.11.0**; use the source above for the 0.12.1 interface and landform labels.
+These published apps are **0.11.0**; use the source above for the 0.12.2 interface, landform labels and phase-correct lunar locator.
 
 | 系统 / Platform | 下载 / Download | 打开方式 / Start |
 | --- | --- | --- |

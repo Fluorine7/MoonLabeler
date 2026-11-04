@@ -2,6 +2,7 @@
 """Registered footprint geometry, modifier dragging and matching exports."""
 from copy import deepcopy
 from dataclasses import replace
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -19,7 +20,7 @@ from PySide6.QtWidgets import QApplication
 
 from moonlabeler import app as app_module
 from moonlabeler.annotation_style import ART_STYLES
-from moonlabeler.geometry import Geometry, unit
+from moonlabeler.geometry import Geometry, geometry_from_nasa, unit
 from moonlabeler.photo_overview import build_overview, overview_key, overview_rect, overview_document
 from moonlabeler.project import Project, export_svg
 
@@ -100,20 +101,76 @@ def test_lens_correction_and_cache_inputs_follow_the_photo_geometry():
     assert overview_key(p, shape) != key
 
 
-def test_locator_keeps_its_geographic_annotations_in_the_compact_layout():
+@pytest.mark.parametrize('style', ART_STYLES)
+def test_locator_keeps_geographic_annotations_without_an_earth_marker(style):
     model = build_overview(registered(), (200, 300, 3))
-    assert model.grid and model.footprint and model.earth is not None
-    root = ET.fromstring(overview_document(model))
+    assert model.grid and model.footprint
+    root = ET.fromstring(overview_document(model, style))
     texts = [node.text for node in root.findall('.//{http://www.w3.org/2000/svg}text')]
-    assert all(label in texts for label in ('N', 'S', 'Earth', 'LAT', 'LON'))
+    assert all(label in texts for label in ('N', 'S', 'LAT', 'LON'))
+    assert 'Earth' not in texts
     assert any('0.00° N' in text for text in texts)
     assert any('0.00° E' in text for text in texts)
 
 
-@pytest.mark.parametrize('latitude', [-48., 0., 48.])
+def test_moving_the_photo_field_does_not_change_the_observed_moon():
+    p = registered()
+    before = build_overview(p, (200, 300, 3))
+    p.matrix[:, 2] += [220., -100.]
+    after = build_overview(p, (200, 300, 3))
+    assert np.array_equal(before.image, after.image)
+    assert before.grid == after.grid
+    assert before.footprint != after.footprint
+    assert np.linalg.norm(np.asarray(after.center)-before.center) > 5
+
+
+@pytest.mark.parametrize('angle', [0., 60., 90., 120., 180.])
+def test_lunar_phase_is_the_earth_observed_fraction_even_for_a_limb_crop(monkeypatch, angle):
+    from moonlabeler import photo_overview
+    monkeypatch.setattr(photo_overview, '_albedo', lambda: np.full((180, 360, 3), 200, np.uint8))
+    p = registered()
+    radians = np.radians(angle)
+    p.geometry.sun = np.array([np.cos(radians), np.sin(radians), 0.])
+    xy = p.geometry.project([20.], [45.])[0][0]
+    p.matrix[:, 2] = [150., 100.]-p.matrix[:, :2] @ xy
+    model = build_overview(p, (200, 300, 3))
+    disk = model.image[:, :, 3] > 0
+    # With a uniform albedo the small ambient term stays below 18; illuminated
+    # area can be checked independently against the spherical phase fraction.
+    fraction = np.count_nonzero((model.image[:, :, 0] > 18) & disk)/disk.sum()
+    assert fraction == pytest.approx((1+np.cos(radians))/2, abs=.015)
+
+
+def test_lunar_axis_and_phase_angle_follow_the_registered_sky_orientation(monkeypatch):
+    from moonlabeler import photo_overview
+    monkeypatch.setattr(photo_overview, '_albedo', lambda: np.full((180, 360, 3), 200, np.uint8))
+    p = registered()
+    p.geometry.right, p.geometry.north = np.array([0., 0., 1.]), np.array([0., -1., 0.])
+    p.geometry.sun = np.array([0., 1., 0.])
+    image = build_overview(p, (200, 300, 3)).image[:, :, 0]
+    center = image.shape[0]//2
+    assert image[center+30:center+90, center-30:center+30].mean() > 8*image[center-90:center-30, center-30:center+30].mean()
+
+
+@pytest.mark.parametrize('style', ART_STYLES)
+def test_locator_background_is_translucent_neutral_black_in_every_theme(style):
+    model = build_overview(registered(), (200, 300, 3))
+    root = ET.fromstring(overview_document(model, style))
+    card = root.find('.//{http://www.w3.org/2000/svg}rect[@class="overview-card"]')
+    color = card.get('fill')
+    channels = [int(color[index:index+2], 16) for index in (1, 3, 5)]
+    assert max(channels) == min(channels) and max(channels) <= 16
+    assert 0 < float(card.get('fill-opacity', '1')) < 1
+
+
+@pytest.mark.parametrize('latitude', [-6., 0., 6.])
 def test_poles_have_readable_surface_markers_or_direction_cues(latitude):
     p = registered()
-    xy, _, _ = p.geometry.project([latitude], [0.])
+    p.geometry = geometry_from_nasa(
+        {'subearth': {'lat': latitude, 'lon': 0.}, 'subsolar': {'lat': 0., 'lon': 45.},
+         'distance': 384400., 'posangle': 27.}, datetime(2026, 1, 1, tzinfo=timezone.utc))
+    crop_latitude = -48. if latitude > 0 else 48.
+    xy, _, _ = p.geometry.project([crop_latitude], [0.])
     p.matrix[:, 2] = [150, 100]-p.matrix[:, :2] @ xy[0]
     matrix, geometry = p.matrix.copy(), deepcopy(p.geometry.to_dict())
     model = build_overview(p, (200, 300, 3))
@@ -130,11 +187,18 @@ def test_poles_have_readable_surface_markers_or_direction_cues(latitude):
         assert caption.text == letter and float(caption.get('font-size')) >= 14
         assert 10 <= float(caption.get('y')) <= 306
         assert (marker.find('s:circle', ns) is not None) == visible
+        if not visible:
+            path = marker.find('s:path', ns).get('d')
+            tip = np.fromstring(path.split(' L ')[1], sep=',')
+            direction = np.array([p.geometry.right[2], -p.geometry.north[2]])
+            if pole == 'south':
+                direction *= -1
+            assert unit(tip-[160., 160.]) == pytest.approx(unit(direction), abs=.01)
     assert np.array_equal(p.matrix, matrix) and p.geometry.to_dict() == geometry
 
 
 def test_standard_footprint_does_not_tint_the_lunar_surface(application):
-    model = replace(build_overview(registered(), (200, 300, 3)), grid=[], earth=None, footprint=[])
+    model = replace(build_overview(registered(), (200, 300, 3)), grid=[], footprint=[])
     full_frame = replace(model, footprint=[[[0., 0.], [383., 0.], [383., 383.], [0., 383.]]])
 
     def pixels(value):

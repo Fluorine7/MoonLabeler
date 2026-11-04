@@ -18,7 +18,7 @@ from PIL import Image
 
 from ._opencv import cv2
 from .annotation_style import manuscript_fonts, svg_serif_family
-from .geometry import Geometry, surface_vectors, unit
+from .geometry import surface_vectors, unit
 from .i18n import is_traditional, tr
 from .map_layers import photo_coordinates, svg_segments
 
@@ -28,7 +28,7 @@ CARD_WIDTH, CARD_HEIGHT = 320., 366.
 
 @dataclass(frozen=True)
 class OverviewTheme:
-    panel: str = '#10171f'
+    panel: str = '#080808'
     border: str = '#3b4750'
     grid: str = '#bac6d3'
     ink: str = '#d7dfdd'
@@ -41,27 +41,27 @@ class OverviewTheme:
 OVERVIEW_THEMES = {
     'standard': OverviewTheme(),
     'manuscript': OverviewTheme(
-        panel='#131f2b', border='#9e814c', grid='#d4bd83', ink='#f4e0a8',
+        border='#9e814c', grid='#d4bd83', ink='#f4e0a8',
         muted='#b7a57e', accent='#f2bd61',
         moon=('#0c1722', '#607580', '#ebd3a1'), serif=True),
     'topographic': OverviewTheme(
-        panel='#20251b', border='#85805a', grid='#e1d29d', ink='#f3dfa0',
+        border='#85805a', grid='#e1d29d', ink='#f3dfa0',
         muted='#b4b38d', accent='#8bd9d0',
         moon=('#101710', '#7a8053', '#ddc38e')),
     'cyanotype': OverviewTheme(
-        panel='#0a223d', border='#4b8daf', grid='#bee5ed', ink='#e3f2ee',
+        border='#4b8daf', grid='#bee5ed', ink='#e3f2ee',
         muted='#91bdcc', accent='#eed29c',
         moon=('#071629', '#346b95', '#d7eeea')),
     'copperplate': OverviewTheme(
-        panel='#252521', border='#bc8969', grid='#d9c7a3', ink='#f2dfbf',
+        border='#bc8969', grid='#d9c7a3', ink='#f2dfbf',
         muted='#bea98c', accent='#f1ac78',
         moon=('#101f20', '#53817c', '#e8c59c'), serif=True),
     'inkwash': OverviewTheme(
-        panel='#202b2c', border='#81918b', grid='#c3d0c9', ink='#eee6d5',
+        border='#81918b', grid='#c3d0c9', ink='#eee6d5',
         muted='#a6b3aa', accent='#e5866c',
         moon=('#142225', '#7e9292', '#eee5ce'), serif=True),
     'redalert': OverviewTheme(
-        panel='#19291c', border='#87935d', grid='#d4d8a2', ink='#f4eccb',
+        border='#87935d', grid='#d4d8a2', ink='#f4eccb',
         muted='#abb58a', accent='#f2bd68',
         moon=('#0c1a12', '#65804c', '#dbc18c')),
 }
@@ -100,20 +100,17 @@ def _albedo():
         return np.array(source.convert('L').convert('RGB'))
 
 
-def _overview_view(project, shape):
-    # Aim at the photographed field so even small polar/limb crops are visible.
-    # Using many interior rays also handles black margins and off-disk corners.
+def _field_center(project, shape):
+    # The footer describes the photographed field, independently of the globe's
+    # Earth-observed view. Interior rays handle black margins and off-disk corners.
     h, w = shape[:2]
     x, y = np.meshgrid(np.linspace(.5, w-.5, 32), np.linspace(.5, h-.5, 32))
     lat, lon, valid = project.geometry.unproject(photo_coordinates(project, np.column_stack((x.ravel(), y.ravel()))))
-    observer = unit(surface_vectors(lat[valid], lon[valid]).mean(axis=0)) if valid.any() else project.geometry.observer.copy()
-    pole = np.array([0., 0., 1.])
-    north = pole-observer[2]*observer
-    if np.linalg.norm(north) < 1e-6:
-        north = project.geometry.north-(project.geometry.north @ observer)*observer
-    north = unit(north)
-    return Geometry(observer, unit(np.cross(north, observer)), north,
-                    project.geometry.sun.copy(), project.geometry.distance_km, project.geometry.utc)
+    if not valid.any():
+        return None
+    center = unit(surface_vectors(lat[valid], lon[valid]).mean(axis=0))
+    return (float(np.degrees(np.arcsin(np.clip(center[2], -1, 1)))),
+            float(np.degrees(np.arctan2(center[1], center[0]))))
 
 
 def _segments(points, visible):
@@ -132,12 +129,14 @@ class Overview:
     grid: list
     center: tuple | None  # Geographic field centre; None when the frame misses the Moon.
     north: tuple | None
-    earth: tuple | None
     south: tuple | None = None
+    north_bearing: tuple = (0., -1.)  # Screen-plane bearing, including lunar axis tilt.
 
 
 def build_overview(project, shape, *, size=384):
-    view = _overview_view(project, shape)
+    # Keep the actual observing geometry: aiming at the crop would change the
+    # apparent phase and hide libration/axis tilt in polar and limb photographs.
+    view = project.geometry
     center, scale = (size-1)/2, size*.47
     y, x = np.mgrid[:size, :size]
     points = np.column_stack(((x.ravel()-center)/scale, (y.ravel()-center)/scale))
@@ -180,20 +179,23 @@ def build_overview(project, shape, *, size=384):
         xy, visible, _ = view.project([latitude], [longitude])
         return tuple(center+scale*xy[0]) if visible[0] else None
 
-    return Overview(size, rgba, footprint, grid, view.libration if footprint else None,
-                    marker(np.array([0., 0., 1.])), marker(project.geometry.observer),
-                    south=marker(np.array([0., 0., -1.])))
+    bearing = np.array([view.right[2], -view.north[2]])
+    bearing = unit(bearing) if np.linalg.norm(bearing) > 1e-12 else np.array([0., -1.])
+    return Overview(size, rgba, footprint, grid, _field_center(project, shape) if footprint else None,
+                    north=marker(np.array([0., 0., 1.])), south=marker(np.array([0., 0., -1.])),
+                    north_bearing=tuple(bearing))
 
 
 def _pole_markup(model, theme, family):
     # Visible poles mark their projected surface position. A hidden pole gets
-    # a bearing at the north-up globe's rim, never a false point on its face.
+    # a bearing at the observed globe's rim, never a false point on its face.
     parts = []
     scale = 300/model.size
-    for name, letter, title, point, edge in (('north', 'N', tr('北极'), model.north, 22.),
-                                           ('south', 'S', tr('南极'), model.south, 298.)):
+    for name, letter, title, point, sign in (('north', 'N', tr('北极'), model.north, 1.),
+                                           ('south', 'S', tr('南极'), model.south, -1.)):
         visible = point is not None
-        x, y = (10+point[0]*scale, 10+point[1]*scale) if visible else (160., edge)
+        direction = np.asarray(model.north_bearing)*sign
+        x, y = (10+point[0]*scale, 10+point[1]*scale) if visible else np.array([160., 160.])+138*direction
         text_x, text_y = min(296., max(24., x+17)), min(298., max(22., y))
         if not visible:
             title += ' · '+tr('背面，箭头表示方向')
@@ -202,8 +204,11 @@ def _pole_markup(model, theme, family):
         if visible:
             parts.append(f'<circle cx="{x:.3f}" cy="{y:.3f}" r="3" fill="{theme.ink}" stroke="{theme.panel}" stroke-width="1.2"/>')
         else:
-            direction = -1 if name == 'north' else 1
-            arrow = f'M {x-4:.3f},{y-3*direction:.3f} L {x:.3f},{y+3*direction:.3f} L {x+4:.3f},{y-3*direction:.3f}'
+            tip = np.array([x, y])+3*direction
+            base = np.array([x, y])-3*direction
+            perpendicular = np.array([-direction[1], direction[0]])*4
+            first, last = base-perpendicular, base+perpendicular
+            arrow = f'M {first[0]:.3f},{first[1]:.3f} L {tip[0]:.3f},{tip[1]:.3f} L {last[0]:.3f},{last[1]:.3f}'
             for color, width in ((theme.panel, 4.), (theme.ink, 1.7)):
                 parts.append(f'<path d="{arrow}" fill="none" stroke="{color}" stroke-width="{width}" stroke-linejoin="round" stroke-linecap="round"/>')
         parts.extend([f'<rect x="{text_x-10:.3f}" y="{text_y-10:.3f}" width="20" height="20" rx="4" fill="{theme.panel}" fill-opacity=".94" stroke="{theme.border}" stroke-width=".65"/>',
@@ -223,29 +228,20 @@ def overview_markup(model, art_style='standard'):
     rim = model.size*.47
     center = (model.size-1)/2
     grid_path = svg_segments(model.grid)
-    parts = [f'<rect class="overview-card" x="1" y="1" width="318" height="364" rx="12" fill="{theme.panel}" stroke="{theme.border}" stroke-width="1.2"/>']
+    parts = [f'<rect class="overview-card" x="1" y="1" width="318" height="364" rx="12" fill="{theme.panel}" fill-opacity=".88" stroke="{theme.border}" stroke-width="1.2"/>']
     if theme.serif:
         parts.append(f'<rect x="6" y="6" width="308" height="354" rx="8" fill="none" stroke="{theme.border}" stroke-opacity=".45" stroke-width=".65"/>')
     elif art_style == 'cyanotype':
         parts.append(f'<path d="M 18,30 V 18 H 30 M 290,18 H 302 V 30" fill="none" stroke="{theme.grid}" stroke-width="1.2"/>')
     parts.extend([f'<g transform="translate(10 10) scale({300/model.size:.9f})">',
              f'<image width="{model.size}" height="{model.size}" xlink:href="data:image/png;base64,{encoded}"/>',
-             f'<path d="{grid_path}" fill="none" stroke="#07121c" stroke-opacity=".65" stroke-width="4"/>',
+             f'<path d="{grid_path}" fill="none" stroke="{theme.panel}" stroke-opacity=".65" stroke-width="4"/>',
              f'<path d="{grid_path}" fill="none" stroke="{theme.grid}" stroke-opacity=".80" stroke-width="2.1"/>',
              f'<circle cx="{center}" cy="{center}" r="{rim}" fill="none" stroke="{"#757e73" if original else theme.muted}" stroke-width="1.1"/>'])
     for polygon in model.footprint:
         path = svg_segments([polygon])+' Z'
         parts.extend([f'<path class="photo-footprint" d="{path}" fill="{"none" if original else theme.accent}" fill-opacity=".10" stroke="{"#493b26" if original else theme.panel}" stroke-width="4.5" stroke-linejoin="round"/>',
                       f'<path d="{path}" fill="none" stroke="{theme.accent}" stroke-width="2.5" stroke-linejoin="round"/>'])
-    earth_color = '#9eb6c5' if original else theme.accent
-    if model.earth is not None:
-        x, y = model.earth
-        anchor = 'end' if x > model.size*.72 else 'start'
-        text_x = x-7 if anchor == 'end' else x+7
-        # Keep the original Earth annotation clear of the new limb bearings.
-        text_y = y-18 if y > model.size*.85 else (y+28 if y < model.size*.15 else y+4)
-        parts.extend([f'<circle cx="{x:.3f}" cy="{y:.3f}" r="2.3" fill="{earth_color}"/>',
-                      f'<text x="{text_x:.3f}" y="{text_y:.3f}" text-anchor="{anchor}" fill="{earth_color}" font-family="{family}" font-size="12" stroke="{theme.panel}" stroke-width=".3">Earth</text>'])
     parts.append('</g>')
     parts.append(_pole_markup(model, theme, family))
     if model.center is None:

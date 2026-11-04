@@ -513,7 +513,7 @@
     "重置手工编辑": "Reset manual edits",
     "恢复地名、默认位置和可见性，清除手工编辑。": "Restore names, default positions and visibility, clearing manual edits.",
     "应用本页的标注与地图设置，保留手工修改的名称和位置。": "Apply annotation and map settings on this page, preserving manually edited names and positions.",
-    "勾选立即显示；按住 Cmd / Ctrl 拖动图示，位置随工程保存。": "Show immediately when checked; hold Cmd / Ctrl to move the locator. Its position is saved with the project.",
+    "按工程的月相、天平动和月轴方向显示整月，边框表示取景范围；按住 Cmd / Ctrl 拖动，位置随工程保存。": "Show the full Moon with the project's phase, libration and lunar-axis orientation; the outline marks the photo footprint. Hold Cmd / Ctrl to move it; its position is saved with the project.",
     "重排当前标注的位置，保留改名和隐藏状态；其他待修改设置不生效。": "Rearrange the current labels, preserving custom names and hidden labels. Other pending settings are not applied.",
     "反照率特征": "Albedo feature",
     "宇航员命名地形": "Astronaut-named feature",

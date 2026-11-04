@@ -2,6 +2,16 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.12.2
+
+2026-11-04
+
+- 照片区域示意图直接使用工程的实际观测几何，显示对应月相、天平动和月轴倾角；局部、月缘或极区取景不再改变小图月相。 / The photo-footprint locator now uses the project's actual observing geometry for phase, libration and lunar-axis tilt, so local, limb or polar crops no longer change its apparent phase.
+- 移除 Earth 标记，保留取景范围和取景中心坐标；N/S 极点及背面方向箭头跟随月轴倾斜。 / Removed the Earth marker while retaining the footprint and field-centre coordinates. Pole markers and hidden-pole arrows follow the projected lunar axis.
+- 所有样式的示意图底板统一为半透明中性黑，月面与图线保留艺术主题配色；沿用拖动缓存、工程位置保存及一致的 PNG / SVG 导出。 / All locator styles use a translucent neutral-black panel, retaining the themed Moon and lines, cached dragging, saved project positions and matching PNG / SVG exports.
+
+本次更新源码，安装包仍为 0.11.0。 / Source update; downloadable apps remain at 0.11.0.
+
 ## 0.12.1
 
 2026-11-03
