@@ -2,6 +2,15 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.12.4
+
+2026-11-06
+
+- 原始标注可以选择 Windows 或 macOS 的本机字体，应用后随工程保存。缺少字体或字形时沿用默认回退，艺术预设保留自己的字体。 / Original labels can use an installed Windows or macOS font. Projects remember the applied font, missing fonts or glyphs fall back, and art presets retain their own fonts.
+- 预览和 PNG 使用所选字体，沿地形排字按实际字宽计算。SVG 保留可编辑文字及中英混排的字体回退。 / Previews and PNG use the chosen font. Landform labels measure the actual glyph widths, and editable SVG retains mixed-script font fallback.
+
+本次更新源码，安装包仍为 0.12.2。 / Source update; downloadable apps remain at 0.12.2.
+
 ## 0.12.3
 
 2026-11-05

@@ -23,7 +23,7 @@ Do not import app.py here (it imports this mixin).
 """
 from pathlib import Path
 from PySide6.QtCore import Qt, QDate, QDateTime, QEvent, QTimer, QTime, QTimeZone
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QFontDatabase, QKeySequence
 from PySide6.QtWidgets import (
     QWidget, QFrame, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
     QPushButton, QToolButton, QLabel, QLineEdit, QComboBox, QSpinBox,
@@ -440,6 +440,7 @@ class WindowUiMixin:
         available = self.image is not None and self.project.geometry is not None and self.project.matrix is not None
         self.overview_toggle.setEnabled(available)
         self.generate_labels_button.setEnabled(available)
+        self.font_family.setEnabled(original)
         self.font_weight.setEnabled(original)
         self.ui_font_step.setEnabled(original)
         self.font_pixels_hint.setVisible(original)
@@ -954,7 +955,7 @@ class WindowUiMixin:
             return toggle, block, box
 
         self.ui_filter_toggle, self.ui_filter_block, filter_box = fold(tr("筛选 · 类别、直径、着陆点"))
-        self.ui_text_style_toggle, self.ui_text_style_block, text_box = fold(tr("文字样式 · 字重、颜色、透明度"))
+        self.ui_text_style_toggle, self.ui_text_style_block, text_box = fold(tr("文字样式 · 字体、颜色、透明度"))
         self.ui_layout_toggle, self.ui_layout_block, option_box = fold(tr("排版 · 避让、坑缘圈"))
         self.map_styles_toggle, self.map_styles_block, map_styles_box = fold(tr("地图图层 · 高程、等高线、经纬网"))
         self.ui_label_list_toggle, self.ui_label_list_block, apply_box = fold(tr("标签列表 · 隐藏、改名、重排"))
@@ -1117,6 +1118,15 @@ class WindowUiMixin:
         self.font_size.valueChanged.connect(self.style_changed)
         form = self.ui_form()
         text_box.addLayout(form)
+        self.font_family = self.ui_combo(12)
+        self.font_family.addItem(tr("默认字体"), "")
+        self._missing_font_index = None
+        for family in sorted(QFontDatabase.families(), key=str.casefold):
+            if not QFontDatabase.isPrivateFamily(family):
+                self.font_family.addItem(family, family)
+        self.font_family.setToolTip(tr("选择本机字体。缺少的字符用默认字体显示；选好后点击重新生成标注。"))
+        self.font_family.currentIndexChanged.connect(self.style_changed)
+        form.addRow(tr("字体"), self.font_family)
         self.ui_font_step = QDoubleSpinBox()
         self.ui_font_step.setRange(0., 8.)
         self.ui_font_step.setDecimals(2)

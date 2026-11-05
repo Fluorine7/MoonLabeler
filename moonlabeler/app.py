@@ -42,6 +42,7 @@ from .photo_overview import build_overview, overview_key, overview_rect
 from .ui.map_layers import (add_map_layers, path_from_segments, GridCaption, ContourLayer, GridLayer,
                             MapCoverage, update_map_coverage, update_map_opacity, prepare_contour_preview)
 from .annotation_style import (appearance, caption_typography, path_caption_typography, placed_caption_typography,
+                               flat_caption_typography,
                                caption_text, caption_glyphs, caption_font as label_font, photo_for_style)
 from .color_management import display_srgb, srgb_color_space, srgb_profile_bytes
 from .map_layers import (MapLayers, grid_lines, sample_elevation, colorize_elevation,
@@ -462,9 +463,7 @@ class Annotation(ModifierDragItem):
             self.path.setFillRule(Qt.FillRule.WindingFill)
         self._curved_path = self._flat_path = self.path
         if self.typography.arc or self.typography.glyphs:
-            self._flat_path = caption_path(text, self.font_size, self.font,
-                                           replace(self.typography, arc=0., positioned=True, glyphs=(), origin=None,
-                                                   glyph_scales=(), glyph_advances=(), glyph_families=()))
+            self._flat_path = caption_path(text, self.font_size, self.font, flat_caption_typography(project, self.typography))
             self._flat_path.setFillRule(self.path.fillRule())
         # Reserve both shapes before collision layout. Flattening at the limb
         # must not expand into a neighboring caption or move a user pin.
@@ -1701,6 +1700,15 @@ class MainWindow(WindowUiMixin, QMainWindow):
         self.optimize_layout.setChecked(self.project.optimize_layout)
         self.crater_outlines.setChecked(self.project.crater_outlines)
         self.crater_outline_shape.setCurrentIndex(self.crater_outline_shape.findData(self.project.crater_outline_shape))
+        if self._missing_font_index is not None:
+            self.font_family.removeItem(self._missing_font_index)
+            self._missing_font_index = None
+        family = self.project.font_family
+        index = self.font_family.findData(family)
+        if index == -1:
+            index = self._missing_font_index = self.font_family.count()
+            self.font_family.addItem(trf("{family}（未安装）", family=family), family)
+        self.font_family.setCurrentIndex(index)
         self.font_weight.setCurrentIndex(max(0, self.font_weight.findData(self.project.font_weight)))
         self.label_opacity.setValue(round(self.project.label_opacity*100))
         self.follow_feature_paths.setChecked(self.project.follow_feature_paths)
@@ -2352,7 +2360,8 @@ class MainWindow(WindowUiMixin, QMainWindow):
         settings = {
             "min_diameter": self.diameter.value(), "kind": kind,
             "max_labels": self.maximum.value(), "language": self.language.currentData(),
-            "font_weight": self.font_weight.currentData(), "art_style": self.art_style.currentData(),
+            "font_family": self.font_family.currentData(), "font_weight": self.font_weight.currentData(),
+            "art_style": self.art_style.currentData(),
             "grid_spacing": self.grid_spacing.currentData(),
             "elevation_enabled": self.elevation_toggle.isChecked(),
             "elevation_palette": self.elevation_palette.currentData(),

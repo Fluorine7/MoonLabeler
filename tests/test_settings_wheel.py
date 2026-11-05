@@ -77,7 +77,7 @@ def test_feature_type_checklist_wheel_scrolls_panel_without_changing_selection(w
 
 @pytest.mark.parametrize("field", ["font_size", "ui_font_step", "label_opacity", "label_opacity_value", "grid_opacity", "elevation_opacity",
                                    "diameter", "maximum", "art_style", "grid_spacing",
-                                   "elevation_palette", "contour_interval", "contour_opacity", "terminator_opacity", "terminator_source", "map_light_threshold", "language", "font_weight",
+                                   "elevation_palette", "contour_interval", "contour_opacity", "terminator_opacity", "terminator_source", "map_light_threshold", "language", "font_family", "font_weight",
                                    "grid_opacity_value", "elevation_opacity_value", "contour_opacity_value", "terminator_opacity_value", "map_light_readout"])
 @pytest.mark.parametrize("focused", [False, True])
 def test_wheel_over_setting_never_changes_value(window, field, focused):
@@ -116,7 +116,7 @@ def test_every_native_parameter_including_date_time_ignores_wheel(window):
 
 
 @pytest.mark.parametrize("field,editor", [("font_size", False), ("font_size", True),
-                                         ("grid_opacity", False), ("grid_spacing", False),
+                                         ("grid_opacity", False), ("grid_spacing", False), ("font_family", False),
                                          ("grid_opacity_value", True), ("map_light_readout", True)])
 def test_wheel_over_parameter_scrolls_outer_panel(window, field, editor):
     control = getattr(window, field)

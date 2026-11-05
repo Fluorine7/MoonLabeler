@@ -25,7 +25,7 @@ from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR
 from .annotation_relief import catalogue_rim, contour_center, MIN_OUTLINE_DIAMETER_KM, MAX_HEIGHT_KM
 from .zh_variant import to_traditional
 from .annotation_style import (ART_STYLES, ART_PRESETS, SERIF_STYLES, HIERARCHICAL_STYLES, appearance, manuscript_fonts,
-                               svg_caption, caption_typography, placed_caption_typography,
+                               svg_caption, svg_caption_font_runs, svg_preferred_family, caption_typography, placed_caption_typography,
                                caption_text, caption_span, path_caption_typography, path_caption_rows, svg_serif_family, photo_for_style)
 from .map_layers import GRID_SPACINGS, CONTOUR_INTERVALS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg, photo_lightness
 from .photo_overview import overview_svg
@@ -229,7 +229,7 @@ def _validate_project_data(data):
         if not (isinstance(kind, str) or (isinstance(kind, list) and
                 all(isinstance(value, str) and value != '全部' for value in kind))):
             _invalid_field('style.kind')
-    for key in ('language', 'color', 'crater_outline_shape', 'landing_color', 'font_weight',
+    for key in ('language', 'color', 'crater_outline_shape', 'landing_color', 'font_family', 'font_weight',
                 'art_style', 'elevation_palette', 'terminator_source'):
         if key in style and not isinstance(style[key], str):
             _invalid_field(f'style.{key}')
@@ -399,6 +399,7 @@ class Project:
     font_size: int = 24
     font_percent: float | None = DEFAULT_FONT_PERCENT
     font_step_percent: float = DEFAULT_FONT_STEP_PERCENT
+    font_family: str = ""
     font_weight: str = DEFAULT_FONT_WEIGHT
     label_opacity: float = 1.
     follow_feature_paths: bool = True
@@ -454,6 +455,18 @@ class Project:
             self.font_percent = self.font_size*100/short_side
             self.font_step_percent = 0.
         self.font_size = max(6, round(short_side*self.font_percent/100))
+
+    @property
+    def preferred_label_family(self):
+        return self.font_family if self.art_style == "standard" else ""
+
+    def label_families(self):
+        """Prefer a chosen face without dropping the language's glyph fallbacks."""
+        families = label_font_families(self.language, art_style=self.art_style)
+        preferred = self.preferred_label_family
+        if preferred:
+            return [preferred, *(family for family in families if family.casefold() != preferred.casefold())]
+        return families
 
     def font_sizes(self, shape):
         if self.font_percent is None:
@@ -558,7 +571,7 @@ class Project:
                 "observer": {"latitude": self.latitude, "longitude": self.longitude},
                 "terrain": {"dem_path": _portable_path(self.terrain_path, base) if self.terrain_path else "",
                             "settings": self.terrain_settings},
-                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_weight", "label_opacity", "follow_feature_paths", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position")}}
+                "style": {k: getattr(self, k) for k in ("font_size", "font_percent", "font_step_percent", "font_family", "font_weight", "label_opacity", "follow_feature_paths", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position")}}
         write_json(path, data)
 
     @classmethod
@@ -594,7 +607,7 @@ class Project:
         project.font_step_percent = 0.  # Pre-tier projects retain uniform text.
         project.follow_feature_paths = False  # Existing projects retain their original layout.
         for key, value in data["style"].items():
-            if key in ("font_size", "font_percent", "font_step_percent", "font_weight", "label_opacity", "follow_feature_paths", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position"):
+            if key in ("font_size", "font_percent", "font_step_percent", "font_family", "font_weight", "label_opacity", "follow_feature_paths", "color", "landing_color", "show_landing_sites", "language", "min_diameter", "kind", "illuminated_only", "max_labels", "optimize_layout", "crater_outlines", "crater_outline_shape", "art_style", "grid_spacing", "grid_opacity", "elevation_enabled", "elevation_opacity", "elevation_palette", "contour_enabled", "contour_interval", "contour_opacity", "terminator_enabled", "terminator_opacity", "terminator_source", "map_light_mask", "map_light_threshold", "legend_position", "overview_enabled", "overview_position"):
                 setattr(project, key, value)
         if project.crater_outline_shape not in ("ellipse", "terrain"):
             project.crater_outline_shape = "ellipse"
@@ -870,11 +883,16 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None, disp
         lines.extend(layers_svg(project, image.shape, layers))
         if project.elevation_enabled or project.contour_enabled:
             lines.extend(legend_svg(project, image.shape, contour_interval=layers.contour_interval))
-    generic = "serif" if project.art_style in SERIF_STYLES else "sans-serif"
-    families = label_font_families(project.language, art_style=project.art_style)
+    families = project.label_families()
+    custom_font = bool(project.preferred_label_family)
     # Qt SVG treats a comma-separated font-family attribute as one literal
-    # family. A single serif family keeps its glyphs aligned with native arcs.
-    family = svg_serif_family(families) if project.art_style in SERIF_STYLES else ", ".join(families)+", "+generic
+    # family. Use a single resolved face for serif presets and custom fonts.
+    if custom_font:
+        family = svg_preferred_family(project)
+    elif project.art_style in SERIF_STYLES:
+        family = svg_serif_family(families)
+    else:
+        family = ", ".join(families)+", sans-serif"
     lines.append('<g id="annotations" font-family="{}" font-weight="{}">'.format(
         escape(family, {'"': '&quot;'}), appearance(project).weight))
     for index, (feature, anchor, position) in enumerate(entries):
@@ -887,6 +905,7 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None, disp
         font_size = font_sizes[feature['id']]
         text = caption_text(project, feature)
         typography = placed_caption_typography(project, feature, text, font_size, position)
+        font_runs = svg_caption_font_runs(text, font_size, families, style.weight, typography, family) if custom_font else ()
         line = (leaders or {}).get(feature["id"], (ax, ay, x, y+font_size/2))
         lines.append(f'<g id="feature-{fid}">')
         outline = project.crater_outline(feature, image.shape)
@@ -908,7 +927,7 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None, disp
                       f'<g class="caption" opacity="{project.label_opacity:.6f}">',
                       svg_caption(text, x, y+font_size, font_size,
                                   color, style.halo, style.halo_width(font_size), f'label-text-{index}',
-                                  face_width=style.face_width(font_size), typography=typography), '</g>'])
+                                  face_width=style.face_width(font_size), typography=typography, font_runs=font_runs), '</g>'])
         lines.append('</g>')
     lines.append('</g>')
     lines.append(overview_svg(project, image.shape, overview))
