@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**源码 / Source 0.12.3** · Fluorine Zhu · GPL-3.0-or-later
+**源码 / Source 0.12.4** · Fluorine Zhu · GPL-3.0-or-later
 
 为月面照片配准、编辑地名，并导出 PNG / SVG。
 
@@ -12,13 +12,13 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## 中文
 
-### 0.12.3 更新
+### 0.12.4 更新
 
-- **修正手机目镜后照片的边缘标注偏移**：较强畸变时用 LOLA 阴影补充极区细节，新增径向校正项，并通过分区留出和独立月缘验证。
-- 校正随工程保存，预览、地图、字号和 PNG / SVG 共用正反向投影；普通照片及轻微畸变保留原快速路径。
-- 首次边缘精校需要约 33 MB 基础高程，之后复用缓存；可中止下载，校验失败时保留原配准并提示。
+- **原始标注可选系统字体**：在「标注 → 文字样式 → 字体」中选择，再点击「重新生成标注」。
+- 字体名称随工程保存；缺少字体或字形时沿用默认字体回退。艺术预设保留自己的字体。
+- PNG 固定文字外观，SVG 保留可编辑文字；要在另一台电脑保持 SVG 外观，需安装相应字体。
 
-完整变化见[更新记录](UPDATE_HISTORY.md#0123)，沿地形标注设置见[使用说明](README.zh-CN.md#沿地形排列名称)。当前源码版本为 0.12.3；已发布应用的下载入口在[下方](#下载应用--app-downloads)。
+完整变化见[更新记录](UPDATE_HISTORY.md#0124)，已发布应用的下载入口在[下方](#下载应用--app-downloads)。
 
 ### 快速开始
 
@@ -35,7 +35,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 | --- | --- |
 | 月面配准 | 自动识别、参考点辅助、手动校准；旋转、镜像及目镜后照片 |
 | 识别蒙版 | 半透明红色画笔、直径滑块、橡皮擦、撤销 / 重做；自动识别和辅助找坑共用，随工程保存 |
-| 地名标注 | 地形多选、名称编辑、分档字号、自动避让、沿地形排字、阿波罗 / 嫦娥着陆点 |
+| 地名标注 | 地形多选、名称编辑、系统字体、分档字号、自动避让、沿地形排字、阿波罗 / 嫦娥着陆点 |
 | 艺术与地图 | 中世纪、旷野地形图、蓝晒、铜版、水墨朱砂、红警地形图；经纬网、高程、等高线、晨昏线 |
 | 对照与调节 | 独立显示标注和蒙版；实际观测月相与中性黑底的照片区域示意图；文字不透明度、地图不透明度及受光阈值实时调节 |
 | 保存与导出 | 工程保存配准和手工编辑；PNG 转换为 sRGB，SVG 保留可编辑文字与图线 |
@@ -67,13 +67,13 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## English
 
-### New in 0.12.3
+### New in 0.12.4
 
-- **Improved limb labels in phone-through-eyepiece photos**: strong distortion can use LOLA shading to recover polar details, with an additional radial term checked against spatial holdouts and independent limb measurements.
-- Projects, previews, maps, font scaling and PNG / SVG share the correction and its inverse. Ordinary and mildly distorted photos retain their existing fast path.
-- The first edge refinement needs about 33 MB of elevation data, then reuses the cache. Downloads are cancellable; rejected refinements keep the accepted pose and show a notice.
+- **Choose an installed font for Original labels** in **Annotation → Text style → Font**, then click **Regenerate annotations**.
+- The project keeps the font name and falls back for unavailable fonts or characters. Art presets keep their own fonts.
+- PNG preserves the rendered appearance. SVG keeps text editable; install the relevant fonts when opening it on another computer to preserve its appearance.
 
-See the [release notes](UPDATE_HISTORY.md#0123) and [cartographic design notes](docs/cartographic-labeling.md). The source version is 0.12.3; published app downloads are listed [below](#下载应用--app-downloads).
+See the [release notes](UPDATE_HISTORY.md#0124). Published app downloads are listed [below](#下载应用--app-downloads).
 
 ### Quick start
 
@@ -90,7 +90,7 @@ The wheel zooms the canvas or scrolls settings without changing parameter values
 | --- | --- |
 | Registration | Automatic, reference-assisted and manual; rotated, mirrored and afocal photographs |
 | Recognition mask | Translucent red brush, diameter slider, eraser, undo/redo; shared by recognition and assisted crater detection, saved with the project |
-| Labels | Multiple terrain types, editable names, relative font sizes, collision avoidance, landform paths and Apollo/Chang’e landing sites |
+| Labels | Multiple terrain types, editable names, system fonts, relative font sizes, collision avoidance, landform paths and Apollo/Chang’e landing sites |
 | Art and maps | Medieval, wilderness topographic, cyanotype, copperplate, ink/cinnabar and Red Alert terrain themes; grids, elevation, contours and terminators |
 | Live controls | Independent label/mask previews, lunar locator with the observed phase and a neutral black panel, text/map opacity and photo-lit coverage |
 | Projects and exports | Saved registration and manual edits; sRGB PNG and SVG with editable text and lines |
@@ -140,11 +140,11 @@ Recognition can fail with inaccurate times, shadows, blur or distortion. Basic L
 
 **0.12.2** 应用包包含新界面、沿地形标注与月相示意图，无需安装 Python。
 
-0.12.3 的目镜边缘校正修复目前请使用源码，安装包仍为 0.12.2。
+系统字体选择和目镜边缘校正请使用当前 0.12.4 源码。
 
 The **0.12.2** apps include the updated interface, landform labels and phase-correct lunar locator. Python is not required.
 
-Use the source for the 0.12.3 afocal edge correction; downloadable apps remain at 0.12.2.
+Use the current 0.12.4 source for system font selection and afocal edge correction.
 
 | 系统 / Platform | 下载 / Download | 打开方式 / Start |
 | --- | --- | --- |

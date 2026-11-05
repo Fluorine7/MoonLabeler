@@ -196,8 +196,7 @@ def caption_font(pixel_size, project=None, feature=None):
     from PySide6.QtGui import QFont
     from .project import label_font_families
     font = QFont()
-    font.setFamilies(label_font_families(project.language if project else "双语",
-                                       art_style=project.art_style if project else "standard"))
+    font.setFamilies(project.label_families() if project is not None else label_font_families())
     font.setPixelSize(pixel_size)
     font.setWeight(QFont.Weight.Normal if project is not None and appearance(project).weight == "normal" else QFont.Weight.Bold)
     if project is not None and feature is not None:
@@ -223,8 +222,29 @@ def _path_units(text):
     return tuple(result)
 
 
+def _fallback_clusters(layout, text, flags):
+    """Recover source positions when Qt's whole runs lose fallback indices."""
+    from PySide6.QtCore import QTextBoundaryFinder
+    boundaries = QTextBoundaryFinder(QTextBoundaryFinder.BoundaryType.Grapheme, text)
+    start, previous = 0, None
+    clusters = {}
+    while (end := boundaries.toNextBoundary()) != -1:
+        # QTextLayout and the boundary finder both count UTF-16 units. A
+        # ranged query also finds spaces/punctuation whose whole-run index
+        # can incorrectly be zero on CoreText.
+        positions = ((point.x(), run.rawFont().familyName())
+                     for run in layout.glyphRuns(start, end-start, flags)
+                     for point in run.positions())
+        cluster = min(positions, default=None)
+        if cluster is not None and cluster != previous:
+            # Two graphemes in one ligature can share a glyph position.
+            clusters[start] = previous = cluster
+        start = end
+    return clusters
+
+
 @lru_cache(maxsize=1024)
-def _shape_row(text, size, families, weight, italic, tracking):
+def _shape_row(text, size, families, weight, italic, tracking, *, recover_fallback_indices=False):
     from PySide6.QtGui import QFont, QFontInfo, QFontMetricsF, QTextLayout
     font = QFont()
     font.setFamilies(list(families))
@@ -237,12 +257,17 @@ def _shape_row(text, size, families, weight, italic, tracking):
     line = layout.createLine()
     line.setLineWidth(1e6)
     layout.endLayout()
-    clusters = {}
-    for run in layout.glyphRuns(0, -1, QTextLayout.GlyphRunRetrievalFlag.RetrieveAll):
-        for index, position in zip(run.stringIndexes(), run.positions()):
-            previous = clusters.get(index)
-            if previous is None or position.x() < previous[0]:
-                clusters[index] = (position.x(), run.rawFont().familyName())
+    flags = QTextLayout.GlyphRunRetrievalFlag.RetrieveAll
+    runs = layout.glyphRuns(0, -1, flags)
+    if recover_fallback_indices and len({run.rawFont().familyName() for run in runs}) > 1:
+        clusters = _fallback_clusters(layout, text, flags)
+    else:
+        clusters = {}
+        for run in runs:
+            for index, position in zip(run.stringIndexes(), run.positions()):
+                previous = clusters.get(index)
+                if previous is None or position.x() < previous[0]:
+                    clusters[index] = (position.x(), run.rawFont().familyName())
     starts = sorted(clusters)
     positions = [clusters[index][0] for index in starts]
     if (not starts or any(b < a for a, b in zip(positions, positions[1:]))
@@ -256,20 +281,46 @@ def _shape_row(text, size, families, weight, italic, tracking):
     return units, widths, tuple(clusters[index][1] for index in starts)
 
 
+def svg_preferred_family(project):
+    from PySide6.QtGui import QFontInfo, QGuiApplication
+    if isinstance(QGuiApplication.instance(), QGuiApplication):
+        return QFontInfo(caption_font(24, project)).family()
+    return project.label_families()[0]
+
+
+def svg_caption_font_runs(text, size, families, weight, typography, primary):
+    """Keep editable SVG text while matching Qt's fallback for missing glyphs."""
+    from PySide6.QtGui import QGuiApplication
+    if not isinstance(QGuiApplication.instance(), QGuiApplication) or caption_glyphs(text, size, typography):
+        return ()
+    units, _, resolved = _shape_row(text, size, tuple(families), weight, typography.italic, typography.tracking,
+                                    recover_fallback_indices=True)
+    if "".join(units) != text or all(family == primary for family in resolved):
+        return ()
+    runs = []
+    for unit, family in zip(units, resolved):
+        if runs and runs[-1][1] == family:
+            runs[-1] = (runs[-1][0]+unit, family)
+        else:
+            runs.append((unit, family))
+    return runs
+
+
 def path_caption_rows(project, feature, text, size):
     from PySide6.QtGui import QGuiApplication
-    from .project import label_font_families
     typography = caption_typography(project, feature)
     bilingual = (project.language in ("双语", "双语（繁体）") and feature.get("name_zh")
                  and "text" not in project.labels.get(feature['id'], {}) and " · " in text)
     parts = text.split(" · ", 1) if bilingual else [text]
     rows = []
-    families = tuple(label_font_families(project.language, art_style=project.art_style))
+    families = tuple(project.label_families())
+    custom_font = bool(project.preferred_label_family)
     for index, part in enumerate(parts):
         row_size = max(6, round(size*.82)) if index else size
         if QGuiApplication.instance() is not None:
             units, widths, resolved = _shape_row(part, row_size, families, appearance(project).weight,
-                                                typography.italic, typography.tracking)
+                                                typography.italic, typography.tracking,
+                                                recover_fallback_indices=custom_font)
         else:
             # Geometry-only consumers need no GUI. Actual GUI/Qt SVG exports
             # measure the selected system font and share those measurements.
@@ -322,6 +373,13 @@ def path_caption_typography(project, feature, text, size):
                    glyph_families=tuple(family for _, _, _, _, resolved in rows for family in resolved))
 
 
+def flat_caption_typography(project, typography):
+    # Preserve legacy arc spacing, but measure custom fonts as whole text
+    # when a landform caption cannot follow its path at the limb.
+    return replace(typography, arc=0., positioned=not project.preferred_label_family, glyphs=(), origin=None,
+                   glyph_scales=(), glyph_advances=(), glyph_families=())
+
+
 def placed_caption_typography(project, feature, text, size, position):
     """Keep an arc only when its whole caption fits on the registered disk.
 
@@ -354,15 +412,14 @@ def placed_caption_typography(project, feature, text, size, position):
     if not footprint:
         return typography
     _, _, on_disk = project.geometry.unproject(photo_coordinates(project, np.asarray(footprint)))
-    return typography if on_disk.all() else replace(typography, arc=0., positioned=True, glyphs=(), origin=None,
-                                                    glyph_scales=(), glyph_advances=(), glyph_families=())
+    return typography if on_disk.all() else flat_caption_typography(project, typography)
 
 
 def svg_segments(segments):
     return " ".join("M " + " L ".join(f"{x:.3f},{y:.3f}" for x, y in segment) for segment in segments)
 
 
-def svg_caption(text, x, y, size, color, halo, halo_width, element_id, *, face_width=0., typography=None):
+def svg_caption(text, x, y, size, color, halo, halo_width, element_id, *, face_width=0., typography=None, font_runs=()):
     """Editable flat text or positioned glyph groups, with SVG 1.1 halos.
 
     Qt and some editors ignore SVG 2 paint-order. A use instance inherits the
@@ -390,6 +447,9 @@ def svg_caption(text, x, y, size, color, halo, halo_width, element_id, *, face_w
     if typography.tracking:
         attrs += f' letter-spacing="{size*typography.tracking:.3f}"'
     content = escape(text)
+    if font_runs:
+        content = "".join('<tspan font-family="{}">{}</tspan>'.format(escape(family, {'"': '&quot;'}), escape(unit))
+                          for unit, family in font_runs)
     return (f'<g stroke="{halo}" stroke-width="{halo_width:.3f}" stroke-linejoin="round" fill-opacity="0">'
             f'<text id="{element_id}" xml:space="preserve" x="{x:.3f}" y="{y:.3f}" '
             f'fill="{color}" font-size="{size}"{attrs}>{content}</text></g>'
