@@ -1,0 +1,8 @@
+{
+  "canonical": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg",
+  "mirror": "https://raw.githubusercontent.com/MaxwellLee/physics-lab/b820546ec256c40a8a5adc2123805cfcf02c4338/assets/textures/moon_2048.jpg",
+  "processing": "Mirror documents JPEG recompression at source dimensions; not byte-identical to NASA original.",
+  "mirror_commit": "b820546ec256c40a8a5adc2123805cfcf02c4338",
+  "source_page": "https://svs.gsfc.nasa.gov/4720/",
+  "credit": "NASA Scientific Visualization Studio; Ernie Wright (USRA); Noah Petro (NASA/GSFC); LRO/LROC/LOLA teams"
+}

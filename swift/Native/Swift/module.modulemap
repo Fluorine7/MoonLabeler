@@ -1,0 +1,5 @@
+module CMoonNative [system] {
+    header "../include/MoonNative.h"
+    link "MoonNative"
+    export *
+}

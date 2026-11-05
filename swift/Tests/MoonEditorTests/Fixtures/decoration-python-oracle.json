@@ -1,0 +1,19 @@
+{
+  "caption_z": 20.0,
+  "locator_z": 10.0,
+  "order_changed_pixels": 0,
+  "rim_leader": [
+    120.0,
+    100.0,
+    150.0,
+    100.0
+  ],
+  "locators": {
+    "plain": true,
+    "shape": false,
+    "dragged_shape": true,
+    "exported_dragged_shape": false,
+    "art_plain": false,
+    "art_landing": true
+  }
+}

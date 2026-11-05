@@ -1,0 +1,16 @@
+.build/
+.swiftpm/
+dist/
+*.app/
+*.dmg
+*.pkg
+*.dylib
+*.so
+*.a
+*.o
+*.dSYM/
+Sources/MoonCore/Resources/*.bsp
+Sources/MoonCore/Resources/*.bpc
+Sources/MoonCore/Resources/LDEM_*.LBL
+Sources/MoonCore/Resources/LDEM_*.IMG
+Sources/MoonCore/Resources/*.partial

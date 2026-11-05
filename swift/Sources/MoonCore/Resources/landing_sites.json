@@ -1,0 +1,80 @@
+{
+  "source": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html",
+  "source_title": "NASA NSSDCA: Table of Anthropogenic Impacts and Spacecraft on the Moon",
+  "source_updated": "2025-08-13",
+  "checked": "2026-10-12",
+  "frame": "DE421 mean Earth / polar axis; latitude north and longitude east positive, degrees",
+  "scope": "Apollo LM descent stages and Chang'e landers; not impact sites or rover positions",
+  "sites": [
+    {
+      "id": "landing:apollo-11",
+      "name": "Apollo 11",
+      "name_zh": "阿波罗11号",
+      "lat": 0.67416,
+      "lon": 23.47314
+    },
+    {
+      "id": "landing:apollo-12",
+      "name": "Apollo 12",
+      "name_zh": "阿波罗12号",
+      "lat": -3.0128,
+      "lon": -23.4219
+    },
+    {
+      "id": "landing:apollo-14",
+      "name": "Apollo 14",
+      "name_zh": "阿波罗14号",
+      "lat": -3.64589,
+      "lon": -17.47194
+    },
+    {
+      "id": "landing:apollo-15",
+      "name": "Apollo 15",
+      "name_zh": "阿波罗15号",
+      "lat": 26.13239,
+      "lon": 3.6333
+    },
+    {
+      "id": "landing:apollo-16",
+      "name": "Apollo 16",
+      "name_zh": "阿波罗16号",
+      "lat": -8.9734,
+      "lon": 15.5011
+    },
+    {
+      "id": "landing:apollo-17",
+      "name": "Apollo 17",
+      "name_zh": "阿波罗17号",
+      "lat": 20.1911,
+      "lon": 30.7723
+    },
+    {
+      "id": "landing:change-3",
+      "name": "Chang'e 3",
+      "name_zh": "嫦娥三号",
+      "lat": 44.1214,
+      "lon": -19.5117
+    },
+    {
+      "id": "landing:change-4",
+      "name": "Chang'e 4",
+      "name_zh": "嫦娥四号",
+      "lat": -45.4561,
+      "lon": 177.5885
+    },
+    {
+      "id": "landing:change-5",
+      "name": "Chang'e 5",
+      "name_zh": "嫦娥五号",
+      "lat": 43.0576,
+      "lon": -51.9161
+    },
+    {
+      "id": "landing:change-6",
+      "name": "Chang'e 6",
+      "name_zh": "嫦娥六号",
+      "lat": -41.6385,
+      "lon": -153.9852
+    }
+  ]
+}
