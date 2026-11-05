@@ -56,9 +56,10 @@ def test_selection_reaches_recognition_and_preserves_current_edits(monkeypatch, 
         # The worker inspects the match's projection surface before handing it
         # over, so the stub must look like a recognition result, not a string.
         accepted = SimpleNamespace(projection_surface='sphere')
-        def identify(image, actual_geometry, *, allow_eyepiece):
+        def identify(image, actual_geometry, *, allow_eyepiece, cache):
             calls.append(allow_eyepiece)
             assert actual_geometry is geometry
+            assert cache == module.CACHE
             return accepted
         monkeypatch.setattr(module, 'identify_from_atlas', identify)
         monkeypatch.setattr(module, 'detect_crater_rims', lambda *args: SimpleNamespace(candidates=[]))

@@ -37,7 +37,7 @@
 | `image_size` | `[宽, 高]`，单位像素，已经应用 EXIF 方向或 FITS 上下翻转。不是缩放后的预览尺寸 |
 | `geometry` | 已配准视角的 `observer`、`right`、`north`、`sun` 四个三维单位向量，以及 `distance_km`、`utc` |
 | `matrix` | 2×3 仿射矩阵，将归一化投影坐标变为照片像素；已经包含旋转、缩放、平移和可能的镜像 |
-| `automatic_recognition.lens_distortion` | 可选的径向畸变：`center: [cx, cy]`、`scale`（像素）、`k`（无量纲，0～0.6）。缺失或 `null` 表示无畸变 |
+| `automatic_recognition.lens_distortion` | 可选的径向畸变：`center: [cx, cy]`、`scale`（像素）、`k`（无量纲，0～0.6），以及可缺省的 `k2`（−0.3～0.3，默认 0）。缺失或 `null` 表示无畸变 |
 | `projection_surface` | `"sphere"` 使用参考球面，`"terrain"` 使用地形高度。旧字段缺失时，`automatic_recognition.refinement.relief_aware == true` 表示 terrain，否则 sphere |
 | `utc`、`observer` | 工程填写的时间及地球上拍摄地点。时间可能由用户估计，不代表从照片测出的时间 |
 
@@ -137,7 +137,8 @@ def moon_to_photo(data, lat_deg, lon_deg, height_km=None):
     lens = data.get("automatic_recognition", {}).get("lens_distortion")
     if lens:
         dx, dy = (x-lens["center"][0])/lens["scale"], (y-lens["center"][1])/lens["scale"]
-        factor = lens["k"]*(dx*dx+dy*dy)*lens["scale"]
+        squared = dx*dx+dy*dy
+        factor = (lens["k"]*squared+lens.get("k2", 0)*squared*squared)*lens["scale"]
         x, y = x+factor*dx, y+factor*dy
     if data.get("image_size"):
         width, height = data["image_size"]
@@ -152,12 +153,30 @@ def photo_to_sphere(data, x, y):
         if not (0 <= x < width and 0 <= y < height):
             return None
     lens = data.get("automatic_recognition", {}).get("lens_distortion")
-    if lens and lens["k"]:
+    if lens and (lens["k"] or lens.get("k2", 0)):
         dx, dy = (x-lens["center"][0])/lens["scale"], (y-lens["center"][1])/lens["scale"]
         measured = math.hypot(dx, dy)
-        r = min(measured, (measured/lens["k"])**(1/3))
-        for _ in range(12):
-            r -= (r+lens["k"]*r**3-measured)/(1+3*lens["k"]*r*r)
+        k, k2 = lens["k"], lens.get("k2", 0)
+        if not k2:
+            r = min(measured, (measured/k)**(1/3))
+            for _ in range(12):
+                r -= (r+k*r**3-measured)/(1+3*k*r*r)
+        else:
+            low = 0.
+            if k2 < 0:
+                turn = math.sqrt((3*k+math.sqrt(9*k*k-20*k2))/(-10*k2))
+                high = min(measured*1.25, turn*(1-1e-10))
+            else:
+                high = min(measured, (measured/k2)**.2)
+            if high*(1+k*high**2+k2*high**4) < measured:
+                return None  # Outside the calibrated monotonic optical branch.
+            for _ in range(64):
+                r = (low+high)/2
+                if r*(1+k*r*r+k2*r**4) < measured:
+                    low = r
+                else:
+                    high = r
+            r = (low+high)/2
         ratio = r/measured if measured else 1
         x, y = lens["center"][0]+dx*ratio*lens["scale"], lens["center"][1]+dy*ratio*lens["scale"]
     (a, b, tx), (c, d, ty) = data["matrix"]

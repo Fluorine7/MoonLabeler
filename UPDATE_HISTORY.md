@@ -2,6 +2,15 @@
 
 [项目主页](README.md) · [中文指南](README.zh-CN.md)
 
+## 0.12.3
+
+2026-11-05
+
+- 修正较强手机目镜畸变下月缘地形的标注偏移：用基础 LOLA 阴影补充灰度底图缺失的极区细节，校验额外径向项；保留原有图像对应点、九分区留出及分开的月缘训练/验证数据，普通照片与轻微畸变保留快速路径。 / Improve limb labels in strongly distorted afocal photos using LOLA shading for polar details missing from the albedo map. An additional radial term must preserve reliable albedo anchors and pass spatial holdouts and separate limb measurements; ordinary and mildly distorted photos retain the fast path.
+- 扩展校正与工程保存、正反向投影、字号、蒙版、地图图层及 PNG / SVG 共用；旧工程缺少 `k2` 时沿用原模型。高程下载可中止，校验失败保留原结果并提示。 / Share the extended correction across projects, forward/inverse projection, font scaling, masks, maps and PNG/SVG. Missing `k2` retains the legacy model; downloads are cancellable and rejected refinements preserve the accepted pose.
+
+本次更新源码，安装包仍为 0.12.2。 / Source update; downloadable apps remain at 0.12.2.
+
 ## 0.12.2
 
 2026-11-04

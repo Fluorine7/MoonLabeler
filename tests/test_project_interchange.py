@@ -26,7 +26,7 @@ def reader():
     return namespace
 
 
-def make_project(tmp_path, latitude=4., longitude=-6., *, mirrored=False, k=None):
+def make_project(tmp_path, latitude=4., longitude=-6., *, mirrored=False, k=None, k2=0.):
     observer = surface_vectors([latitude], [longitude])[0]
     north = unit(np.array([0., 0., 1.])-observer[2]*observer)
     right = np.cross(north, observer)
@@ -36,6 +36,8 @@ def make_project(tmp_path, latitude=4., longitude=-6., *, mirrored=False, k=None
     if mirrored:
         matrix[:, 0] *= -1
     distortion = {'center': [1000., 920.], 'scale': 1100., 'k': k} if k is not None else None
+    if distortion and k2:
+        distortion['k2'] = k2
     return Project(image_path=str(tmp_path/'照片 folder'/'彩月.tif'), utc=utc,
                    geometry=geometry, matrix=matrix, image_size=(2048, 1800),
                    identification={'lens_distortion': distortion},
@@ -78,9 +80,9 @@ def test_reader_and_application_accept_pre_metadata_projects(tmp_path, reader):
 
 @pytest.mark.parametrize('view', [(4., -6.), (86., 40.), (-86., -45.), (2., 179.)])
 @pytest.mark.parametrize('mirrored', [False, True])
-@pytest.mark.parametrize('k', [None, 0., .2, .6])
-def test_documented_reader_maps_photo_pixels_back_without_rotation_or_limb_errors(tmp_path, reader, view, mirrored, k):
-    project = make_project(tmp_path, *view, mirrored=mirrored, k=k)
+@pytest.mark.parametrize('k,k2', [(None, 0.), (0., 0.), (.2, 0.), (.6, 0.), (.2, -.06), (.2, .06)])
+def test_documented_reader_maps_photo_pixels_back_without_rotation_or_limb_errors(tmp_path, reader, view, mirrored, k, k2):
+    project = make_project(tmp_path, *view, mirrored=mirrored, k=k, k2=k2)
     path = tmp_path/'photo.moonlabel'
     project.save(path)
     data = reader['read_registration'](path)

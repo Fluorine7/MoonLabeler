@@ -1016,7 +1016,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                                              review_candidates + detection.candidates, **mask_kwargs(photo_mask))
             else:
                 try:
-                    recognition = identify_from_atlas(image, geometry, allow_eyepiece=allow_eyepiece, **mask_kwargs(photo_mask))
+                    recognition = identify_from_atlas(image, geometry, allow_eyepiece=allow_eyepiece, cache=CACHE, **mask_kwargs(photo_mask))
                 except ValueError as atlas_error:
                     check_cancelled()
                     try:
@@ -1124,6 +1124,13 @@ class MainWindow(WindowUiMixin, QMainWindow):
         elif recognition.lens_distortion:
             message = trf("目镜畸变校正 · {inliers} 个图像对应点 · 月缘偏差（95%）{limb:.1f} px",
                           inliers=recognition.image_inliers, limb=recognition.refinement['limb_p95_px'])
+            edge = recognition.refinement.get('edge_refinement', {})
+            if edge.get('status') == 'accepted':
+                message += tr(" · 月缘精校已通过独立验证")
+            elif edge.get('status') == 'unavailable':
+                message += tr("。高程数据不可用，未完成边缘精校。")
+            elif edge.get('status') == 'not_adopted':
+                message += tr("。边缘精校未采用，月缘附近仍需核对。")
         elif recognition.limb_inliers and not recognition.image_inliers:
             message = trf("月盘外缘与月海纹理配准成功 · 纹理相关 {correlation:.2f} · 外缘拟合偏差 {rms:.2f} px",
                           correlation=recognition.texture_correlation, rms=recognition.rms_px)

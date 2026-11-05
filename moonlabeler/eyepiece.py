@@ -20,24 +20,75 @@ def distort_points(points, distortion):
     if not distortion:
         return points
     delta = (points-np.asarray(distortion['center']))/distortion['scale']
-    return points + distortion['k']*delta*np.sum(delta**2, axis=-1, keepdims=True)*distortion['scale']
+    squared = np.sum(delta**2, axis=-1, keepdims=True)
+    radial = distortion['k']*squared
+    if distortion.get('k2'):
+        radial = radial+distortion['k2']*squared**2
+    return points + radial*delta*distortion['scale']
 
 
 def distortion_jacobian(points, distortion):
     delta = (np.asarray(points)-distortion['center'])/distortion['scale']
-    return ((1+distortion['k']*np.sum(delta**2, axis=-1))[:, None, None]*np.eye(2)
-            + 2*distortion['k']*delta[:, :, None]*delta[:, None, :])
+    squared = np.sum(delta**2, axis=-1)
+    k, k2 = distortion['k'], distortion.get('k2', 0.)
+    return ((1+k*squared+k2*squared**2)[:, None, None]*np.eye(2)
+            + (2*k+4*k2*squared)[:, None, None]*delta[:, :, None]*delta[:, None, :])
+
+
+def undistort_points(points, distortion):
+    """Invert the monotonic optical branch; rays beyond a fold are unavailable."""
+    points = np.asarray(points, float)
+    if not distortion or not (distortion['k'] or distortion.get('k2')):
+        return points
+    center, scale = np.asarray(distortion['center']), distortion['scale']
+    k, k2 = distortion['k'], distortion.get('k2', 0.)
+    delta = (points-center)/scale
+    radius = np.linalg.norm(delta, axis=1)
+    if not k2:
+        # Retain the established single-term inversion for existing projects.
+        original = np.minimum(radius, np.cbrt(radius/k))
+        for _ in range(12):
+            original -= (original+k*original**3-radius)/(1+3*k*original**2)
+    else:
+        if k2 < 0:
+            with np.errstate(over='ignore'):
+                turn = np.sqrt(np.divide(3*k+np.sqrt(9*k*k-20*k2), -10*k2))
+            # The radial scale is at least .8 on this branch. Bounding the
+            # root also avoids huge powers when k2 is almost zero.
+            upper = np.minimum(radius*1.25, turn*(1-1e-10))
+        else:
+            upper = np.minimum(radius, (radius/k2)**.2)
+            if k:
+                upper = np.minimum(upper, np.cbrt(radius/k))
+        maximum = upper*(1+k*upper**2+k2*upper**4)
+        available = np.isfinite(radius) & (radius <= maximum)
+        lower = np.zeros_like(radius)
+        original = np.minimum(radius, upper*.9)
+        for _ in range(24):
+            squared = original**2
+            residual = original*(1+k*squared+k2*squared**2)-radius
+            lower = np.where(residual < 0, original, lower)
+            upper = np.where(residual > 0, original, upper)
+            trial = original-residual/(1+3*k*squared+5*k2*squared**2)
+            original = np.where(np.isfinite(trial) & (trial >= lower) & (trial <= upper),
+                                trial, (lower+upper)/2)
+        original = np.where(available, original, np.nan)
+    return center+delta*(original/np.maximum(radius, 1e-30))[:, None]*scale
 
 
 def _radial(params, points):
     a, b, tx, ty, k, cx, cy = params[:7]
     camera = points @ np.array([[a, b], [-b, a]]) + [tx, ty]
     delta = camera-[cx, cy]
-    return camera+k*delta*np.sum(delta**2, axis=1, keepdims=True)
+    squared = np.sum(delta**2, axis=1, keepdims=True)
+    radial = k*squared
+    if len(params) > 9:
+        radial = radial+params[9]*squared**2
+    return camera+delta*radial
 
 
 def _predict(params, coordinates, geometry, sign):
-    points = shifted_geometry(geometry, params[7:]).project(coordinates[:, 0], coordinates[:, 1])[0]
+    points = shifted_geometry(geometry, params[7:9]).project(coordinates[:, 0], coordinates[:, 1])[0]
     return _radial(params, points*[sign, 1])
 
 

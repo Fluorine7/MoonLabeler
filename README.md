@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**源码 / Source 0.12.2** · Fluorine Zhu · GPL-3.0-or-later
+**源码 / Source 0.12.3** · Fluorine Zhu · GPL-3.0-or-later
 
 为月面照片配准、编辑地名，并导出 PNG / SVG。
 
@@ -12,13 +12,13 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## 中文
 
-### 0.12.2 更新
+### 0.12.3 更新
 
-- **照片区域示意图使用实际观测视角**：按工程的月相、天平动和月轴倾角显示整月，局部取景不再改变小图月相。
-- 移除 Earth 标记，保留取景范围、中心坐标及随月轴倾斜的 N/S 极点提示。
-- 底板统一为半透明中性黑，月面、边框和图线保留艺术主题配色；拖动、工程保存及 PNG / SVG 导出保持一致。
+- **修正手机目镜后照片的边缘标注偏移**：较强畸变时用 LOLA 阴影补充极区细节，新增径向校正项，并通过分区留出和独立月缘验证。
+- 校正随工程保存，预览、地图、字号和 PNG / SVG 共用正反向投影；普通照片及轻微畸变保留原快速路径。
+- 首次边缘精校需要约 33 MB 基础高程，之后复用缓存；可中止下载，校验失败时保留原配准并提示。
 
-完整变化见[更新记录](UPDATE_HISTORY.md#0122)，沿地形标注设置见[使用说明](README.zh-CN.md#沿地形排列名称)。当前源码版本为 0.12.2；已发布应用的下载入口在[下方](#下载应用--app-downloads)。
+完整变化见[更新记录](UPDATE_HISTORY.md#0123)，沿地形标注设置见[使用说明](README.zh-CN.md#沿地形排列名称)。当前源码版本为 0.12.3；已发布应用的下载入口在[下方](#下载应用--app-downloads)。
 
 ### 快速开始
 
@@ -67,13 +67,13 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## English
 
-### New in 0.12.2
+### New in 0.12.3
 
-- **The lunar locator uses the actual observing geometry**: phase, libration and lunar-axis tilt follow the project, so a cropped field no longer changes the apparent phase.
-- Removed the Earth marker while retaining the footprint, field-centre coordinates and N/S pole cues aligned with the lunar axis.
-- A translucent neutral-black panel suits lunar photos while preserving the themed Moon, border and grid colours. Dragging, project persistence and matching PNG / SVG exports are retained.
+- **Improved limb labels in phone-through-eyepiece photos**: strong distortion can use LOLA shading to recover polar details, with an additional radial term checked against spatial holdouts and independent limb measurements.
+- Projects, previews, maps, font scaling and PNG / SVG share the correction and its inverse. Ordinary and mildly distorted photos retain their existing fast path.
+- The first edge refinement needs about 33 MB of elevation data, then reuses the cache. Downloads are cancellable; rejected refinements keep the accepted pose and show a notice.
 
-See the [release notes](UPDATE_HISTORY.md#0122) and [cartographic design notes](docs/cartographic-labeling.md). The source version is 0.12.2; published app downloads are listed [below](#下载应用--app-downloads).
+See the [release notes](UPDATE_HISTORY.md#0123) and [cartographic design notes](docs/cartographic-labeling.md). The source version is 0.12.3; published app downloads are listed [below](#下载应用--app-downloads).
 
 ### Quick start
 
@@ -140,7 +140,11 @@ Recognition can fail with inaccurate times, shadows, blur or distortion. Basic L
 
 **0.12.2** 应用包包含新界面、沿地形标注与月相示意图，无需安装 Python。
 
+0.12.3 的目镜边缘校正修复目前请使用源码，安装包仍为 0.12.2。
+
 The **0.12.2** apps include the updated interface, landform labels and phase-correct lunar locator. Python is not required.
+
+Use the source for the 0.12.3 afocal edge correction; downloadable apps remain at 0.12.2.
 
 | 系统 / Platform | 下载 / Download | 打开方式 / Start |
 | --- | --- | --- |

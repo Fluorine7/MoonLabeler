@@ -298,6 +298,8 @@ def _validate_project_data(data):
         _point(distortion.get('center'), 'lens_distortion.center')
         _number(distortion.get('scale'), 'lens_distortion.scale', 1)
         _number(distortion.get('k'), 'lens_distortion.k', 0, .6)
+        if 'k2' in distortion:
+            _number(distortion['k2'], 'lens_distortion.k2', -.3, .3)
     for rim in _mapping(data.get('terrain_rims', {}), 'terrain_rims').values():
         _mapping(rim, 'terrain_rims')
         coordinates = rim.get('coordinates')

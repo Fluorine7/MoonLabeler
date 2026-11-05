@@ -17,6 +17,7 @@ from PIL import Image
 from ._opencv import cv2
 from .annotation_style import svg_segments, svg_caption
 from .geometry import unit, surface_vectors
+from .eyepiece import undistort_points
 from .registration import transform_points
 from .terrain import ElevationMap
 from .terrain_view import TerrainView
@@ -357,17 +358,7 @@ def cartographic_colors(raster, project):
 
 def photo_coordinates(project, pixels):
     """Undo the validated radial lens correction, then the affine registration."""
-    points = np.asarray(pixels, float)
-    distortion = project.identification.get("lens_distortion")
-    if distortion and distortion["k"]:
-        center, scale, k = np.asarray(distortion["center"]), distortion["scale"], distortion["k"]
-        delta = (points-center)/scale
-        radius = np.linalg.norm(delta, axis=1)
-        # The validated pincushion model has k >= 0 and a unique positive root.
-        original = np.minimum(radius, np.cbrt(radius/k))
-        for _ in range(12):
-            original -= (original+k*original**3-radius)/(1+3*k*original**2)
-        points = center + delta*(original/np.maximum(radius, 1e-30))[:, None]*scale
+    points = undistort_points(pixels, project.identification.get("lens_distortion"))
     inverse = np.linalg.inv(np.vstack((project.matrix, [0., 0., 1.])))[:2]
     return transform_points(inverse, points)
 

@@ -184,7 +184,8 @@ def test_project_rejects_malformed_lens_metadata(tmp_path, value):
         Project.load(path)
 
 
-def test_gui_and_both_exports_use_corrected_original_pixels(tmp_path):
+@pytest.mark.parametrize('k2, corrected_x', [(0., 951.2), (-.06, 941.3696)])
+def test_gui_and_both_exports_use_corrected_original_pixels(tmp_path, k2, corrected_x):
     import os
     import xml.etree.ElementTree as ET
     from PIL import Image
@@ -197,7 +198,7 @@ def test_gui_and_both_exports_use_corrected_original_pixels(tmp_path):
     g, _, _, _, _, _ = synthetic_photo(1)
     window.project = Project(geometry=g, matrix=np.array([[500., 0, 500.], [0, 500., 400.]]),
                              min_diameter=0, illuminated_only=False, crater_outlines=False)
-    window.project.identification['lens_distortion'] = dict(center=[500., 400.], scale=500., k=.2)
+    window.project.identification['lens_distortion'] = dict(center=[500., 400.], scale=500., k=.2, k2=k2)
     lat, lon, _ = g.unproject([[.8, 0]])
     feature = dict(id='probe', name='Probe', lat=lat[0], lon=lon[0], diameter=10., kind='Crater, craters')
     window.catalog = [feature]
@@ -205,15 +206,16 @@ def test_gui_and_both_exports_use_corrected_original_pixels(tmp_path):
     try:
         window.set_image(np.zeros((800, 1100, 3), np.uint8))
         item = window.annotation_items[0]
-        assert [item.anchor.x(), item.anchor.y()] == pytest.approx([951.2, 400.], abs=1e-6)
+        assert [item.anchor.x(), item.anchor.y()] == pytest.approx([corrected_x, 400.], abs=1e-6)
         png, svg = tmp_path/'photo.png', tmp_path/'photo.svg'
         window.render_png(png)
         export_svg(svg, window.image, window.annotation_entries(), window.project, window.annotation_leaders())
         raster = np.asarray(Image.open(png))
-        assert raster[397:404, 948:955, :3].max() > 220
+        x = round(corrected_x)
+        assert raster[397:404, x-3:x+4, :3].max() > 220
         assert not raster[397:404, 897:904, :3].any(), 'PNG drew the uncorrected center'
         marker = ET.parse(svg).find('.//{http://www.w3.org/2000/svg}circle')
-        assert float(marker.get('cx')) == pytest.approx(951.2, abs=.001)
+        assert float(marker.get('cx')) == pytest.approx(corrected_x, abs=.001)
         assert float(marker.get('cy')) == pytest.approx(400., abs=.001)
     finally:
         window.dirty = False
