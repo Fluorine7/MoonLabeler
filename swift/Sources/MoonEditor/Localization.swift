@@ -26,6 +26,7 @@ enum InterfaceText {
             "高程不透明度": "Elevation opacity", "等高线不透明度": "Contour opacity", "晨昏线依据": "Terminator source",
             "照片估计": "Estimate from photo", "工程时间": "Project time", "文字": "Text", "最大字号 · %": "Maximum font size · %",
             "字号递减 · %": "Size decrement · %", "文字粗细": "Font weight", "常规": "Regular", "大坑轮廓": "Crater outlines",
+            "工程的标注字体名称无效。": "The project's label font name is invalid.",
             "坑缘形状": "Rim shape", "参考椭圆": "Reference ellipse", "手绘风坑缘": "Terrain rim", "排版与编辑": "Layout and editing",
             "自动避让": "Avoid overlaps", "显示 / 隐藏": "Show / hide", "标注文字": "Label text",
             "Cmd 拖动标签、图例或示意图；双击标签改名。": "Cmd-drag labels, the legend or overview; double-click a label to rename it.",

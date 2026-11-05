@@ -48,6 +48,8 @@ public struct ProjectStyle: Codable, Equatable, Sendable {
     public mutating func set(_ key: String, _ value: String) { values[key] = .string(value) }
     public var art: String { string("art_style", "standard") }
     public var isArt: Bool { art != "standard" }
+    public var fontFamily: String { string("font_family") }
+    public var preferredLabelFamily: String { isArt ? "" : fontFamily }
     public var threshold: Int? { values["map_light_threshold"]?.number.map(Int.init) }
     public var contourInterval: Double? { values["contour_interval"]?.number }
     public var contourEnabled: Bool { bool("contour_enabled") }
@@ -167,6 +169,9 @@ public struct ProjectState: Codable, Equatable, Sendable {
         for (key, range) in ranges {
             guard let value = style.values[key], value != .null, value != .string("auto") else { continue }
             guard let number = value.number, number.isFinite, range.contains(number) else { throw MoonError.invalid("工程样式 \(key) 无效。") }
+        }
+        if let family = style.values["font_family"], family.string == nil {
+            throw MoonError.invalid("工程的标注字体名称无效。")
         }
         for key in ["legend_position", "overview_position"] {
             if let value = style.values[key], value != .null {

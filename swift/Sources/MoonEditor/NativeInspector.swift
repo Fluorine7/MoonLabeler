@@ -233,7 +233,8 @@ struct NativeInspector: View {
                 input("最小直径", value: Binding(get: { model.document?.settings.minimumDiameter ?? 40 }, set: { value in model.edit { $0.settings.minimumDiameter = value } }), range: 0...3000, suffix: "km")
                 HStack { Toggle(model.tr("着陆点（阿波罗 / 嫦娥）"), isOn: model.styleBool("show_landing_sites")); Spacer(); ColorPicker(model.tr("颜色"), selection: landingColor).labelsHidden().disabled(model.document?.style.bool("show_landing_sites") != true) }
             }
-            fold("文字样式 · 字重、颜色、透明度", expanded: $textExpanded) {
+            fold("文字样式 · 字体、颜色、透明度", expanded: $textExpanded) {
+                fontPicker
                 input("字号递减", value: model.styleNumber("font_step_percent", fallback: 0.3), range: 0...8, suffix: "%", step: 0.05, includesInitialValue: true)
                 EditorChoicePicker(model.tr("字重"), selection: model.styleString("font_weight", fallback: "bold"), options: choices([("bold", "粗体"), ("normal", "常规")]))
                 ColorPicker(model.tr("选择文字与引线颜色"), selection: textColor)
@@ -330,6 +331,20 @@ struct NativeInspector: View {
     private func featureName(_ feature: Feature) -> String { model.uiLanguage == "English" ? feature.name : model.tr(feature.caption(.bilingual)) }
     private func languageName(_ value: NameLanguage) -> String { switch value { case .bilingual: return "双语（简体）"; case .bilingualTraditional: return "双语（繁体）"; case .chinese: return "简体中文"; case .traditional: return "繁体中文"; case .english: return "英语" } }
     private func choices<Value>(_ values: [(Value, String)]) -> [(Value, String)] { values.map { ($0.0, model.tr($0.1)) } }
+    private var fontPicker: some View {
+        let family = model.document?.style.fontFamily ?? ""
+        var options = [("", model.tr("默认字体"))] + LabelFonts.families.map { ($0, $0) }
+        if !family.isEmpty, LabelFonts.installedFamily(family) == nil {
+            options.append((family, model.tr("{family}（未安装）").replacingOccurrences(of: "{family}", with: family)))
+        }
+        let selection = Binding(get: {
+            let value = model.document?.style.fontFamily ?? ""
+            return LabelFonts.installedFamily(value) ?? value
+        }, set: { model.styleString("font_family").wrappedValue = $0 })
+        return EditorChoicePicker(model.tr("字体"), selection: selection, options: options)
+            .disabled(model.document?.style.isArt == true)
+            .help(model.tr("选择本机字体。缺少的字符用默认字体显示；选好后点击重新生成标注。"))
+    }
     private func kindName(_ kind: String) -> String {
         let key = kind.components(separatedBy: ",")[0]
         return ["Albedo Feature": "反照率特征", "Astronaut-named features": "宇航员命名地形", "Catena": "坑链", "Crater": "环形山", "Dorsum": "月脊", "Lacus": "月湖", "Mare": "月海", "Mons": "山与山脉", "Oceanus": "月洋", "Palus": "月沼", "Planitia": "平原", "Promontorium": "月岬", "Rima": "月溪", "Rupes": "月崖", "Satellite Feature": "附属地形", "Sinus": "月湾", "Statio": "着陆基地", "Vallis": "月谷"][key] ?? key

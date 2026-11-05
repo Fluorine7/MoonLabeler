@@ -98,7 +98,7 @@ private struct LegendInk {
 enum SceneRenderer {
     static var textureMemoryUsage: (scenes: Int, staticBitmapBytes: Int) { TextureMemory.usage }
     private struct CaptionKey: Equatable {
-        var annotations: [Annotation], size: Double, language: NameLanguage, art: String, weight: String, calibration: Calibration?
+        var annotations: [Annotation], size: Double, language: NameLanguage, art: String, weight: String, family: String, calibration: Calibration?
     }
     private struct CaptionGeometry {
         var path: CGPath, bounds: CGRect, pathBound: Bool
@@ -107,7 +107,8 @@ enum SceneRenderer {
     private static var captionSets: [(CaptionKey, [UUID: CaptionGeometry])] = []
     private static func preparedCaptions(_ document: MoonDocument) -> [UUID: CaptionGeometry] {
         let key = CaptionKey(annotations: document.annotations, size: document.settings.fontSize, language: document.settings.language,
-                             art: document.style.art, weight: document.style.string("font_weight", "bold"), calibration: document.calibration)
+                             art: document.style.art, weight: document.style.string("font_weight", "bold"),
+                             family: document.style.preferredLabelFamily, calibration: document.calibration)
         captionLock.lock()
         let existing = captionSets.first { $0.0 == key }?.1
         captionLock.unlock()
@@ -127,7 +128,10 @@ enum SceneRenderer {
     private static var latestTextures: (id: UUID, value: SceneTextures)?
     private static let shapedLines = NSCache<NSString, ShapedLine>()
     private static func shaped(_ text: String, font face: NSFont, tracking: Double = 0) -> ShapedLine {
-        let key = "\(face.fontName)|\(face.pointSize)|\(tracking)|\(text)" as NSString
+        let cascade = (face.fontDescriptor.object(forKey: .cascadeList) as? [NSFontDescriptor])?.map {
+            ($0.object(forKey: .name) as? String) ?? ($0.object(forKey: .family) as? String) ?? ""
+        }.joined(separator: ",") ?? ""
+        let key = "\(face.fontName)|\(face.pointSize)|\(cascade)|\(tracking)|\(text)" as NSString
         if let result = shapedLines.object(forKey: key) { return result }
         var attributes: [NSAttributedString.Key: Any] = [.font: face]
         if tracking != 0 { attributes[.kern] = tracking * face.pointSize }
@@ -161,6 +165,26 @@ enum SceneRenderer {
         }
         if leftToRight { result.width = compatibleCursor }
         shapedLines.countLimit = 1500; shapedLines.setObject(result, forKey: key); return result
+    }
+    private static func editableFontRuns(_ line: ShapedLine, x: Double, baseline: Double) -> [String] {
+        struct Run {
+            var text: String, family: String, x: Double, y: Double, lastX: Double
+        }
+        var seen = Set<Int>(), runs: [Run] = []
+        let clusters = line.glyphs.filter { seen.insert($0.cluster).inserted }.sorted { $0.cluster < $1.cluster }
+        for glyph in clusters {
+            if let last = runs.indices.last, runs[last].family == glyph.font, runs[last].y == glyph.y, glyph.x >= runs[last].lastX {
+                runs[last].text += glyph.text; runs[last].lastX = glyph.x
+            } else {
+                runs.append(Run(text: glyph.text, family: glyph.font, x: glyph.x, y: glyph.y, lastX: glyph.x))
+            }
+        }
+        return runs.enumerated().map { index, run in
+            let end = index + 1 < runs.count ? runs[index + 1].x : line.width
+            let width = end - run.x
+            let length = width > 0 && run.text.count > 1 ? " textLength=\"\(width)\" lengthAdjust=\"spacing\"" : ""
+            return "<tspan x=\"\(x + run.x)\" y=\"\(baseline - run.y)\" font-family=\"\(escape(run.family))\"\(length)>\(escape(run.text))</tspan>"
+        }
     }
     private static func mapWidth(_ document: MoonDocument, major: Bool, grid: Bool = false) -> Double {
         max(grid ? (major ? 1.8 : 1.25) : (major ? 1.8 : 1.1), Double(min(document.imageWidth, document.imageHeight)) * (grid ? (major ? 0.0022 : 0.0016) : (major ? 0.0018 : 0.0011)))
@@ -391,7 +415,8 @@ enum SceneRenderer {
             let fallback = [NSFontDescriptor(fontAttributes: [.family: traditional ? "Songti TC" : "Songti SC"])]
             face = NSFont(descriptor: face.fontDescriptor.addingAttributes([.cascadeList: fallback]), size: size) ?? face
         }
-        return italic ? NSFontManager.shared.convert(face, toHaveTrait: .italicFontMask) : face
+        let fallback = italic ? NSFontManager.shared.convert(face, toHaveTrait: .italicFontMask) : face
+        return LabelFonts.preferredFace(document.style.preferredLabelFamily, fallback: fallback, regular: regular, italic: italic) ?? fallback
     }
     private static func attributes(_ document: MoonDocument, annotation: Annotation, ink: ThemeInk) -> [NSAttributedString.Key: Any] {
         let size = document.settings.fontSize * (annotation.visual?.fontScale ?? 1)
@@ -578,8 +603,10 @@ enum SceneRenderer {
 }
 
 extension SceneRenderer {
+    private static func escape(_ text: String) -> String {
+        text.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\"", with: "&quot;")
+    }
     static func svg(image: CGImage, document: MoonDocument, scene: AnnotationScene?, to url: URL) throws {
-        func escape(_ text: String) -> String { text.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\"", with: "&quot;") }
         func dataURL(_ image: CGImage) throws -> String {
             let data = NSMutableData()
             guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else { throw MoonError.invalid("无法创建 SVG 底图。") }
@@ -689,7 +716,9 @@ extension SceneRenderer {
                 captions.append("<text font-family=\"\(escape(family))\" font-size=\"\(size)\" \(textStyle) xml:space=\"preserve\" aria-label=\"\(escape(annotation.text))\">")
                 for (row, text) in annotation.text.components(separatedBy: "\n").enumerated() {
                     let baseline = annotation.position.y + size + Double(row) * (face.ascender - face.descender + face.leading), line = shaped(text, font: face, tracking: typography.tracking)
-                    if annotation.featureID != nil {
+                    if !document.style.preferredLabelFamily.isEmpty {
+                        captions += editableFontRuns(line, x: annotation.position.x, baseline: baseline)
+                    } else if annotation.featureID != nil {
                         var emitted = Set<Int>()
                         for glyph in line.glyphs where emitted.insert(glyph.cluster).inserted {
                             captions.append("<tspan x=\"\(annotation.position.x + glyph.x)\" y=\"\(baseline - glyph.y)\" font-family=\"\(escape(glyph.font))\">\(escape(glyph.text))</tspan>")
