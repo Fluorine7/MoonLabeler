@@ -17,7 +17,7 @@ from moonlabeler.map_layers import ELEVATION_PALETTES, ElevationRaster, colorize
 from moonlabeler.project import Project, export_svg, label_font_families
 
 
-NEW_STYLES = ('cyanotype', 'copperplate', 'inkwash', 'redalert')
+NEW_STYLES = ('cyanotype', 'copperplate', 'inkwash', 'redalert', 'relief_atlas')
 
 
 @pytest.mark.parametrize('style', NEW_STYLES[:3])
@@ -56,6 +56,20 @@ def test_redalert_terrain_separates_grass_sand_and_rock_without_changing_heights
     assert wall.max() < sand.max()*.85, 'Steep walls need a visible rock face'
     assert np.array_equal(rgba[:, :, 3] > 0, np.isfinite(heights))
     assert np.array_equal(heights, before, equal_nan=True) and not dark.any() and (bright == 255).all()
+
+
+def test_relief_atlas_keeps_blue_pits_and_ochre_highs_in_local_crops():
+    heights = np.repeat(np.array([[-4., -2., 0.]], np.float32), 24, axis=1).repeat(36, axis=0)
+    heights[0, 0] = np.nan
+    p = Project(art_style="relief_atlas", elevation_palette="relief_atlas", elevation_opacity=.96)
+    rgba = colorize_elevation(ElevationRaster(heights, "test", 1.), p)
+    higher_crop = colorize_elevation(ElevationRaster(heights+5., "test", 1.), p)
+    low, middle, high = rgba[18, [12, 36, 60], :3].astype(int)
+    assert low[2] > low[0]+40
+    assert middle[1] > middle[0]+20
+    assert high[0] > high[2]+50
+    np.testing.assert_allclose(rgba[1:], higher_crop[1:], atol=1)
+    assert rgba[0, 0, 3] == 0 and np.all(rgba[1:, :, 3] == round(255*.96))
 
 
 @pytest.mark.parametrize('style', NEW_STYLES)
@@ -134,9 +148,9 @@ def test_new_style_svg_has_readable_editable_ink_on_light_and_dark_photos(tmp_pa
 def test_new_style_names_are_translated_in_all_interface_languages():
     previous = i18n._language, i18n._explicit
     expected = {
-        'zh-CN': ('蓝晒星图', '铜版图录', '水墨朱砂', '红警地形图'),
-        'zh-TW': ('藍曬星圖', '銅版圖錄', '水墨硃砂', '紅警地形圖'),
-        'en': ('Cyanotype chart', 'Copperplate atlas', 'Ink and cinnabar', 'Red Alert terrain'),
+        'zh-CN': ('蓝晒星图', '铜版图录', '水墨朱砂', '红警地形图', '月面地形图集'),
+        'zh-TW': ('藍曬星圖', '銅版圖錄', '水墨硃砂', '紅警地形圖', '月面地形圖集'),
+        'en': ('Cyanotype chart', 'Copperplate atlas', 'Ink and cinnabar', 'Red Alert terrain', 'Lunar relief atlas'),
     }
     try:
         for language, titles in expected.items():

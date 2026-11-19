@@ -981,6 +981,7 @@ class WindowUiMixin:
         self.elevation_palette.addItem(tr("铜橙与青绿"), "copperplate")
         self.elevation_palette.addItem(tr("墨灰与暖白"), "inkwash")
         self.elevation_palette.addItem(tr("草绿与沙土"), "redalert")
+        self.elevation_palette.addItem(tr("蓝青与赭石"), "relief_atlas")
         form.addRow(tr("高程配色"), self.elevation_palette)
         self.elevation_opacity, self.elevation_opacity_value, opacity_row = self.ui_percent_slider(round(self.project.elevation_opacity*100), tr("高程不透明度"))
         form.addRow(tr("高程不透明度"), opacity_row)

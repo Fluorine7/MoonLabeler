@@ -25,9 +25,11 @@ from .landing_sites import landing_sites, is_landing_site, DEFAULT_LANDING_COLOR
 from .annotation_relief import catalogue_rim, contour_center, MIN_OUTLINE_DIAMETER_KM, MAX_HEIGHT_KM
 from .zh_variant import to_traditional
 from .annotation_style import (ART_STYLES, ART_PRESETS, SERIF_STYLES, HIERARCHICAL_STYLES, appearance, manuscript_fonts,
-                               svg_caption, svg_caption_font_runs, svg_preferred_family, caption_typography, placed_caption_typography,
+                               svg_caption, uses_shaped_caption_runs, svg_caption_font_runs, svg_preferred_family,
+                               caption_typography, placed_caption_typography,
                                caption_text, caption_span, path_caption_typography, path_caption_rows, svg_serif_family, photo_for_style)
-from .map_layers import GRID_SPACINGS, CONTOUR_INTERVALS, ELEVATION_PALETTES, build_map_layers, layers_svg, legend_svg, photo_lightness
+from .map_layers import (GRID_SPACINGS, CONTOUR_INTERVALS, ELEVATION_PALETTES, build_map_layers, layers_svg,
+                         elevation_legend_enabled, legend_svg, photo_lightness)
 from .photo_overview import overview_svg
 
 # Stable project-file values, in the order shown by the name-language picker.
@@ -881,13 +883,13 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None, disp
     if project.grid_spacing or project.elevation_enabled or project.contour_enabled or project.terminator_enabled:
         layers = build_map_layers(project, image.shape, image=image) if layers is None else layers
         lines.extend(layers_svg(project, image.shape, layers))
-        if project.elevation_enabled or project.contour_enabled:
+        if elevation_legend_enabled(project):
             lines.extend(legend_svg(project, image.shape, contour_interval=layers.contour_interval))
     families = project.label_families()
-    custom_font = bool(project.preferred_label_family)
+    shaped_runs = uses_shaped_caption_runs(project)
     # Qt SVG treats a comma-separated font-family attribute as one literal
     # family. Use a single resolved face for serif presets and custom fonts.
-    if custom_font:
+    if shaped_runs:
         family = svg_preferred_family(project)
     elif project.art_style in SERIF_STYLES:
         family = svg_serif_family(families)
@@ -905,7 +907,7 @@ def export_svg(path, image, entries, project, leaders=None, *, layers=None, disp
         font_size = font_sizes[feature['id']]
         text = caption_text(project, feature)
         typography = placed_caption_typography(project, feature, text, font_size, position)
-        font_runs = svg_caption_font_runs(text, font_size, families, style.weight, typography, family) if custom_font else ()
+        font_runs = svg_caption_font_runs(text, font_size, families, style.weight, typography, family) if shaped_runs else ()
         line = (leaders or {}).get(feature["id"], (ax, ay, x, y+font_size/2))
         lines.append(f'<g id="feature-{fid}">')
         outline = project.crater_outline(feature, image.shape)

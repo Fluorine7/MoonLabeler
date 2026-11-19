@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QGraphicsItem, QGraphicsPixmapItem, QGraphicsPathI
 
 from .drag import DRAG_KEY, ModifierDragItem
 from ..i18n import trf
-from ..map_layers import (grid_color, grid_appearance, grid_dashes, legend_rect, legend_image,
+from ..map_layers import (grid_color, grid_appearance, grid_dashes, elevation_legend_enabled, legend_rect, legend_image,
                           legend_title, legend_style, contour_appearance, terminator_appearance, terminator_dashes, line_strokes,
                           feathered_coverage)
 
@@ -372,7 +372,7 @@ def add_map_layers(scene, project, shape, layers, *, contour_preview=None, grid_
         style = terminator_appearance(project, shape)
         items.extend(_line_items(scene, layers.terminator, style, project.terminator_opacity,
                                  "terminator", 5.5, terminator_dashes(project, style[2])))
-    if layers.elevation is not None or layers.contours is not None:
+    if elevation_legend_enabled(project) and (layers.elevation is not None or layers.contours is not None):
         legend = ElevationLegend(shape, project, layers.contour_interval, moved=legend_moved)
         scene.addItem(legend)
         items.append(legend)
