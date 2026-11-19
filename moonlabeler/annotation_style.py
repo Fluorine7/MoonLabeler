@@ -24,10 +24,11 @@ ART_PRESETS = {
     "copperplate": ArtPreset("铜版图录", "copperplate", 90, 50),
     "inkwash": ArtPreset("水墨朱砂", "inkwash", 78, 62),
     "redalert": ArtPreset("红警地形图", "redalert", 100, 32),
+    "relief_atlas": ArtPreset("月面地形图集", "relief_atlas", 96, 72),
 }
 ART_STYLES = ("standard", *ART_PRESETS)
-SERIF_STYLES = ("manuscript", "copperplate", "inkwash")
-HIERARCHICAL_STYLES = ("manuscript", "cyanotype", "copperplate", "inkwash", "redalert")
+SERIF_STYLES = ("manuscript", "copperplate", "inkwash", "relief_atlas")
+HIERARCHICAL_STYLES = ("manuscript", "cyanotype", "copperplate", "inkwash", "redalert", "relief_atlas")
 
 
 def photo_for_style(image, art_style):
@@ -49,10 +50,11 @@ class Appearance:
     map_style: bool = False
     halo_ratio: float = .16
     face_ratio: float = .012
+    halo_min: float = 2.4
 
     def halo_width(self, size):
         if self.map_style:
-            return max(2.4, size*self.halo_ratio)
+            return max(self.halo_min, size*self.halo_ratio)
         return max(2., size*.06)
 
     def face_width(self, size):
@@ -82,6 +84,10 @@ def appearance(project, *, landing=False):
         return Appearance("#efb963" if landing else "#f4eccb",
                           "#d4a251" if landing else "#d7d39c", "#17251b", "bold", map_style=True,
                           halo_ratio=.12)
+    if project.art_style == "relief_atlas":
+        return Appearance("#732e24" if landing else "#182739",
+                          "#732e24" if landing else "#182739", "#f4eedb", "normal", serif=True, map_style=True,
+                          halo_ratio=.095, face_ratio=.018, halo_min=1.8)
     color = project.landing_color if landing else project.color
     return Appearance(color, color, "#141923", project.font_weight)
 
@@ -122,6 +128,17 @@ class CaptionTypography:
 
 
 def caption_typography(project, feature):
+    if project.art_style == "relief_atlas":
+        kind = feature.get("kind", "").split(",")[0]
+        if kind in ("Mare", "Oceanus"):
+            scale = 1.28
+        elif kind in ("Mons", "Rima", "Rupes", "Vallis", "Dorsum", "Promontorium", "Catena"):
+            scale = 1.10
+        elif kind == "Satellite Feature":
+            scale = .69
+        else:
+            scale = 1.
+        return CaptionTypography(italic=True, region=True, scale=scale)
     if project.art_style == "redalert":
         kind = feature.get("kind", "").split(",")[0]
         if kind in ("Mare", "Oceanus"):
@@ -288,6 +305,10 @@ def svg_preferred_family(project):
     return project.label_families()[0]
 
 
+def uses_shaped_caption_runs(project):
+    return bool(project.preferred_label_family) or project.art_style == "relief_atlas"
+
+
 def svg_caption_font_runs(text, size, families, weight, typography, primary):
     """Keep editable SVG text while matching Qt's fallback for missing glyphs."""
     from PySide6.QtGui import QGuiApplication
@@ -314,13 +335,13 @@ def path_caption_rows(project, feature, text, size):
     parts = text.split(" · ", 1) if bilingual else [text]
     rows = []
     families = tuple(project.label_families())
-    custom_font = bool(project.preferred_label_family)
+    recover_fallback_indices = uses_shaped_caption_runs(project)
     for index, part in enumerate(parts):
         row_size = max(6, round(size*.82)) if index else size
         if QGuiApplication.instance() is not None:
             units, widths, resolved = _shape_row(part, row_size, families, appearance(project).weight,
                                                 typography.italic, typography.tracking,
-                                                recover_fallback_indices=custom_font)
+                                                recover_fallback_indices=recover_fallback_indices)
         else:
             # Geometry-only consumers need no GUI. Actual GUI/Qt SVG exports
             # measure the selected system font and share those measurements.
@@ -374,9 +395,8 @@ def path_caption_typography(project, feature, text, size):
 
 
 def flat_caption_typography(project, typography):
-    # Preserve legacy arc spacing, but measure custom fonts as whole text
-    # when a landform caption cannot follow its path at the limb.
-    return replace(typography, arc=0., positioned=not project.preferred_label_family, glyphs=(), origin=None,
+    # Revert a landform caption to shaped text if it cannot follow the limb.
+    return replace(typography, arc=0., positioned=not uses_shaped_caption_runs(project), glyphs=(), origin=None,
                    glyph_scales=(), glyph_advances=(), glyph_families=())
 
 

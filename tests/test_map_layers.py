@@ -748,6 +748,40 @@ def test_wilderness_preset_and_contour_only_live_export_preserve_originals(windo
     assert np.array_equal(np.array(Image.open(original)), np.array(Image.open(tmp_path/"restored.png")))
 
 
+def test_relief_atlas_keeps_the_export_inside_the_photo(window, tmp_path):
+    from moonlabeler.ui.map_layers import ElevationLegend
+
+    win = window
+    data = dem()
+    dem_path = tmp_path/"atlas-dem.npz"
+    np.savez(dem_path, height_km=data.data, north=data.north, west=data.west, pixels_per_degree=data.ppd)
+    win.dem_path = str(dem_path)
+    win.art_style.setCurrentIndex(win.art_style.findData("relief_atlas"))
+    assert win.map_light_toggle.isChecked()
+    win.apply_label_settings()
+    deadline = time.monotonic()+10
+    while win.busy and time.monotonic() < deadline:
+        QApplication.processEvents()
+        time.sleep(.005)
+    assert not win.busy
+    assert win.map_layers.elevation is not None and win.map_layers.contours
+    assert not any(isinstance(item, ElevationLegend) for item in win.map_items)
+    assert win.annotation_items and all(item.typography.italic for item in win.annotation_items)
+
+    png, svg = tmp_path/"atlas.png", tmp_path/"atlas.svg"
+    win.render_png(png)
+    export_svg(svg, win.image, win.annotation_entries(), win.project, win.annotation_leaders(), layers=win.map_layers)
+    height, width = win.image.shape[:2]
+    with Image.open(png) as saved:
+        assert saved.size == (width, height)
+    root = ET.parse(svg)
+    ns = {"s": "http://www.w3.org/2000/svg"}
+    assert root.getroot().get("viewBox") == f"0 0 {width} {height}"
+    assert root.find('.//s:g[@id="elevation-legend"]', ns) is None
+    assert root.find('.//s:g[@id="elevation-contours"]', ns) is not None
+    assert root.find('.//s:g[@id="annotations"]//s:text[@font-style="italic"]', ns) is not None
+
+
 def test_missing_contours_prevent_incomplete_export(window, tmp_path):
     window.dem_path = window.project.terrain_path = ""
     window.contour_toggle.setChecked(True)

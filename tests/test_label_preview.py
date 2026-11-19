@@ -280,22 +280,12 @@ def test_caption_responsiveness_check_detects_a_main_thread_stall(monkeypatch):
 
 
 def test_caption_responsiveness_check_tolerates_one_process_scheduling_pause(monkeypatch):
-    from PySide6.QtCore import QEventLoop
-    clock, execute = time.monotonic, QEventLoop.exec
-    offset = 0.
-
-    def delayed_dispatch(self, *args, **kwargs):
-        nonlocal offset
-        # Model a single 120 ms process suspension before Qt dispatches events.
-        # Later measurements see the same clock offset, without further gaps.
-        if not offset:
-            offset = .12
-        return execute(self, *args, **kwargs)
-
-    monkeypatch.setattr(time, 'monotonic', lambda: clock()+offset)
-    monkeypatch.setattr(QEventLoop, 'exec', delayed_dispatch)
+    # Model one stalled sample using fixed peaks. Injecting a synthetic pause
+    # into real Qt timings allows an unrelated runner pause to become a second
+    # outlier. The responsiveness and stall tests above still measure Qt.
+    peaks = iter((.12, .018, .020))
+    monkeypatch.setitem(globals(), '_caption_refinement_peak_gap', lambda: next(peaks))
     test_complex_caption_refinement_keeps_the_ui_responsive()
-    assert offset == .12
 
 
 def test_evicted_caption_reuses_a_bounded_preview_and_refines_after_navigation(monkeypatch):

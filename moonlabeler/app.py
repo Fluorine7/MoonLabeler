@@ -47,7 +47,7 @@ from .annotation_style import (appearance, caption_typography, path_caption_typo
 from .color_management import display_srgb, srgb_color_space, srgb_profile_bytes
 from .map_layers import (MapLayers, grid_lines, sample_elevation, colorize_elevation,
                          elevation_alpha, contour_lines, resolved_contour_interval, build_terminator, legend_rect,
-                         photo_lightness)
+                         elevation_legend_enabled, photo_lightness)
 from .ui.compute import ComputeDialog
 from .ui.color import ColorDialog
 from .tasks import TaskCancelled, cancellable_task, check_cancelled
@@ -2626,7 +2626,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
         # Feature names have priority over coordinate captions. Keep the same
         # visibility in the SVG, including after the user drags a name.
         bounds = [item.sceneBoundingRect() for item in self.annotation_items if item.isVisibleTo(item.parentItem())]
-        if self.map_layers.elevation is not None or self.map_layers.contours is not None:
+        if elevation_legend_enabled(self.project) and (self.map_layers.elevation is not None or self.map_layers.contours is not None):
             bounds.append(QRectF(*legend_rect(self.image.shape, self.project.legend_position)))
         if self.overview_item is not None:
             bounds.append(self.overview_item.sceneBoundingRect())
@@ -2901,7 +2901,7 @@ class MainWindow(WindowUiMixin, QMainWindow):
                                preferred=preferred)
         h, w = self.image.shape[:2]
         obstacles = []
-        if (self.project.elevation_enabled or self.project.contour_enabled) and (self.project.terrain_path or self.dem_path):
+        if elevation_legend_enabled(self.project) and (self.project.terrain_path or self.dem_path):
             obstacles.append(legend_rect(self.image.shape, self.project.legend_position))
         if self.overview_item is not None:
             obstacles.append(overview_rect(self.image.shape, self.project.overview_position))

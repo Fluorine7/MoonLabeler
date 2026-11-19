@@ -154,26 +154,35 @@ def test_custom_font_is_applied_to_original_labels_and_exports(tmp_path, monospa
         window.close()
 
 
-@pytest.mark.parametrize("caption", ["月溪 · Rima Ariadaeus", "月溪—Rima Ariadaeus"])
-def test_mixed_font_svg_keeps_native_text_extent(tmp_path, monospace_family, caption):
+def test_mixed_font_svg_keeps_native_separator_spacing(tmp_path, monospace_family):
     size = 46
     feature = dict(id="r", name="Rima Ariadaeus", kind="Rima, rimae", diameter=85.)
     project = Project(font_family=monospace_family, font_percent=None, font_size=size,
-                      language="双语（繁体）", crater_outlines=False, labels={"r": {"text": caption}})
-    label = Annotation(feature, (2, 2), caption, project, lambda *a: None, lambda *a: None)
+                      language="双语（繁体）", crater_outlines=False)
     x, y = 30, 65
     image = np.zeros((150, 960, 3), np.uint8)
     path = tmp_path/"bilingual.svg"
-    export_svg(path, image, [(feature, (2, 2), (x, y))], project, leaders={"r": (2, 2, 5, 5)})
-    rendered = QImage(image.shape[1], image.shape[0], QImage.Format.Format_RGB32)
-    rendered.fill(0xff000000)
-    painter = QPainter(rendered)
-    QSvgRenderer(str(path)).render(painter)
-    painter.end()
-    pixels = np.asarray(rendered.constBits()).reshape(*image.shape[:2], 4)
-    _, ink_x = np.where(pixels[40:, :, :3].max(axis=2) > 160)
-    bounds = label.path.boundingRect().translated(x, y)
-    assert (ink_x.min(), ink_x.max()+1) == pytest.approx((bounds.left(), bounds.right()), abs=3)
+    native_right, svg_right = [], []
+    for separator in (" · ", "—"):
+        caption = f"月溪{separator}Rima Ariadaeus"
+        project.labels["r"] = {"text": caption}
+        label = Annotation(feature, (2, 2), caption, project, lambda *a: None, lambda *a: None)
+        export_svg(path, image, [(feature, (2, 2), (x, y))], project, leaders={"r": (2, 2, 5, 5)})
+        rendered = QImage(image.shape[1], image.shape[0], QImage.Format.Format_RGB32)
+        rendered.fill(0xff000000)
+        painter = QPainter(rendered)
+        QSvgRenderer(str(path)).render(painter)
+        painter.end()
+        pixels = np.asarray(rendered.constBits()).reshape(*image.shape[:2], 4)
+        _, ink_x = np.where(pixels[40:, :, :3].max(axis=2) > 160)
+        bounds = label.path.boundingRect().translated(x, y)
+        assert (ink_x.min(), ink_x.max()+1) == pytest.approx((bounds.left(), bounds.right()), abs=size/6)
+        native_right.append(bounds.right())
+        svg_right.append(ink_x.max()+1)
+    # Qt SVG rasterizes text, while the preview paints vector outlines.
+    # Comparing the same label with two separators cancels the platform's
+    # common raster offset and still catches incorrect fallback spacing.
+    assert svg_right[0]-svg_right[1] == pytest.approx(native_right[0]-native_right[1], abs=2)
 
 
 def test_missing_font_uses_defaults_without_losing_project_choice(tmp_path):

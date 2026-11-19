@@ -32,8 +32,10 @@ ELEVATION_PALETTES = {
     "copperplate": ("#062f39", "#0e4d55", "#236776", "#e8a064", "#cf7845", "#edac69", "#f7e4b9"),
     "inkwash": ("#18252a", "#2f494d", "#48676b", "#d5d2b8", "#c8a393", "#eee0c6", "#f5f0dc"),
     "redalert": ("#183c47", "#294e35", "#568432", "#c7ae62", "#a48b5c", "#bdb197", "#e6dcc5"),
+    "relief_atlas": ("#142b60", "#265b9c", "#63bec7", "#c4dda9", "#e7d195", "#b78149", "#853e2a"),
 }
 HEIGHT_STOPS = np.array([-9., -4., -1.5, 0., 2., 5., 9.])
+ATLAS_STOP_FRACTIONS = np.array([0., .23, .41, .52, .64, .82, 1.])
 
 
 @dataclass(frozen=True)
@@ -50,6 +52,7 @@ ART_MAP_INKS = {
     "copperplate": MapInks("#8f704e", "#7d4e2c", "#875c3a", "#eedfbd", "#9a4d36"),
     "inkwash": MapInks("#536663", "#b94d37", "#ac4c38", "#ede7d5", "#a84335"),
     "redalert": MapInks("#536c36", "#d8c681", "#c8d5a0", "#17251b", "#e1a767"),
+    "relief_atlas": MapInks("#283e3c", "#232c3e", "#dfdbc0", "#d9d7b5", "#f3e5b1"),
 }
 
 
@@ -286,7 +289,15 @@ def contour_lines(raster, project, shape):
 
 
 def contour_appearance(shape, major, style="standard"):
-    width = max(1.8, min(shape[:2])*.0018) if major else max(1.1, min(shape[:2])*.0011)
+    short = min(shape[:2])
+    if style == "relief_atlas":
+        # Keep the edge on index lines. A pale edge on every minor isoline
+        # competes with the shaded relief, especially on dark crater floors.
+        ink = ART_MAP_INKS[style]
+        if major:
+            return ink.index, ink.halo, max(.75, short*.00082)
+        return ink.contour, None, max(.38, short*.00042)
+    width = max(1.8, short*.0018) if major else max(1.1, short*.0011)
     if style in ART_MAP_INKS:
         ink = ART_MAP_INKS[style]
         return ink.index if major else ink.contour, ink.halo, width
@@ -299,6 +310,8 @@ def contour_appearance(shape, major, style="standard"):
 
 def line_strokes(color, halo, width):
     """A narrow contrasting edge keeps the same ink legible on light and dark ground."""
+    if halo is None:
+        return ((color, width, 1.),)
     return ((halo, width*1.8, .65), (color, width, 1.))
 
 
@@ -325,6 +338,11 @@ def terminator_dashes(project, width):
     return width*10, width*5
 
 
+def _smooth_elevation(heights, valid):
+    weights = cv2.GaussianBlur(valid.astype(np.float32), (0, 0), 1.1)
+    return cv2.GaussianBlur(np.where(valid, heights, 0), (0, 0), 1.1)/np.maximum(weights, 1e-6)
+
+
 def cartographic_colors(raster, project):
     """A generalized DEM basemap with restrained illustrative relief.
 
@@ -333,8 +351,7 @@ def cartographic_colors(raster, project):
     Normalized filtering keeps missing DEM samples out of the calculation.
     """
     valid = np.isfinite(raster.heights)
-    weights = cv2.GaussianBlur(valid.astype(np.float32), (0, 0), 1.1)
-    smooth = cv2.GaussianBlur(np.where(valid, raster.heights, 0), (0, 0), 1.1)/np.maximum(weights, 1e-6)
+    smooth = _smooth_elevation(raster.heights, valid)
     interval = resolved_contour_interval(raster, project)
     terraced = (np.floor(smooth/interval)+.5)*interval
     game_terrain = project.art_style == "redalert"
@@ -613,10 +630,40 @@ def sample_elevation(project, shape, dem, *, max_edge=1000):
     return ElevationRaster(heights, dem.name, dem.resolution_km)
 
 
-def elevation_colors(heights, palette):
+def elevation_colors(heights, palette, *, stops=HEIGHT_STOPS):
     colors = np.array([[int(color[i:i+2], 16) for i in (1, 3, 5)] for color in ELEVATION_PALETTES[palette]])
     values = np.nan_to_num(heights)
-    return np.stack([np.interp(values, HEIGHT_STOPS, colors[:, c]) for c in range(3)], axis=-1).round().astype(np.uint8)
+    return np.stack([np.interp(values, stops, colors[:, c]) for c in range(3)], axis=-1).round().astype(np.uint8)
+
+
+def _relief_atlas_colors(heights, image):
+    """Local height colours with relief lit from the upper left in photo space."""
+    valid = np.isfinite(heights)
+    if not valid.any():
+        return np.zeros((*heights.shape, 3), np.uint8)
+    low, high = np.percentile(heights[valid], [1, 99])
+    # Avoid turning small height variations on nearly flat ground into a full ramp.
+    span = max(1., high-low)
+    stops = (high+low)/2 + (ATLAS_STOP_FRACTIONS-.5)*span
+    rgb = elevation_colors(heights, "relief_atlas", stops=stops)
+    if min(heights.shape) < 2:
+        return rgb
+    dy, dx = np.gradient(_smooth_elevation(heights, valid))
+    slope = dx+dy
+    reference = max(.005, float(np.percentile(abs(slope[valid]), 90)))
+    shade = .38*np.tanh(1.1*slope/reference)
+    if image is not None:
+        # Keep fine photographic texture without letting broad dark areas
+        # undo the height palette. Work at the bounded map resolution.
+        h, w = heights.shape
+        detail = np.asarray(Image.fromarray(image).convert("L").resize((w, h), Image.Resampling.BILINEAR),
+                            dtype=np.float32)
+        detail -= cv2.GaussianBlur(detail, (0, 0), max(1.5, min(h, w)*.004))
+        shade += detail*(.9/255)
+    shade = np.clip(shade, -.42, .34)[:, :, None]
+    # Shadows darken the pigment. Highlights blend towards light instead of
+    # clipping individual colour channels on the pale, sun-facing ridges.
+    return (rgb*(1+np.minimum(shade, 0))+(255-rgb)*np.maximum(shade, 0)).round().astype(np.uint8)
 
 
 def elevation_alpha(raster, project):
@@ -626,10 +673,13 @@ def elevation_alpha(raster, project):
 
 def colorize_elevation(raster, project, *, image=None):
     rgba = np.zeros((*raster.heights.shape, 4), np.uint8)
+    rgba[:, :, 3] = elevation_alpha(raster, project)
+    if project.art_style == "relief_atlas" and project.elevation_palette == "relief_atlas":
+        rgba[:, :, :3] = _relief_atlas_colors(raster.heights, image)
+        return rgba
     if ((project.art_style == "topographic" and project.elevation_palette == "wilderness") or
             (project.art_style == "redalert" and project.elevation_palette == "redalert")):
         rgba[:, :, :3] = cartographic_colors(raster, project)
-        rgba[:, :, 3] = elevation_alpha(raster, project)
         return rgba
     rgba[:, :, :3] = elevation_colors(raster.heights, project.elevation_palette)
     if image is not None:
@@ -643,7 +693,6 @@ def colorize_elevation(raster, project, *, image=None):
         floor = .55 if project.elevation_palette == "wilderness" else .18
         shade = floor + (1-floor)*np.clip(luminance/reference, 0, 1)
         rgba[:, :, :3] = (rgba[:, :, :3]*shade[:, :, None]).round().astype(np.uint8)
-    rgba[:, :, 3] = elevation_alpha(raster, project)
     return rgba
 
 
@@ -675,6 +724,11 @@ def grid_color(project):
     if project.art_style == "topographic":
         return "#edd99b"
     return "#f0cc7b" if project.art_style == "manuscript" else "#a7d9ed"
+
+
+def elevation_legend_enabled(project):
+    """The relief atlas uses a local colour range and an unframed map."""
+    return project.art_style != "relief_atlas" and (project.elevation_enabled or project.contour_enabled)
 
 
 def legend_rect(shape, position=None):

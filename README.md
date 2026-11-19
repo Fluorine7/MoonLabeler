@@ -1,6 +1,6 @@
 # MoonLabeler
 
-**源码 / Source 0.12.4** · Fluorine Zhu · GPL-3.0-or-later
+**源码 / Source 0.12.5** · Fluorine Zhu · GPL-3.0-or-later
 
 为月面照片配准、编辑地名，并导出 PNG / SVG。
 
@@ -12,13 +12,12 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## 中文
 
-### 0.12.4 更新
+### 0.12.5 更新
 
-- **原始标注可选系统字体**：在「标注 → 文字样式 → 字体」中选择，再点击「重新生成标注」。
-- 字体名称随工程保存；缺少字体或字形时沿用默认字体回退。艺术预设保留自己的字体。
-- PNG 固定文字外观，SVG 保留可编辑文字；要在另一台电脑保持 SVG 外观，需安装相应字体。
+- **月面地形图集**采用蓝青低地、赭色高地、细等高线和斜体地名。在「标注 → 艺术样式」中选用，再点击「重新生成标注」。
+- 软件继续提供约 33 MB 的基础 LOLA 高程。约 133 MB 的全球高程可用独立离线包按需导入。详见[可选离线高程包](README.zh-CN.md#可选离线高程包)。
 
-完整变化见[更新记录](UPDATE_HISTORY.md#0124)，已发布应用的下载入口在[下方](#下载应用--app-downloads)。
+完整变化见[更新记录](UPDATE_HISTORY.md#0125)，已发布应用的下载入口在[下方](#下载应用--app-downloads)。
 
 ### 快速开始
 
@@ -36,7 +35,7 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 | 月面配准 | 自动识别、参考点辅助、手动校准；旋转、镜像及目镜后照片 |
 | 识别蒙版 | 半透明红色画笔、直径滑块、橡皮擦、撤销 / 重做；自动识别和辅助找坑共用，随工程保存 |
 | 地名标注 | 地形多选、名称编辑、系统字体、分档字号、自动避让、沿地形排字、阿波罗 / 嫦娥着陆点 |
-| 艺术与地图 | 中世纪、旷野地形图、蓝晒、铜版、水墨朱砂、红警地形图；经纬网、高程、等高线、晨昏线 |
+| 艺术与地图 | 月面地形图集、中世纪、旷野地形图、蓝晒、铜版、水墨朱砂、红警地形图，支持经纬网、高程、等高线和晨昏线 |
 | 对照与调节 | 独立显示标注和蒙版；实际观测月相与中性黑底的照片区域示意图；文字不透明度、地图不透明度及受光阈值实时调节 |
 | 保存与导出 | 工程保存配准和手工编辑；PNG 转换为 sRGB，SVG 保留可编辑文字与图线 |
 
@@ -67,13 +66,12 @@ Register lunar photographs, edit terrain labels, and export annotated PNG or SVG
 
 ## English
 
-### New in 0.12.4
+### New in 0.12.5
 
-- **Choose an installed font for Original labels** in **Annotation → Text style → Font**, then click **Regenerate annotations**.
-- The project keeps the font name and falls back for unavailable fonts or characters. Art presets keep their own fonts.
-- PNG preserves the rendered appearance. SVG keeps text editable; install the relevant fonts when opening it on another computer to preserve its appearance.
+- **Lunar relief atlas** uses blue and teal lowlands, ochre uplands, fine contours, and italic labels. Choose it under **Annotation → Art style**, then click **Regenerate annotations**.
+- **Download basic DEM** supplies the usual 33 MB LOLA data. A separate offline pack provides a global 133 MB grid with about 0.95 km spacing.
 
-See the [release notes](UPDATE_HISTORY.md#0124). Published app downloads are listed [below](#下载应用--app-downloads).
+See the [release notes](UPDATE_HISTORY.md#0125). Published app downloads are listed [below](#下载应用--app-downloads).
 
 ### Quick start
 
@@ -91,7 +89,7 @@ The wheel zooms the canvas or scrolls settings without changing parameter values
 | Registration | Automatic, reference-assisted and manual; rotated, mirrored and afocal photographs |
 | Recognition mask | Translucent red brush, diameter slider, eraser, undo/redo; shared by recognition and assisted crater detection, saved with the project |
 | Labels | Multiple terrain types, editable names, system fonts, relative font sizes, collision avoidance, landform paths and Apollo/Chang’e landing sites |
-| Art and maps | Medieval, wilderness topographic, cyanotype, copperplate, ink/cinnabar and Red Alert terrain themes; grids, elevation, contours and terminators |
+| Art and maps | Lunar relief atlas, medieval, wilderness topographic, cyanotype, copperplate, ink/cinnabar and Red Alert terrain themes, with grids, elevation, contours and terminators |
 | Live controls | Independent label/mask previews, lunar locator with the observed phase and a neutral black panel, text/map opacity and photo-lit coverage |
 | Projects and exports | Saved registration and manual edits; sRGB PNG and SVG with editable text and lines |
 
@@ -113,6 +111,8 @@ Masks affect recognition only. Art themes use a desaturated display copy; switch
 Name and outline data were supplied by 樊仕达 ([10deg](https://github.com/10deg/tsukikage)); see the [name provenance](moonlabeler/data/lunar_chinese_names.provenance.json) and [third-party notices](THIRD_PARTY_NOTICES.md#nomenclature-translations-ephemerides-and-elevation). Runtime reads the compact paths, without the large raw outline files. The [preparation script](tools/prepare_feature_paths.py) can regenerate paths from unscaled source geometry. Area-derived range axes are representative label routes, not surveyed crests.
 
 Ephemerides and LOLA elevation are separate: source installs download about 20 MB and 33 MB respectively when needed, then cache them for offline use. They are not stored in this repository.
+
+For higher detail, extract the optional `MoonLabeler-LOLA-32ppd.zip` into a permanent folder. Keep its `.LBL` and `.IMG` together and select the label with **Annotation → Map layers → Import DEM**. The ZIP includes cache paths for macOS, Windows and source installations.
 
 ### Source installation
 
@@ -138,18 +138,14 @@ Recognition can fail with inaccurate times, shadows, blur or distortion. Basic L
 
 ## 下载应用 / App downloads
 
-**0.12.2** 应用包包含新界面、沿地形标注与月相示意图，无需安装 Python。
+**0.12.5** 应用包包含月面地形图集、系统字体选择和手机目镜后照片的边缘校正。
 
-系统字体选择和目镜边缘校正请使用当前 0.12.4 源码。
-
-The **0.12.2** apps include the updated interface, landform labels and phase-correct lunar locator. Python is not required.
-
-Use the current 0.12.4 source for system font selection and afocal edge correction.
+The **0.12.5** apps include Lunar relief atlas, system font selection and limb correction for phone-through-eyepiece photos.
 
 | 系统 / Platform | 下载 / Download | 打开方式 / Start |
 | --- | --- | --- |
-| macOS 14.4+, Apple Silicon | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.2/MoonLabeler-0.12.2-macos-arm64.zip) | `MoonLabeler.app` |
-| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.2/MoonLabeler-0.12.2-windows-x64.zip) | `MoonLabeler.exe` |
+| macOS 14.4+, Apple Silicon | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.5/MoonLabeler-0.12.5-macos-arm64.zip) | `MoonLabeler.app` |
+| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.5/MoonLabeler-0.12.5-windows-x64.zip) | `MoonLabeler.exe` |
 
 完整解压后打开，内置运行环境、FITS 支持和离线星历。Windows 请保留 EXE 旁的 `_internal` 文件夹。Mac 包采用临时签名，首次被拦截时可在“系统设置 → 隐私与安全性”中允许；不支持 Intel Mac。
 
