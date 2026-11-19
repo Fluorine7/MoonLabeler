@@ -27,7 +27,7 @@ Set `MACOSX_DEPLOYMENT_TARGET=14.4`, `CMAKE_PREFIX_PATH` to the SDK and `CMAKE_I
 
 ## Verification and release
 
-`build-macos.command` runs the bundled dependency, offline registration, image-reading, project and PNG/SVG checks. The **macOS App compatibility** workflow then tests the same published ZIP on macOS 14 and 15 using its SHA-256; it does not rebuild the app.
+`build-macos.command` checks the macOS 14.4 deployment target and runs bundled dependency, offline registration, image-reading, project and PNG/SVG checks. The **macOS App compatibility** workflow verifies the SHA-256 of the locally built Release ZIP and runs it on macOS 15 and 26, including Cocoa startup. Testing on macOS 14 itself requires a separate machine since [GitHub retired its macOS 14 runners](https://github.com/actions/runner-images/issues/13518).
 
 Release attachments contain only the macOS and Windows app ZIPs. Keep reports and intermediate files in local output or Actions artifacts.
 

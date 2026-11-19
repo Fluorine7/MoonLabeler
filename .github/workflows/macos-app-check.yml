@@ -7,7 +7,6 @@ on:
         description: Release containing the locally built archive
         required: true
         type: string
-        default: v0.9.3
       asset_name:
         description: Locally built Release ZIP to test (no cloud build)
         required: true
@@ -17,25 +16,28 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   app:
+    permissions:
+      # Draft release assets are only visible to tokens with push access.
+      contents: write
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-15]
+        os: [macos-15, macos-26]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
       ASSET_NAME: ${{ inputs.asset_name }}
       RELEASE_TAG: ${{ inputs.release_tag }}
       EXPECTED_SHA256: ${{ inputs.sha256 }}
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
     steps:
       - name: Download the locally built archive and verify the transfer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
