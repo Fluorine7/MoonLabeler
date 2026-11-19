@@ -48,12 +48,14 @@ public struct ProjectStyle: Codable, Equatable, Sendable {
     public mutating func set(_ key: String, _ value: String) { values[key] = .string(value) }
     public var art: String { string("art_style", "standard") }
     public var isArt: Bool { art != "standard" }
+    public var isReliefAtlas: Bool { art == "relief_atlas" }
     public var fontFamily: String { string("font_family") }
     public var preferredLabelFamily: String { isArt ? "" : fontFamily }
     public var threshold: Int? { values["map_light_threshold"]?.number.map(Int.init) }
     public var contourInterval: Double? { values["contour_interval"]?.number }
     public var contourEnabled: Bool { bool("contour_enabled") }
     public var elevationEnabled: Bool { bool("elevation_enabled") }
+    public var elevationLegendEnabled: Bool { !isReliefAtlas && (elevationEnabled || contourEnabled) }
     public var litMapOnly: Bool { bool("map_light_mask") }
     public var illuminatedOnly: Bool { bool("illuminated_only", true) }
 
@@ -65,14 +67,14 @@ public struct ProjectStyle: Codable, Equatable, Sendable {
             return
         }
         let palettes = ["manuscript": "antique", "topographic": "wilderness", "cyanotype": "cyanotype",
-                        "copperplate": "copperplate", "inkwash": "inkwash", "redalert": "redalert"]
+                        "copperplate": "copperplate", "inkwash": "inkwash", "redalert": "redalert", "relief_atlas": "relief_atlas"]
         set("elevation_palette", palettes[name] ?? "terrain")
         set("elevation_enabled", true); set("contour_enabled", true); set("map_light_mask", true)
         let opacity: [String: Double] = ["manuscript": 0.72, "topographic": 1, "cyanotype": 0.9,
-                                       "copperplate": 0.9, "inkwash": 0.78, "redalert": 1]
+                                       "copperplate": 0.9, "inkwash": 0.78, "redalert": 1, "relief_atlas": 0.96]
         set("elevation_opacity", opacity[name] ?? 0.35)
         let contourOpacity: [String: Double] = ["manuscript": 0.48, "topographic": 0.75, "cyanotype": 0.55,
-                                              "copperplate": 0.50, "inkwash": 0.62, "redalert": 0.32]
+                                              "copperplate": 0.50, "inkwash": 0.62, "redalert": 0.32, "relief_atlas": 0.72]
         set("contour_opacity", contourOpacity[name] ?? 0.55)
     }
 }

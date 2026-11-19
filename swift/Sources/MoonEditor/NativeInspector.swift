@@ -208,7 +208,10 @@ struct NativeInspector: View {
 
     private var annotation: some View {
         Group {
-            EditorChoicePicker(model.tr("艺术样式"), selection: Binding(get: { model.document?.style.art ?? "standard" }, set: { value in model.edit { $0.changeStyle { $0.applyArt(value) } } }), options: choices([("standard", "原始标注"), ("manuscript", "中世纪风"), ("topographic", "旷野地形图"), ("cyanotype", "蓝晒星图"), ("copperplate", "铜版图录"), ("inkwash", "水墨朱砂"), ("redalert", "红警地形图")]))
+            EditorChoicePicker(model.tr("艺术样式"), selection: Binding(get: { model.document?.style.art ?? "standard" }, set: { value in model.edit { $0.changeStyle { $0.applyArt(value) } } }), options: choices([
+                ("standard", "原始标注"), ("manuscript", "中世纪风"), ("topographic", "旷野地形图"), ("cyanotype", "蓝晒星图"),
+                ("copperplate", "铜版图录"), ("inkwash", "水墨朱砂"), ("redalert", "红警地形图"), ("relief_atlas", "月面地形图集"),
+            ]))
             EditorChoicePicker(model.tr("名称语言"), selection: language, options: [NameLanguage.bilingual, .bilingualTraditional, .chinese, .traditional, .english].map { ($0, model.tr(languageName($0))) })
             input("字号（短边比例）", value: fontPercentage, range: 0.05...8, suffix: "%", step: 0.05, includesInitialValue: true)
             input("最多显示", value: Binding(get: { Double(model.document?.settings.maximumLabels ?? 200) }, set: { value in model.edit { $0.settings.maximumLabels = Int(value.rounded()) } }), range: 1...1000)
@@ -269,7 +272,10 @@ struct NativeInspector: View {
     private var mapSettings: some View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle(model.tr("叠加高程着色"), isOn: model.styleBool("elevation_enabled"))
-            EditorChoicePicker(model.tr("高程配色"), selection: model.styleString("elevation_palette", fallback: "terrain"), options: choices([("terrain", "地形色"), ("antique", "靛蓝与古金"), ("wilderness", "旷野橄榄棕"), ("cyanotype", "普鲁士蓝"), ("copperplate", "铜橙与青绿"), ("inkwash", "墨灰与暖白"), ("redalert", "草绿与沙土")]))
+            EditorChoicePicker(model.tr("高程配色"), selection: model.styleString("elevation_palette", fallback: "terrain"), options: choices([
+                ("terrain", "地形色"), ("antique", "靛蓝与古金"), ("wilderness", "旷野橄榄棕"), ("cyanotype", "普鲁士蓝"),
+                ("copperplate", "铜橙与青绿"), ("inkwash", "墨灰与暖白"), ("redalert", "草绿与沙土"), ("relief_atlas", "蓝青与赭石"),
+            ]))
             percent("高程不透明度", key: "elevation_opacity", fallback: 0.35)
             Toggle(model.tr("叠加等高线"), isOn: model.styleBool("contour_enabled"))
             EditorChoicePicker(model.tr("等高距"), selection: Binding(get: { model.document?.style.contourInterval ?? 0 }, set: { value in model.edit { $0.changeStyle { if value == 0 { $0.set("contour_interval", "auto") } else { $0.set("contour_interval", value) } } } }), options: [(0, model.tr("自动")), (0.25, "0.25 km"), (0.5, "0.5 km"), (1, "1 km"), (2, "2 km")])

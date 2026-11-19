@@ -38,7 +38,9 @@ do {
         document.imageWidth = photo.width; document.imageHeight = photo.height
         document.settings.fontSize = LabelSizing.tierSizes(document)[0]
         if arguments.count > 4 { document.changeStyle { $0.applyArt(arguments[4]) } }
-        let dem = try Catalog.resource("LDEM_16", "LBL").map { try ElevationMap(url: $0) }
+        let savedDEM = document.state.terrainPath
+        let demURL = FileManager.default.fileExists(atPath: savedDEM) ? URL(fileURLWithPath: savedDEM) : Catalog.resource("LDEM_16", "LBL")
+        let dem = try demURL.map { try ElevationMap(url: $0) }
         let display = try PhotoPixels.display(URL(fileURLWithPath: document.imagePath), raw: photo)
         let rendered = try AnnotationSceneBuilder.build(document: document, photo: photo, features: Catalog.load(), dem: dem, task: ComputeTask(), measure: AnnotationRenderer.measure, captionBounds: AnnotationRenderer.placementBounds, configureCaption: AnnotationRenderer.configureCaption, displayPhoto: display)
         try PhotoIO.png(image: display.cgImage, document: rendered.0, scene: rendered.1, to: directory.appendingPathComponent("native.png"))

@@ -119,7 +119,7 @@ public enum AnnotationSceneBuilder {
             return nil
         }
         var obstacles: [CGRect] = []
-        if style.elevationEnabled || style.contourEnabled {
+        if style.elevationLegendEnabled {
             let unit = short / 100, width = min(30 * unit, Double(snapshot.imageWidth) - 4 * unit), height = 6 * unit, position = style.values["legend_position"]?.array.compactMap(\.number) ?? []
             obstacles.append(CGRect(x: min(max(0, position.first ?? 2 * unit), Double(snapshot.imageWidth) - width), y: min(max(0, position.count == 2 ? position[1] : Double(snapshot.imageHeight) - 8 * unit), Double(snapshot.imageHeight) - height), width: width, height: height))
         }

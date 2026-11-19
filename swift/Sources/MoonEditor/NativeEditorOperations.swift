@@ -62,7 +62,12 @@ extension EditorModel {
         applied.changeStyle { $0.values["overview_enabled"] = document.style.values["overview_enabled"] }
         // Live display changes stay live even when an unrelated setting still
         // needs a new layout (for example, enabling landing-site labels).
-        let keys = ["map_light_mask", "map_light_threshold", "illuminated_only", "grid_opacity", "elevation_opacity", "contour_opacity", "terminator_opacity", "overview_position", "legend_position"]
+        var keys = ["map_light_threshold", "illuminated_only", "grid_opacity", "terminator_opacity", "overview_position", "legend_position"]
+        // Preset defaults apply together with the new map. Threshold edits
+        // still display live against the map that is already applied.
+        if applied.style.art == document.style.art {
+            keys += ["map_light_mask", "elevation_opacity", "contour_opacity"]
+        }
         applied.changeStyle { style in for key in keys { style.values[key] = document.style.values[key] } }
         return previewingOverlay(applied)
     }

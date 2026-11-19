@@ -16,6 +16,9 @@ struct ThemeInk {
         case "copperplate": return ThemeInk(text: landing ? "#974b35" : "#412a21", line: landing ? "#974b35" : "#6e4836", halo: "#f3e3bb", serif: true)
         case "inkwash": return ThemeInk(text: landing ? "#a84335" : "#243c40", line: landing ? "#a84335" : "#656c68", halo: "#f2ead8", serif: true)
         case "redalert": return ThemeInk(text: landing ? "#efb963" : "#f4eccb", line: landing ? "#d4a251" : "#d7d39c", halo: "#17251b")
+        case "relief_atlas":
+            let color = landing ? "#732e24" : "#182739"
+            return ThemeInk(text: color, line: color, halo: "#f4eedb", serif: true)
         default: return ThemeInk(text: landing ? document.style.string("landing_color", "#f2b05e") : document.settings.color,
                                  line: landing ? document.style.string("landing_color", "#f2b05e") : document.settings.color, halo: "#141923")
         }
@@ -74,6 +77,7 @@ private struct MapInk {
         case "copperplate": return MapInk(contour: "#8f704e", index: "#7d4e2c", grid: "#875c3a", halo: "#eedfbd", terminator: "#9a4d36")
         case "inkwash": return MapInk(contour: "#536663", index: "#b94d37", grid: "#ac4c38", halo: "#ede7d5", terminator: "#a84335")
         case "redalert": return MapInk(contour: "#536c36", index: "#d8c681", grid: "#c8d5a0", halo: "#17251b", terminator: "#e1a767")
+        case "relief_atlas": return MapInk(contour: "#283e3c", index: "#232c3e", grid: "#dfdbc0", halo: "#d9d7b5", terminator: "#f3e5b1")
         case "manuscript": return MapInk(contour: "#efcf82", index: "#efcf82", grid: "#f0cc7b", halo: "#17242f", terminator: "#f3a46e")
         case "topographic": return MapInk(contour: "#34250e", index: "#34250e", grid: "#edd99b", halo: "#e7d39c", terminator: "#91d8e5")
         default: return MapInk(contour: "#e4bd73", index: "#e4bd73", grid: "#a7d9ed", halo: "#18232b", terminator: "#f3a46e")
@@ -186,8 +190,15 @@ enum SceneRenderer {
             return "<tspan x=\"\(x + run.x)\" y=\"\(baseline - run.y)\" font-family=\"\(escape(run.family))\"\(length)>\(escape(run.text))</tspan>"
         }
     }
-    private static func mapWidth(_ document: MoonDocument, major: Bool, grid: Bool = false) -> Double {
-        max(grid ? (major ? 1.8 : 1.25) : (major ? 1.8 : 1.1), Double(min(document.imageWidth, document.imageHeight)) * (grid ? (major ? 0.0022 : 0.0016) : (major ? 0.0018 : 0.0011)))
+    private static func mapWidth(_ document: MoonDocument, major: Bool, grid: Bool) -> Double {
+        let short = Double(min(document.imageWidth, document.imageHeight))
+        if document.style.isReliefAtlas && !grid {
+            return major ? max(0.75, short * 0.00082) : max(0.38, short * 0.00042)
+        }
+        return max(grid ? (major ? 1.8 : 1.25) : (major ? 1.8 : 1.1), short * (grid ? (major ? 0.0022 : 0.0016) : (major ? 0.0018 : 0.0011)))
+    }
+    private static func mapLineHasHalo(_ document: MoonDocument, major: Bool, grid: Bool) -> Bool {
+        grid || major || !document.style.isReliefAtlas
     }
     private static func stroke(_ geometry: MapStroke, color: String, opacity: Double, width: Double, context: CGContext) {
         guard geometry.bounds.insetBy(dx: -width * 10 - 2, dy: -width * 10 - 2).intersects(context.boundingBoxOfClipPath) else { return }
@@ -199,7 +210,9 @@ enum SceneRenderer {
         let ink = MapInk.resolve(document), width = mapWidth(document, major: line.major, grid: grid), opacity = document.style.number(grid ? "grid_opacity" : "contour_opacity", grid ? 0.45 : 0.65)
         context.saveGState()
         if grid && !line.major { context.setLineDash(phase: 0, lengths: [width * 7, width * 4]) }
-        stroke(geometry, color: ink.halo, opacity: opacity * 0.65, width: width * 1.8, context: context)
+        if mapLineHasHalo(document, major: line.major, grid: grid) {
+            stroke(geometry, color: ink.halo, opacity: opacity * 0.65, width: width * 1.8, context: context)
+        }
         stroke(geometry, color: grid ? ink.grid : line.major ? ink.index : ink.contour, opacity: opacity, width: width, context: context)
         context.restoreGState()
         if grid, let p = line.captionPosition, let text = line.text {
@@ -316,7 +329,7 @@ enum SceneRenderer {
             // Attributed-string stroke-and-fill paints overlapping CJK strokes separately.
             context.setLineJoin(.round); context.setLineCap(.round)
             context.addPath(path); context.setStrokeColor(AnnotationRenderer.color(ink.halo).cgColor); context.setLineWidth(haloWidth(document, size: size)); context.strokePath()
-            if ink.serif { context.addPath(path); context.setStrokeColor(AnnotationRenderer.color(ink.text).cgColor); context.setLineWidth(max(0.35, size * (["copperplate", "inkwash"].contains(document.style.art) ? 0.028 : 0.012))); context.strokePath() }
+            if ink.serif { context.addPath(path); context.setStrokeColor(AnnotationRenderer.color(ink.text).cgColor); context.setLineWidth(captionFaceWidth(document, size: size)); context.strokePath() }
             context.addPath(path); context.setFillColor(AnnotationRenderer.color(ink.text).cgColor); context.fillPath()
             context.restoreGState()
         }
@@ -325,7 +338,12 @@ enum SceneRenderer {
     }
     private static func haloWidth(_ document: MoonDocument, size: Double) -> Double {
         if !document.style.isArt { return max(2, size * 0.06) }
+        if document.style.isReliefAtlas { return max(1.8, size * 0.095) }
         return max(2.4, size * (["copperplate", "inkwash"].contains(document.style.art) ? 0.10 : document.style.art == "redalert" ? 0.12 : 0.16))
+    }
+    private static func captionFaceWidth(_ document: MoonDocument, size: Double) -> Double {
+        if document.style.isReliefAtlas { return max(0.35, size * 0.018) }
+        return max(0.35, size * (["copperplate", "inkwash"].contains(document.style.art) ? 0.028 : 0.012))
     }
     private static func locatorVisible(_ annotation: Annotation, document: MoonDocument, editing: Bool = false, pathBound: Bool? = nil) -> Bool {
         guard document.settings.showLeaders else { return false }
@@ -403,7 +421,10 @@ enum SceneRenderer {
         if let kind = annotation.visual?.featureKind {
             return CaptionTypography.resolve(kind: kind, diameter: annotation.visual?.featureDiameter ?? 0, art: document.style.art)
         }
-        return annotation.featureID.flatMap { features[$0] }.map { CaptionTypography.resolve(feature: $0, art: document.style.art) } ?? .standard
+        if let feature = annotation.featureID.flatMap({ features[$0] }) {
+            return CaptionTypography.resolve(feature: feature, art: document.style.art)
+        }
+        return document.style.isReliefAtlas ? CaptionTypography.resolve(kind: "", diameter: 0, art: document.style.art) : .standard
     }
     static func font(_ document: MoonDocument, size: Double, italic: Bool = false) -> NSFont {
         let ink = ThemeInk.resolve(document)
@@ -476,7 +497,8 @@ enum SceneRenderer {
     }
     private static let elevationStops = [-9.0, -4, -1.5, 0, 2, 5, 9].map { CGFloat(($0 + 9) / 18) }
     private static func legendVisible(_ document: MoonDocument, _ scene: AnnotationScene) -> Bool {
-        (document.style.elevationEnabled && scene.layers.elevation != nil) || (document.style.contourEnabled && scene.layers.raster != nil)
+        document.style.elevationLegendEnabled && ((document.style.elevationEnabled && scene.layers.elevation != nil) ||
+                                                  (document.style.contourEnabled && scene.layers.raster != nil))
     }
     static func visibleLegendRect(_ document: MoonDocument, scene: AnnotationScene?) -> CGRect? {
         guard let scene, legendVisible(document, scene) else { return nil }
@@ -631,7 +653,11 @@ extension SceneRenderer {
             func mapPath(_ item: MapLine, grid: Bool) -> String {
                 let width = mapWidth(document, major: item.major, grid: grid), opacity = document.style.number(grid ? "grid_opacity" : "contour_opacity", grid ? 0.45 : 0.65)
                 let dash = grid && !item.major ? "\(width * 7),\(width * 4)" : ""
-                var content = line(item.points, color: mapInk.halo, width: width * 1.8, opacity: opacity * 0.65, dash: dash) + line(item.points, color: grid ? mapInk.grid : item.major ? mapInk.index : mapInk.contour, width: width, opacity: opacity, dash: dash)
+                var content = ""
+                if mapLineHasHalo(document, major: item.major, grid: grid) {
+                    content += line(item.points, color: mapInk.halo, width: width * 1.8, opacity: opacity * 0.65, dash: dash)
+                }
+                content += line(item.points, color: grid ? mapInk.grid : item.major ? mapInk.index : mapInk.contour, width: width, opacity: opacity, dash: dash)
                 if grid, let text = item.text, let p = item.captionPosition {
                     let size = max(6, Double(min(document.imageWidth, document.imageHeight)) * 0.009)
                     content += "<text x=\"\(p.x)\" y=\"\(p.y)\" font-family=\"sans-serif\" font-size=\"\(size)\" fill=\"\(mapInk.grid)\" stroke=\"\(mapInk.halo)\" stroke-width=\"\(size * 0.035)\" paint-order=\"stroke fill\" opacity=\"\(opacity)\">\(escape(text))</text>"
@@ -646,7 +672,11 @@ extension SceneRenderer {
             } else { lines.append("<g>") }
             if document.style.elevationEnabled, let elevation = texture?.elevation { lines.append(try bitmap(elevation, rect: rect, opacity: document.style.number("elevation_opacity", 0.35))) }
             for item in scene.layers.grid { lines.append(mapPath(item, grid: true)) }
-            for item in scene.layers.contours { lines.append(mapPath(item, grid: false)) }
+            if !scene.layers.contours.isEmpty {
+                lines.append("<g id=\"elevation-contours\">")
+                for item in scene.layers.contours { lines.append(mapPath(item, grid: false)) }
+                lines.append("</g>")
+            }
             lines.append("</g>")
             _ = masked
             for item in scene.layers.terminator {
@@ -716,7 +746,7 @@ extension SceneRenderer {
                 captions.append("<text font-family=\"\(escape(family))\" font-size=\"\(size)\" \(textStyle) xml:space=\"preserve\" aria-label=\"\(escape(annotation.text))\">")
                 for (row, text) in annotation.text.components(separatedBy: "\n").enumerated() {
                     let baseline = annotation.position.y + size + Double(row) * (face.ascender - face.descender + face.leading), line = shaped(text, font: face, tracking: typography.tracking)
-                    if !document.style.preferredLabelFamily.isEmpty {
+                    if document.style.isReliefAtlas || !document.style.preferredLabelFamily.isEmpty {
                         captions += editableFontRuns(line, x: annotation.position.x, baseline: baseline)
                     } else if annotation.featureID != nil {
                         var emitted = Set<Int>()
@@ -729,7 +759,7 @@ extension SceneRenderer {
                 }
                 captions.append("</text>")
             }
-            let content = captions.joined(), faceWidth = appearance.serif ? max(0.35, size * (["copperplate", "inkwash"].contains(document.style.art) ? 0.028 : 0.012)) : 0
+            let content = captions.joined(), faceWidth = appearance.serif ? captionFaceWidth(document, size: size) : 0
             lines.append("<g class=\"caption\" opacity=\"\(opacity)\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><g fill=\"none\" stroke=\"\(escape(appearance.halo))\" stroke-width=\"\(haloWidth(document, size: size))\">\(content)</g><g fill=\"\(escape(appearance.text))\" stroke=\"\(faceWidth > 0 ? escape(appearance.text) : "none")\" stroke-width=\"\(faceWidth)\">\(content)</g>")
             lines.append("</g></g>")
         }

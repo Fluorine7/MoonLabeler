@@ -24,32 +24,38 @@ if [ ! -d "$deps/erfa-2.0.1" ]; then
     fetch https://codeload.github.com/liberfa/erfa/tar.gz/refs/tags/v2.0.1 erfa.tar.gz d5469fbd0b212b3c7270c1da15c9bd82f37da9218fc89627f98283d27b416cbf
     tar -xzf "$deps/erfa.tar.gz" -C "$deps"
 fi
-sources="$repo_root/build/temp.macosx-11.0-arm64-cpython-312/opencv/sources"
-if [ ! -f "$sources/opencv-0654a42e19215ef25b1d367d822f3c630447e7c7/CMakeLists.txt" ]; then
-    sources="$deps"
-    if [ ! -d "$sources/opencv-0654a42e19215ef25b1d367d822f3c630447e7c7" ]; then
-        fetch https://codeload.github.com/opencv/opencv/tar.gz/0654a42e19215ef25b1d367d822f3c630447e7c7 opencv.tar.gz 7a75663094ebd50bf212928423a24394e29d751db878044ad015ba28546a59db
-        tar -xzf "$deps/opencv.tar.gz" -C "$deps"
-    fi
-    if [ ! -d "$sources/opencv_contrib-a8e9acd62cabd30419dba83007f2ac0d07de5e2c" ]; then
-        fetch https://codeload.github.com/opencv/opencv_contrib/tar.gz/a8e9acd62cabd30419dba83007f2ac0d07de5e2c opencv_contrib.tar.gz c96663affc1e6125fc5b630539db83f5bcff19f911c2bbc40e9b7566f86508c9
-        tar -xzf "$deps/opencv_contrib.tar.gz" -C "$deps"
-    fi
+# CMake records the source location in its cache. Keep both checkouts under
+# Swift's build directory so cleaning Python's build never invalidates them.
+opencv_source="$deps/opencv-0654a42e19215ef25b1d367d822f3c630447e7c7"
+contrib_source="$deps/opencv_contrib-a8e9acd62cabd30419dba83007f2ac0d07de5e2c"
+if [ ! -f "$opencv_source/CMakeLists.txt" ]; then
+    fetch https://codeload.github.com/opencv/opencv/tar.gz/0654a42e19215ef25b1d367d822f3c630447e7c7 opencv.tar.gz 7a75663094ebd50bf212928423a24394e29d751db878044ad015ba28546a59db
+    tar -xzf "$deps/opencv.tar.gz" -C "$deps"
+fi
+if [ ! -f "$contrib_source/modules/ximgproc/src/edge_drawing.cpp" ]; then
+    fetch https://codeload.github.com/opencv/opencv_contrib/tar.gz/a8e9acd62cabd30419dba83007f2ac0d07de5e2c opencv_contrib.tar.gz c96663affc1e6125fc5b630539db83f5bcff19f911c2bbc40e9b7566f86508c9
+    tar -xzf "$deps/opencv_contrib.tar.gz" -C "$deps"
 fi
 edge="$deps/edgedrawing"
 if [ ! -f "$edge/CMakeLists.txt" ]; then
-    upstream="$sources/opencv_contrib-a8e9acd62cabd30419dba83007f2ac0d07de5e2c/modules/ximgproc"
+    upstream="$contrib_source/modules/ximgproc"
     mkdir -p "$edge/src" "$edge/include/opencv2/ximgproc"
     cp "$upstream/src/edge_drawing.cpp" "$upstream/src/edge_drawing_common.hpp" "$upstream/src/precomp.hpp" "$edge/src/"
     cp "$upstream/include/opencv2/ximgproc/edge_drawing.hpp" "$edge/include/opencv2/ximgproc/"
     printf '#pragma once\n#include <opencv2/ximgproc/edge_drawing.hpp>\n' > "$edge/include/opencv2/ximgproc.hpp"
     printf 'set(the_description "MoonLabeler EdgeDrawing")\nocv_define_module(ximgproc opencv_core opencv_imgproc)\n' > "$edge/CMakeLists.txt"
 fi
-cmake -S "$sources/opencv-0654a42e19215ef25b1d367d822f3c630447e7c7" -B "$swift_root/.build/opencv-native" -G Ninja \
+opencv_build="$swift_root/.build/opencv-native"
+opencv_cache="$opencv_build/CMakeCache.txt"
+if [ -f "$opencv_cache" ] && [ "$(sed -n 's/^CMAKE_HOME_DIRECTORY:INTERNAL=//p' "$opencv_cache")" != "$opencv_source" ]; then
+    printf 'Refreshing OpenCV configuration for the Swift dependency directory.\n'
+    cmake -E rm -f "$opencv_cache"
+fi
+cmake -S "$opencv_source" -B "$opencv_build" -G Ninja \
     -C "$repo_root/native/minimal.cmake" -DBUILD_LIST=core,imgproc,flann,features2d,calib3d,ximgproc \
     -DBUILD_opencv_python3=OFF -DBUILD_opencv_python_bindings_generator=OFF -DBUILD_opencv_python_tests=OFF \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DOPENCV_EXTRA_MODULES_PATH="$edge" -DWITH_JPEG=ON -DBUILD_JPEG=ON \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-cmake --build "$swift_root/.build/opencv-native" --parallel 8
+cmake --build "$opencv_build" --parallel 8
 cmake -S "$native_root" -B "$swift_root/.build/native-build" -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build "$swift_root/.build/native-build" --parallel 8

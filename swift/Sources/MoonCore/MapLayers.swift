@@ -176,6 +176,7 @@ public enum MapBuilder {
         "copperplate": ["#062f39", "#0e4d55", "#236776", "#e8a064", "#cf7845", "#edac69", "#f7e4b9"],
         "inkwash": ["#18252a", "#2f494d", "#48676b", "#d5d2b8", "#c8a393", "#eee0c6", "#f5f0dc"],
         "redalert": ["#183c47", "#294e35", "#568432", "#c7ae62", "#a48b5c", "#bdb197", "#e6dcc5"],
+        "relief_atlas": ["#142b60", "#265b9c", "#63bec7", "#c4dda9", "#e7d195", "#b78149", "#853e2a"],
     ]
     public static func build(document: MoonDocument, photo: PhotoPixels, dem: ElevationMap?, task: ComputeTask,
                              reusing: MapLayers? = nil) throws -> MapLayers {
@@ -274,10 +275,19 @@ public enum MapBuilder {
             let value = UInt32(hex.dropFirst(), radix: 16)!
             return [Double((value >> 16) & 255), Double((value >> 8) & 255), Double(value & 255)]
         }
-        let stops = [-9.0, -4, -1.5, 0, 2, 5, 9]
+        let reliefAtlas = style.isReliefAtlas && palette == "relief_atlas"
+        let stops = reliefAtlas ? [0, 0.23, 0.41, 0.52, 0.64, 0.82, 1] : [-9.0, -4, -1.5, 0, 2, 5, 9]
         let cartographic = (style.art == "topographic" && palette == "wilderness") || (style.art == "redalert" && palette == "redalert")
+        var heightCenter = 0.0, heightSpan = 1.0
         var values = raster.values.map(Double.init), shades = [Double](repeating: 1, count: values.count), cliffs = [Double](repeating: 0, count: values.count)
-        if cartographic {
+        if reliefAtlas {
+            let local = values.filter(\.isFinite).sorted()
+            if !local.isEmpty {
+                let low = percentile(local, 0.01), high = percentile(local, 0.99)
+                heightCenter = (low + high) / 2; heightSpan = max(1, high - low)
+                shades = reliefShades(raster, heights: values, photo: photo)
+            }
+        } else if cartographic {
             let valid = values.map { $0.isFinite ? 1.0 : 0 }, weights = gaussian(valid, width: raster.width, height: raster.height, sigma: 1.1)
             let blurred = gaussian(values.map { $0.isFinite ? $0 : 0 }, width: raster.width, height: raster.height, sigma: 1.1)
             let smooth = zip(blurred, weights).map { $0 / max(1e-6, $1) }, interval = style.contourInterval ?? raster.automaticInterval
@@ -306,16 +316,61 @@ public enum MapBuilder {
         }
         var rgba = [UInt8](repeating: 0, count: raster.values.count * 4)
         for (index, height) in values.enumerated() where raster.values[index].isFinite {
-            let h = min(9, max(-9, height)), upper = (1..<stops.count).first { h <= stops[$0] } ?? 6, lower = upper - 1
+            let value = reliefAtlas ? (height - heightCenter) / heightSpan + 0.5 : height
+            let h = min(stops[6], max(stops[0], value)), upper = (1..<stops.count).first { h <= stops[$0] } ?? 6, lower = upper - 1
             let fraction = (h - stops[lower]) / (stops[upper] - stops[lower])
             for channel in 0..<3 {
                 var color = colors[lower][channel] * (1 - fraction) + colors[upper][channel] * fraction
-                if cliffs[index] > 0 { color = color * (1 - cliffs[index]) + [132.0, 115, 87][channel] * cliffs[index] }
-                rgba[index * 4 + channel] = UInt8(min(255, max(0, (color * shades[index]).rounded())))
+                if reliefAtlas {
+                    let pigment = color.rounded(.toNearestOrEven), shade = shades[index]
+                    color = pigment * (1 + min(shade, 0)) + (255 - pigment) * max(shade, 0)
+                    rgba[index * 4 + channel] = UInt8(color.rounded(.toNearestOrEven))
+                } else {
+                    if cliffs[index] > 0 { color = color * (1 - cliffs[index]) + [132.0, 115, 87][channel] * cliffs[index] }
+                    rgba[index * 4 + channel] = UInt8(min(255, max(0, (color * shades[index]).rounded())))
+                }
             }
             rgba[index * 4 + 3] = 255
         }
         return PhotoPixels(width: raster.width, height: raster.height, rgba: rgba)
+    }
+    private static func percentile(_ sorted: [Double], _ fraction: Double) -> Double {
+        let position = Double(sorted.count - 1) * fraction, lower = Int(position)
+        return sorted[lower] + (sorted[min(lower + 1, sorted.count - 1)] - sorted[lower]) * (position - Double(lower))
+    }
+    private static func reliefShades(_ raster: HeightRaster, heights: [Double], photo: PhotoPixels?) -> [Double] {
+        let width = raster.width, height = raster.height
+        var slopes = [Double](repeating: 0, count: heights.count)
+        guard width > 1, height > 1 else { return slopes }
+        let valid = heights.map { $0.isFinite ? 1.0 : 0 }
+        let weights = NativeCompute.gaussian(valid, width: width, height: height, sigma: 1.1)
+        let blurred = NativeCompute.gaussian(heights.map { $0.isFinite ? $0 : 0 }, width: width, height: height, sigma: 1.1)
+        let smooth = zip(blurred, weights).map { $0 / max($1, 1e-6) }
+        var validSlopes: [Double] = []
+        validSlopes.reserveCapacity(heights.count)
+        for y in 0..<height {
+            let above = max(0, y - 1), below = min(height - 1, y + 1)
+            for x in 0..<width {
+                let left = max(0, x - 1), right = min(width - 1, x + 1), i = y * width + x
+                let dx = (smooth[y * width + right] - smooth[y * width + left]) / Double(right - left)
+                let dy = (smooth[below * width + x] - smooth[above * width + x]) / Double(below - above)
+                slopes[i] = dx + dy
+                if valid[i] != 0 { validSlopes.append(abs(slopes[i])) }
+            }
+        }
+        let reference = max(0.005, percentile(validSlopes.sorted(), 0.9))
+        var shades = slopes.map { 0.38 * tanh(1.1 * $0 / reference) }
+        if let photo, let sample = try? photo.resized(maximum: max(width, height)) {
+            let gray = sample.gray
+            let luminance = shades.indices.map { index in
+                let x = min(sample.width - 1, (index % width) * sample.width / width)
+                let y = min(sample.height - 1, (index / width) * sample.height / height)
+                return Double(gray[y * sample.width + x])
+            }
+            let base = NativeCompute.gaussian(luminance, width: width, height: height, sigma: max(1.5, Double(min(width, height)) * 0.004))
+            for i in shades.indices { shades[i] += (luminance[i] - base[i]) * (0.9 / 255) }
+        }
+        return shades.map { min(0.34, max(-0.42, $0)) }
     }
     private static func gaussian(_ values: [Double], width: Int, height: Int, sigma: Double) -> [Double] {
         let radius = Int(ceil(sigma * 4)), weights = (-Int(ceil(sigma * 4))...Int(ceil(sigma * 4))).map { exp(-Double($0 * $0) / (2 * sigma * sigma)) }

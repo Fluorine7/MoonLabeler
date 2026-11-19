@@ -18,6 +18,14 @@ public struct CaptionTypography: Sendable {
         let kind = featureKind.components(separatedBy: ",")[0]
         let sea = ["Mare", "Oceanus"].contains(kind), smallSea = ["Lacus", "Palus", "Sinus"].contains(kind)
         let linear = ["Mons", "Rima", "Rupes", "Vallis", "Dorsum", "Promontorium", "Catena"].contains(kind)
+        if art == "relief_atlas" {
+            let scale: Double
+            if sea { scale = 1.28 }
+            else if linear { scale = 1.10 }
+            else if kind == "Satellite Feature" { scale = 0.69 }
+            else { scale = 1 }
+            return CaptionTypography(italic: true, region: true, scale: scale)
+        }
         if art == "redalert" {
             if sea { return CaptionTypography(uppercase: true, tracking: 0.055, region: true, scale: 1.4) }
             if smallSea { return CaptionTypography(uppercase: true, tracking: 0.025, region: true, scale: 1.1) }
