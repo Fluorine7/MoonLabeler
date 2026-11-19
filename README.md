@@ -138,18 +138,14 @@ Recognition can fail with inaccurate times, shadows, blur or distortion. Basic L
 
 ## 下载应用 / App downloads
 
-**0.12.2** 应用包包含新界面、沿地形标注与月相示意图，无需安装 Python。
+**0.12.5** 应用包包含月面地形图集、系统字体选择和手机目镜后照片的边缘校正。
 
-月面地形图集、系统字体选择和目镜边缘校正可用当前 0.12.5 源码。
-
-The **0.12.2** apps include the updated interface, landform labels and phase-correct lunar locator. Python is not required.
-
-Use the current 0.12.5 source for Lunar relief atlas, system font selection and afocal edge correction.
+The **0.12.5** apps include Lunar relief atlas, system font selection and limb correction for phone-through-eyepiece photos.
 
 | 系统 / Platform | 下载 / Download | 打开方式 / Start |
 | --- | --- | --- |
-| macOS 14.4+, Apple Silicon | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.2/MoonLabeler-0.12.2-macos-arm64.zip) | `MoonLabeler.app` |
-| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.2/MoonLabeler-0.12.2-windows-x64.zip) | `MoonLabeler.exe` |
+| macOS 14.4+, Apple Silicon | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.5/MoonLabeler-0.12.5-macos-arm64.zip) | `MoonLabeler.app` |
+| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.5/MoonLabeler-0.12.5-windows-x64.zip) | `MoonLabeler.exe` |
 
 完整解压后打开，内置运行环境、FITS 支持和离线星历。Windows 请保留 EXE 旁的 `_internal` 文件夹。Mac 包采用临时签名，首次被拦截时可在“系统设置 → 隐私与安全性”中允许；不支持 Intel Mac。
 

@@ -8,12 +8,12 @@
 
 ## 下载与打开
 
-当前源码版本为 0.12.5，新增月面地形图集，也支持系统字体和手机目镜后照片的边缘校正。已发布应用包为 0.12.2。
+0.12.5 应用包新增月面地形图集，也支持系统字体和手机目镜后照片的边缘校正。
 
 | 系统 | 下载 | 打开方式 |
 | --- | --- | --- |
-| macOS 14.4+，Apple Silicon（M1 或更新） | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.2/MoonLabeler-0.12.2-macos-arm64.zip) | 解压后打开 `MoonLabeler.app`，也可拖入“应用程序” |
-| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.2/MoonLabeler-0.12.2-windows-x64.zip) | 完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹 |
+| macOS 14.4+，Apple Silicon（M1 或更新） | [macOS ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.5/MoonLabeler-0.12.5-macos-arm64.zip) | 解压后打开 `MoonLabeler.app`，也可拖入“应用程序” |
+| Windows x64 | [Windows ZIP](https://github.com/Fluorine7/MoonLabeler/releases/download/v0.12.5/MoonLabeler-0.12.5-windows-x64.zip) | 完整解压后运行 `MoonLabeler.exe`，保留旁边的 `_internal` 文件夹 |
 
 安装包自带运行环境、FITS 支持和离线星历。Mac 包采用临时签名，首次打开若被拦截，可在“系统设置 → 隐私与安全性”中允许运行；不支持 Intel Mac。
 

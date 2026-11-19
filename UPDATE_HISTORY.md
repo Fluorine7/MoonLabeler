@@ -9,7 +9,9 @@
 - 新增月面地形图集。按视野内的 LOLA 高程着色，配有地形阴影、细等高线和浅描边的斜体地名。月溪等可沿地形路径排字，预览和 PNG / SVG 导出保持原图尺寸。 / Added Lunar relief atlas with relief shading, local LOLA elevation colours, fine contours and italic labels. Linear landforms can carry text along their paths. The preview and PNG/SVG exports use the photo frame.
 - 约 33 MB 的基础 LOLA 继续通过软件下载。约 133 MB 的全球 32 ppd 高程作为独立离线包提供，采样约 0.95 km。 / The app still downloads the 33 MB basic LOLA dataset. An optional offline package provides a global 32 ppd elevation grid at about 0.95 km spacing.
 
-本次更新源码。应用包下载见[项目主页](README.md#下载应用--app-downloads)。 / Source update. See [app downloads](README.md#下载应用--app-downloads).
+提供 macOS 14.4+ Apple Silicon 和 Windows x64 应用包，内置运行环境、FITS 支持和离线星历。从 0.12.2 升级还会获得系统字体选择与手机目镜后照片的边缘校正。 / The macOS 14.4+ Apple Silicon and Windows x64 apps include the runtime, FITS support and offline ephemerides. Upgrading from 0.12.2 also brings system font selection and limb correction for phone-through-eyepiece photos.
+
+应用下载见[项目主页](README.md#下载应用--app-downloads)，可选 LOLA 数据另见[离线高程说明](README.zh-CN.md#可选离线高程包)。 / See [app downloads](README.md#下载应用--app-downloads) and the [optional LOLA data instructions](README.zh-CN.md#可选离线高程包).
 
 ## 0.12.4
 
