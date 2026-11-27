@@ -82,6 +82,26 @@ def test_tr_converts_characters_and_software_vocabulary(traditional):
     assert i18n.tr("文件名时间") == "檔名時間"
 
 
+def test_tr_uses_taiwan_wording_for_editor_and_registration_terms(traditional):
+    assert i18n.tr("显示蒙版") == "顯示遮罩"
+    assert i18n.tr("撤销") == "復原"
+    assert i18n.tr("软件设置") == "軟體設定"
+    assert i18n.tr("拾取屏幕颜色") == "選取螢幕顏色"
+    assert i18n.tr("添加到自定义颜色") == "新增到自訂顏色"
+    assert i18n.tr("重置手工编辑") == "重設手動編輯"
+    assert i18n.tr("受光阈值") == "受光門檻"
+    assert i18n.tr("网格不透明度") == "格線不透明度"
+    assert i18n.tr("匹配当前照片") == "比對目前照片"
+    # 退出代码 wins over the shorter 代碼→程式碼 rule.
+    assert i18n.tr("新窗口启动失败（退出代码 {code}）。启动日志：{path}") == "新視窗啟動失敗（結束代碼 {code}）。啟動記錄檔：{path}"
+
+
+def test_landform_path_tooltip_follows_the_phrase_table(traditional):
+    source = ("月溪、山脉等沿地形走向排字，普通与艺术样式共用。路径过短、弯折过急或资料不足时保留普通标注；"
+              "字号最多缩小 35%。修改后点击重新生成标注。")
+    assert i18n.tr(source).endswith("字級最多縮小 35%。修改後點選重新產生標註。")
+
+
 def test_tr_keeps_domain_terms_and_names(traditional):
     # Character conversion must not turn registration/mirror jargon into mainland IT phrases.
     assert i18n.tr("镜像") == "鏡像"
