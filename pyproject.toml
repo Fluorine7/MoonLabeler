@@ -20,7 +20,7 @@ Issues = "https://github.com/Fluorine7/MoonLabeler/issues"
 [project.optional-dependencies]
 fits = ["astropy>=6"]
 dev = ["pytest>=9.0.3"]
-gpu = ["wgpu>=0.32,<0.33"]
+gpu = ["wgpu>=0.32,<0.34"]
 apple-gpu = ["mlx>=0.25,<0.33; sys_platform == 'darwin' and platform_machine == 'arm64'"]
 
 [project.scripts]
